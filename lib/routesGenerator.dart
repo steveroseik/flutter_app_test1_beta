@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:flutter_app_test1/pages/breed.dart';
 import 'package:flutter_app_test1/pages/breed_sp.dart';
-import 'package:flutter_app_test1/pages/petRegistration.dart';
+import 'package:flutter_app_test1/pages/breed_registration.dart';
 
 
 // This is for routes configurations across the whole application
@@ -32,6 +32,11 @@ class BA_RouteGenerator {
           );
         }
         return _errorRoute();
+      case '/pet_adopt':
+        return MaterialPageRoute(
+          builder: (_) => breedSearchPage(), // Second Page
+        );
+
       default:
         // if an unmatched route is called, return error route
         return _errorRoute();

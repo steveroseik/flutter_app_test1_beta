@@ -224,8 +224,7 @@ class _addBreedPageState extends State<addBreedPage> {
             SizedBox(height: 30),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                  primary: Colors.teal.shade100,
-                  onPrimary: Colors.red,
+                  foregroundColor: Colors.red, backgroundColor: Colors.teal.shade100,
                   shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(18.0)
                       )
@@ -269,31 +268,6 @@ class _addBreedPageState extends State<addBreedPage> {
                     color: Colors.redAccent
                   )),
               ),
-            ),
-            ValueListenableBuilder<int>(
-                valueListenable: p_stat,
-                builder: (BuildContext context, int value, Widget? child){
-                  if (value == 0){
-                    return ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.red, backgroundColor: Colors.teal.shade100,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18.0)
-                          )
-                      ),
-                      onPressed: () {
-                        BA_key.currentState?.pushNamed('/pet_register', arguments: imageFile);
-                        setState((){});
-                      },
-                      child: Text('NEXT',
-                        style: TextStyle(
-                            color: Colors.grey.shade900
-                        ),),
-                    );
-                  }else{
-                    return SizedBox(height: 1);
-                  }
-                }
             ),
           ],
         ),

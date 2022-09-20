@@ -4,12 +4,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/pages/APILibraries.dart';
 import 'package:flutter_app_test1/JsonObj.dart';
 import 'package:dropdown_search/dropdown_search.dart';
+import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 import '../FETCH_wdgts.dart';
 
-PanelController _pc = new PanelController();
 
+final PanelController _pc = PanelController();
 // Elevated Card
 class breedSearchPage extends StatefulWidget {
   const breedSearchPage({Key? key}) : super(key: key);
@@ -31,7 +32,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
   @override
   void initState() {
     super.initState();
-    _pc.open();
+    // _pc.open();
   }
 
   @override
@@ -42,6 +43,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
         minHeight: 50,
         maxHeight: 250,
         controller: _pc,
+
         panel: SizedBox(
           height: 250,
           child: Column(
@@ -54,7 +56,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    BreedSearchWidget(),
+                    Expanded(child: BreedSearchWidget()),
                   ],
                 ),
               ),
@@ -161,17 +163,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
           ),
         ),
         body: Scaffold(
-          appBar: AppBar(
-            title: Text(
-              'FETCH',
-              style: TextStyle(
-                color: Colors.black,
-              ),
-            ),
-            centerTitle: false,
-            leadingWidth: 0,
-            backgroundColor: Colors.white70,
-          ),
+          appBar: init_appBar(BA_key),
           body: Center(
             child: Text("This is the Widget behind the sliding panel"),
           ),

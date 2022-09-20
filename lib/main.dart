@@ -3,7 +3,7 @@ import 'package:flutter_app_test1/pages/login.dart';
 import 'package:flutter_app_test1/pages/signup.dart';
 import 'package:flutter_app_test1/mainApp.dart';
 import 'package:flutter_app_test1/pages/settings.dart';
-import 'package:flutter_app_test1/pages/petRegistration.dart';
+import 'package:flutter_app_test1/pages/breed_registration.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 
 

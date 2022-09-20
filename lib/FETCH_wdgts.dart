@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/pages/APILibraries.dart';
 import 'package:loading_indicator/loading_indicator.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter/src/widgets/image.dart' as img;
 
 import 'JsonObj.dart';
 
@@ -20,6 +22,7 @@ class _BreedSearchWidgetState extends State<BreedSearchWidget> {
   Breed? _selected;
   late Future<List<Breed>> bList;
   var bError = 5;
+  final _openDropDownProgKey = GlobalKey<DropdownSearchState<int>>();
 
   @override
   void initState() {
@@ -42,44 +45,44 @@ class _BreedSearchWidgetState extends State<BreedSearchWidget> {
           }
           switch (snapshot.connectionState) {
             case ConnectionState.done:
-              return DropdownSearch<Breed>(
-
-                selectedItem: _selected,
-                onChanged: (Breed? b) {
-                  _selected = b;
-                },
-                compareFn: (i1, i2) => i1.name == i2.name,
-                items: snapshot.data!,
-                itemAsString: (Breed b) => b.name,
-                dropdownDecoratorProps: const DropDownDecoratorProps(
-                  dropdownSearchDecoration: InputDecoration(
-                    fillColor: CupertinoColors.extraLightBackgroundGray,
-                    filled: true,
-                    labelText: 'Breed',
-                    prefixIcon: Icon(CupertinoIcons.paw),
-                  ),
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20.0),
+                  color: CupertinoColors.extraLightBackgroundGray
                 ),
-                popupProps: PopupProps.menu(
-                  showSearchBox: true,
-                  fit: FlexFit.loose,
-                  constraints: BoxConstraints.tightFor(),
-                  searchFieldProps: TextFieldProps(
-                      decoration: InputDecoration(
-                        hintText: 'Type breed name',
-                      )),
-                  itemBuilder: (ctx, item, isSelected) {
-                    return ListTile(
-                      title: Text(item.name,
-                          textAlign: TextAlign.left,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 13.5, color: Colors.black)),
-                      leading: CircleAvatar(
-                          backgroundImage: NetworkImage(item.image.url)),
-                    );
+                child: DropdownSearch<Breed>(
+                  key: _openDropDownProgKey,
+                  selectedItem: _selected,
+                  onChanged: (Breed? b) {
+                    _selected = b;
                   },
+                  compareFn: (i1, i2) => i1.name == i2.name,
+                  items: snapshot.data!,
+                  itemAsString: (Breed b) => b.name,
+                  dropdownDecoratorProps: DropDownDecoratorProps(
+                  ),
+                  popupProps: PopupProps.menu(
+                    showSearchBox: true,
+                    fit: FlexFit.loose,
+                    constraints: BoxConstraints.tightFor(),
+                    searchFieldProps: TextFieldProps(
+                        decoration: InputDecoration(
+                          hintText: 'Type breed name',
+                        )),
+                    itemBuilder: (ctx, item, isSelected) {
+                      return ListTile(
+                        title: Text(item.name,
+                            textAlign: TextAlign.left,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 13.5, color: Colors.black)),
+                        leading: CircleAvatar(
+                            backgroundImage: NetworkImage(item.image.url)),
+                      );
+                    },
+                  ),
+                  filterFn: (breed, filter) => breed.filterBreedItem(filter),
                 ),
-                filterFn: (breed, filter) => breed.filterBreedItem(filter),
               );
             default:
               return CircularProgressIndicator();
@@ -110,6 +113,48 @@ void stopLoading(OverlayEntry loading) {
   loading.remove();
 }
 
+// GENDERS RADIO BUTTON
+class Gender {
+  String name;
+  IconData icon;
+  bool isSelected;
+
+  Gender(this.name, this.icon, this.isSelected);
+}
+
+class CustomRadio extends StatelessWidget {
+  Gender _gender;
+
+  CustomRadio(this._gender);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+        color: _gender.isSelected ? Color(0xFF3B4257) : Colors.white,
+        child: Container(
+          alignment: Alignment.center,
+          margin: new EdgeInsets.all(5.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Icon(
+                _gender.icon,
+                color: _gender.isSelected ? Colors.white : Colors.grey,
+                size: 40,
+              ),
+              SizedBox(height: 10),
+              Text(
+                _gender.name,
+                style: TextStyle(
+                  fontSize: 10,
+                    color: _gender.isSelected ? Colors.white : Colors.grey),
+              )
+            ],
+          ),
+        ));
+  }
+}
 
 
 // appBar initializer
