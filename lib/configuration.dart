@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 
+enum NavPages{
+  home,
+  reminder,
+  explore,
+  breed,
+  settings
+}
+
 Color primaryColor = Color(0xff376565);
 
 List<BoxShadow> shadowList = [

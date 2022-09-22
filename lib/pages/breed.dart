@@ -232,16 +232,23 @@ class _addBreedPageState extends State<addBreedPage> {
               onPressed: () async{
                 if (cam_Btn){
                   await pickImage(ImageSource.camera);
-                  print(cam_Btn);
+                  // print(cam_Btn);
+                  // refresh UI elements
                   setState(() {});
+                  // set state of pet photo as -2 (neutral)
                   p_stat.value = -2;
+                  // put loading widget into screen
                   isLoading();
                   OverlayState? overlay = Overlay.of(context);
                   overlay?.insert(loading);
+                  //disable camera button
                   cam_Btn = false;
-                  p_stat.value = await analyzeImage();
+                  // wait until image is analyzed
+                  // p_stat.value = await analyzeImage();
+                  // refresh UI and remove loading widget from screen
                   setState(() {});
                   stopLoading();
+                  // reenable camera btn
                   cam_Btn = true;
                 }
 
@@ -261,7 +268,7 @@ class _addBreedPageState extends State<addBreedPage> {
                 duration: animationDuration_1,
                 opacity: p_stat.value == -1 ? 1 : 0,
 
-                child: Text("Couldn't find a dog in photo",
+                child: const Text("Couldn't find a dog in photo",
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 12,
@@ -275,14 +282,13 @@ class _addBreedPageState extends State<addBreedPage> {
           valueListenable: p_stat,
           builder: (BuildContext context, int value, Widget? child){
             return Visibility(
-                visible: value == 0 ? true : false,
+                visible: value == 0 ? true : true,
                 child: FloatingActionButton.extended(
                   foregroundColor: Colors.white,
                   backgroundColor: Colors.blueGrey,
                   label: Text('Next'),
                   icon: Icon(Icons.navigate_next_outlined),
                   onPressed: () {
-                    print('what?');
                     BA_key.currentState?.pushNamed('/pet_register', arguments: imageFile);
                     setState((){});
                   },

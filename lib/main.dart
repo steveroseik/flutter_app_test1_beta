@@ -15,7 +15,6 @@ void main() {
       '/login': (context) => LoginPage(),
       '/signup': (context) => Signup(),
       '/mainApp': (context) => mainApp(),
-      // '/sett': (context) => SettingsPage(),
     }
   ));
   

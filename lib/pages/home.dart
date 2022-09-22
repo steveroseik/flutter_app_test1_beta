@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_test1/mainApp.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_app_test1/configuration.dart';
+import 'package:flutter_app_test1/mainApp.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -33,7 +35,8 @@ class _HomePageState extends State<HomePage> {
               IconButton(
                 enableFeedback: false,
                 onPressed: () {
-                  AppNav_key.currentState?.pushNamed('/Settings');
+                  UserNav_key.currentState?.pushNamed('/user_profile');
+                  // mainApp().update_nav_index(3);
                   setState(() {});
                 },
                 icon: const Icon(
