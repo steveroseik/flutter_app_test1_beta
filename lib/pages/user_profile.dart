@@ -17,7 +17,9 @@ class _UserProfileState extends State<UserProfile> {
     return  Scaffold(
         appBar: init_appBar(rootNav_key), // CHANGE KEY!!!
     body: Column(
+      children: [
 
+      ],
     )
     );
   }

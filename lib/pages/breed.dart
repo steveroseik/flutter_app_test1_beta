@@ -7,8 +7,7 @@ import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_app_test1/JsonObj.dart';
-import 'package:flutter_app_test1/pages/APILibraries.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
@@ -34,7 +33,7 @@ class _addBreedPageState extends State<addBreedPage> {
     late Future<List<Breed>> finalBreeds;
     File? imageFile;
     late Future<PhotoResponse> pRes;
-    late FToast fToast;
+    // late FToast fToast;
     // var p_stat = -2;
     late Color statColor;
     late OverlayEntry loading;
@@ -99,23 +98,23 @@ class _addBreedPageState extends State<addBreedPage> {
       );
 
 
-      fToast.showToast(
-        child: toast,
-        gravity: ToastGravity.BOTTOM,
-        toastDuration: Duration(seconds: 2),
-      );
-
-      // Custom Toast Position
-      fToast.showToast(
-          child: toast,
-          toastDuration: Duration(seconds: 2),
-          positionedToastBuilder: (context, child) {
-            return Positioned(
-              child: child,
-              top: 16.0,
-              left: 16.0,
-            );
-          });
+      // fToast.showToast(
+      //   child: toast,
+      //   gravity: ToastGravity.BOTTOM,
+      //   toastDuration: Duration(seconds: 2),
+      // );
+      //
+      // // Custom Toast Position
+      // fToast.showToast(
+      //     child: toast,
+      //     toastDuration: Duration(seconds: 2),
+      //     positionedToastBuilder: (context, child) {
+      //       return Positioned(
+      //         child: child,
+      //         top: 16.0,
+      //         left: 16.0,
+      //       );
+      //     });
     }
 
 
@@ -146,7 +145,7 @@ class _addBreedPageState extends State<addBreedPage> {
   void initState() {
     super.initState();
     finalBreeds = getBreedList(0);
-    fToast = FToast();
+    // fToast = FToast();
     p_stat.value = -2;
     statColor = Colors.grey;
     img_src.value = 0;
@@ -160,9 +159,7 @@ class _addBreedPageState extends State<addBreedPage> {
 
   @override
   Widget build(BuildContext context) {
-    fToast.init(context);
-
-
+    // fToast.init(context);
     //handle status color for photo analysis
     Color handleColor() {
       statColor =
@@ -231,7 +228,7 @@ class _addBreedPageState extends State<addBreedPage> {
               ),
               onPressed: () async{
                 if (cam_Btn){
-                  await pickImage(ImageSource.camera);
+                  await pickImage(ImageSource.gallery);
                   // print(cam_Btn);
                   // refresh UI elements
                   setState(() {});

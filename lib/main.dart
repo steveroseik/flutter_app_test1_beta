@@ -1,21 +1,36 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app_test1/pages/login.dart';
-import 'package:flutter_app_test1/pages/signup.dart';
-import 'package:flutter_app_test1/mainApp.dart';
-import 'package:flutter_app_test1/pages/settings.dart';
-import 'package:flutter_app_test1/pages/breed_registration.dart';
-import 'package:flutter_app_test1/routesGenerator.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_app_test1/pages/signup_completion.dart';
+import 'FETCH_wdgts.dart';
+import 'Login_main.dart';
+import 'firebase_options.dart';
+import 'mainApp.dart';
+import 'package:flutter_app_test1/pages/emailVerify.dart';
 
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp( MaterialApp(
-    navigatorKey: rootNav_key,
-    initialRoute: '/login',
-    routes: {
-      '/login': (context) => LoginPage(),
-      '/signup': (context) => Signup(),
-      '/mainApp': (context) => mainApp(),
-    }
+    home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot){
+          if (snapshot.hasData){
+            if (FirebaseAuth.instance.currentUser!.emailVerified){
+              return Signup();
+            }else{
+              return verifyEmail();
+            }
+
+          }else{
+            return LoginWidget();
+          }
+        }
+    )
   ));
   
 }

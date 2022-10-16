@@ -1,9 +1,8 @@
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app_test1/pages/APILibraries.dart';
+import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:loading_indicator/loading_indicator.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter/src/widgets/image.dart' as img;
 
 import 'JsonObj.dart';
@@ -93,9 +92,9 @@ class _BreedSearchWidgetState extends State<BreedSearchWidget> {
   }
 }
 
-void isLoading(BuildContext context, OverlayEntry loading, Size windowSize) {
+OverlayEntry initLoading(BuildContext context, Size windowSize) {
   Offset offs = Offset((windowSize.width / 2) - 25, windowSize.height - 150);
-  loading = OverlayEntry(
+  final loading = OverlayEntry(
       builder: (BuildContext context) => Positioned(
             left: offs.dx,
             top: offs.dy,
@@ -107,11 +106,10 @@ void isLoading(BuildContext context, OverlayEntry loading, Size windowSize) {
                   colors: [Colors.black, Colors.teal, Colors.blueGrey]),
             ),
           ));
+
+  return loading;
 }
 
-void stopLoading(OverlayEntry loading) {
-  loading.remove();
-}
 
 // GENDERS RADIO BUTTON
 class Gender {

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:http/http.dart';
 
 enum NavPages{
   home,
@@ -7,6 +9,16 @@ enum NavPages{
   breed,
   settings
 }
+
+enum email_verif{
+  completeUser,
+  newUser,
+  userAlreadyExists,
+  connectionError
+}
+
+// temp variable to store user ID
+var UserCurrentID = '107346742';
 
 Color primaryColor = Color(0xff376565);
 
@@ -51,3 +63,22 @@ List<Map> navList = [
   {'icon': Icons.mail_rounded,'title': 'Messages'},
   {'icon': Icons.person,'title': 'Profile'},
 ];
+
+
+ final key32 = encrypt.Key.fromBase16('faec7d5b616e5e4ff6119894f3d367476f6480208114ef11defc0a8c51ea76b4');
+ final iv16 =  encrypt.IV.fromBase16('9219d32e744667b39f882f68112f9251');
+
+String encryptString(String s) {
+
+
+  final encrypter = encrypt.Encrypter(encrypt.AES(key32));
+
+  final encrypted = encrypter.encrypt(s, iv: iv16);
+
+  return encrypted.base16;
+
+  // print(encrypted.base16);
+  // print('\n');
+  // print(decrypted);
+
+}

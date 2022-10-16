@@ -4,6 +4,7 @@ import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_app_test1/configuration.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_app_test1/mainApp.dart';
 
 class HomePage extends StatefulWidget {
@@ -35,7 +36,10 @@ class _HomePageState extends State<HomePage> {
               IconButton(
                 enableFeedback: false,
                 onPressed: () {
-                  UserNav_key.currentState?.pushNamed('/user_profile');
+
+                  FirebaseAuth.instance.signOut();
+                  // print(UniqueKey().hashCode);
+                  // UserNav_key.currentState?.pushNamed('/user_profile');
                   // mainApp().update_nav_index(3);
                   setState(() {});
                 },

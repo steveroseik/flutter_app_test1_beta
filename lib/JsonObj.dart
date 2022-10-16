@@ -119,3 +119,28 @@ class PhotoResponse {
     "approved": approved,
   };
 }
+
+UserAvailCheck userAvailCheckFromJson(String str) => UserAvailCheck.fromJson(json.decode(str));
+
+String userAvailCheckToJson(UserAvailCheck data) => json.encode(data.toJson());
+
+class UserAvailCheck {
+  UserAvailCheck({
+    required this.code,
+    required this.message,
+  });
+
+  int code;
+  String message;
+
+  factory UserAvailCheck.fromJson(Map<String, dynamic> json) => UserAvailCheck(
+    code: json["code"],
+    message: json["error"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "code": code,
+    "error": message,
+  };
+}
+
