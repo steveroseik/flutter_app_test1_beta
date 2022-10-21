@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app_test1/routesGenerator.dart';
 
 import '../FETCH_wdgts.dart';
 
@@ -146,11 +147,16 @@ class _SignUpEmailState extends State<SignUpEmail> {
                           textAlign: TextAlign.left,
 
                         ),
-                        Text('login',
-                          textAlign: TextAlign.left,
-                          style: TextStyle(
-                            decoration: TextDecoration.underline,
-                            color: Colors.blue,
+                        GestureDetector(
+                          onTap: (){
+                            rootNav_key.currentState?.popAndPushNamed('/login');
+                          },
+                          child: Text('login',
+                            textAlign: TextAlign.left,
+                            style: TextStyle(
+                              decoration: TextDecoration.underline,
+                              color: Colors.blue,
+                            ),
                           ),
                         )
                       ],

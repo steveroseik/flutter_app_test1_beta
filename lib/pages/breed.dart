@@ -221,7 +221,7 @@ class _addBreedPageState extends State<addBreedPage> {
             SizedBox(height: 30),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.red, backgroundColor: Colors.teal.shade100,
+                  backgroundColor: Colors.teal.shade100,
                   shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(18.0)
                       )

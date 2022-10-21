@@ -4,6 +4,7 @@ import 'package:flutter_app_test1/pages/breed.dart';
 import 'package:flutter_app_test1/pages/breed_sp.dart';
 import 'package:flutter_app_test1/pages/breed_registration.dart';
 import 'package:flutter_app_test1/pages/emailVerify.dart';
+import 'package:flutter_app_test1/pages/forgotPassword.dart';
 import 'package:flutter_app_test1/pages/user_profile.dart';
 import 'package:flutter_app_test1/pages/home.dart';
 import 'package:flutter_app_test1/pages/login.dart';
@@ -44,7 +45,12 @@ class RouteGenerator {
         return MaterialPageRoute(
           builder: (_) => mainApp(),
         );
-
+      case '/forgotPass':
+        if (args is String){
+          return MaterialPageRoute(builder: (_) => ForgotPass(emailPushed: args));
+        }
+        print("args not Text");
+        return _errorRoute();
       default:
         return _errorRoute();
     }
@@ -72,7 +78,6 @@ class RouteGenerator {
         return MaterialPageRoute(
           builder: (_) => breedSearchPage(), // Second Page
         );
-
       default:
         // if an unmatched route is called, return error route
         return _errorRoute();

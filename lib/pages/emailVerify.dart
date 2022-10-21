@@ -62,7 +62,7 @@ class _verifyEmailState extends State<verifyEmail> {
             margin: EdgeInsets.symmetric(horizontal: 50),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+              children: const [
                 SizedBox(height: 20),
                 Text('FETCH',
                     style: TextStyle(

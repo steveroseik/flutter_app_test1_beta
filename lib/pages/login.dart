@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/JsonObj.dart';
 import 'package:flutter_app_test1/configuration.dart';
@@ -20,6 +21,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
 
+  final _formKey = GlobalKey<FormState>();
   final emailField = TextEditingController();
   final passField = TextEditingController();
   final Size windowSize = MediaQueryData.fromWindow(window).size;
@@ -71,38 +73,84 @@ class _LoginPageState extends State<LoginPage> {
           SizedBox(height: 30),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
+                    Text('Login',
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontSize: 25,
+                          fontWeight: FontWeight.w900,
+                        )),
+                    SizedBox(height: 30),
                     TextFormField(
                       controller: emailField,
-                      decoration: const InputDecoration(
-                        border: UnderlineInputBorder(),
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(20)),
+                        filled: true,
+                        fillColor: CupertinoColors.extraLightBackgroundGray,
+                        labelStyle: TextStyle(color: Colors.grey),
                         labelText: 'Email',
-                      )
-                      ,
+                      ),
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      validator: (value){
+                          if (!RegExp(
+                          r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+                              .hasMatch(value!)){
+                            return 'Please enter a valid email address';
+                          }
+                          return null;
+                      },
                     ),
+                    SizedBox(height: 10),
                     TextFormField(
                       controller: passField,
                       obscureText: true,
-                      decoration: const InputDecoration(
-                        border: UnderlineInputBorder(),
+                      decoration:InputDecoration(
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                        focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(20)),
+                        filled: true,
+                        fillColor: CupertinoColors.extraLightBackgroundGray,
+                        labelStyle: TextStyle(color: Colors.grey),
                         labelText: 'Password',
-                      )
-                      ,
+                      ),
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      validator: (value){
+                        if (value!.length == 0){
+                          return "Enter your account password";
+                        }
+                        return null;
+                      },
                     ),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        Padding(
-                          padding:  EdgeInsets.all(10),
-                          child: Text('Forgot Password?',
-                            textAlign: TextAlign.left,
-                            style: TextStyle(
-                              decoration: TextDecoration.underline,
-                              color: Colors.blue,
+                        GestureDetector(
+                          onTap: (){
+                            rootNav_key.currentState?.pushNamed('/forgotPass', arguments: emailField.text);
+                          },
+                          child: const Padding(
+                            padding:  EdgeInsets.symmetric(vertical: 10),
+                            child: Text('Forgot Password?',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                decoration: TextDecoration.underline,
+                                color: Colors.blueGrey,
+                              ),
                             ),
                           ),
                         ),
@@ -110,11 +158,22 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
-                      children: [ElevatedButton(
+                      children: [
+                        ElevatedButton(
                         onPressed: () async{
                           SignInAuth();
                         },
-                        child: Text("Login", textAlign: TextAlign.center),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+                          child: Text("Login", textAlign: TextAlign.center),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.blueGrey,
+                            backgroundColor: Colors.teal.shade100,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10.0)
+                            )
+                        ),
                       )
                       ],
                     ),
@@ -124,15 +183,8 @@ class _LoginPageState extends State<LoginPage> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(10.0),
-                          child: GestureDetector(
-
-                            onTap: (){
-                              rootNav_key.currentState?.popAndPushNamed('/signup');
-                            },
-                            child: const Text('No account?',
-                              textAlign: TextAlign.left,
-                            ),
-
+                          child: const Text('No account?',
+                            textAlign: TextAlign.left,
                           ),
                         ),
                       ],

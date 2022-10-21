@@ -43,10 +43,11 @@ class _SignupState extends State<Signup> {
   }
 
   void userVerified() async{
-    final uemail = FirebaseAuth.instance.currentUser!.email;
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    await FirebaseAuth.instance.currentUser?.reload();
+    final uemail = FirebaseAuth.instance.currentUser!.email.toString();
+    final uid = FirebaseAuth.instance.currentUser!.uid.toString();
 
-    emailController = await userInDb(uemail!, uid);
+    emailController = await userInDb(uemail, uid);
     setState(() {
       isLoading = false;
     });
@@ -57,8 +58,8 @@ class _SignupState extends State<Signup> {
         FirebaseAuth.instance.signOut();
         break;
       case email_verif.userAlreadyExists:
-        print('duplicate email');
-        FirebaseAuth.instance.currentUser?.delete();
+        print('duplicate email: ' + uid);
+        // FirebaseAuth.instance.currentUser?.delete();
         FirebaseAuth.instance.signOut();
         break;
       case email_verif.newUser:

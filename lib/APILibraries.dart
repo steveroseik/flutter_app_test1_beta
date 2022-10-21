@@ -175,6 +175,7 @@ Future<String> authenticate_user(String email, String password) async {
 Future<email_verif> userInDb(String email, String uid) async {
   email_verif ret = email_verif.connectionError;
 
+
   try {
     var url = Uri.parse('https://fetch-api-skeleton.vercel.app/auth_user');
     Map data = {
@@ -202,6 +203,7 @@ Future<email_verif> userInDb(String email, String uid) async {
     var url = Uri.parse('https://fetch-api-skeleton.vercel.app/check_user_email');
     Map data = {
       'email': email,
+      'uid': uid,
     };
     //encode Map to JSON
     var body = json.encode(data);
