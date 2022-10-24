@@ -1,8 +1,7 @@
 import 'dart:async';
-
-// import 'dart:html' as html;
 import 'dart:io' as io;
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:http/http.dart' as http;
@@ -11,6 +10,10 @@ import 'package:path/path.dart';
 import 'package:async/async.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'FETCH_wdgts.dart';
 
 // Function to retry requests : retry(int, Future<>);
 typedef Future<T> FutureGenerator<T>();
@@ -38,7 +41,6 @@ Future<List<Breed>> getBreedList(int counter) async {
 
     if (response.statusCode == 200) {
       final List<Breed> bList = breedFromJson(response.body);
-      print(response.body);
       return bList;
     } else {
       print('Response error with code ${response.statusCode}');
@@ -104,125 +106,219 @@ Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
   }
 }
 
+// add pet
+
+Future addPet(String name, dogBreed, bool isMale, String petBirthDate, String photoUrl, String uid, List<dynamic> vaccines) async{
+  int ret = -100;
+  try{
+
+    final resp = await SupabaseCredentials.supabaseClient.from('pets').insert({
+      'name': name,
+      'breed': dogBreed,
+      'isMale': isMale ? true : false,
+      'birthdate': petBirthDate,
+      'photo_url': photoUrl,
+      'owner_id': uid,
+      'ready': false,
+      'created_at': DateTime.now().toIso8601String(),
+      'vaccines': vaccines
+    }).select('id').single() as Map;
+    ret = 200;
+  } on PostgrestException catch (error) {
+    print(error.message);
+  }catch (e){
+    print(e);
+  }finally{
+    return ret;
+  }
+
+}
+
 // POST request for adding new user
-Future<String> addUser(
-    String userid,
-    String email,
-    int phone,
-    String fname,
-    String lname,
-    String country,
-    String city,
-    String birthdate) async {
-  var url = Uri.parse('https://fetch-api-skeleton.vercel.app/add_user');
+Future addUser(String userid, String email, int phone, String fname,
+    String lname, String country, String city, String birthdate) async {
+  var ret = -100;
+ try {
+   await SupabaseCredentials.supabaseClient.from('users').insert({
+     "id": userid,
+     "email": email,
+     "phone": phone.toString(),
+     "firstName": fname,
+     "lastName": lname,
+     "country": country,
+     "city": city,
+     "birthdate": birthdate,
+     "long": 0.0,
+     "lat": 0.0,
+     "type": 0,
+     "created_at": DateTime.now().toIso8601String(),
 
-  Map data = {
-    "userid": userid,
-    "email": email,
-    "phone": phone,
-    "firstname": fname,
-    "lastname": lname,
-    "country": country,
-    "city": city,
-    "birthdate": birthdate,
-    "type": 0
-  };
-  //encode Map to JSON
-  var body = json.encode(data);
+   });
+   ret = 200;
+ } on PostgrestException catch (error) {
+   print(error.message);
+ }catch (e){
+   print(e);
+ }finally{
+   return ret;
+ }
 
-  var response = await http.post(url,
-      headers: {"Content-Type": "application/json"}, body: body);
-  return response.body;
 }
 
-Future<String> checkEmailAvailability(TextEditingController email) async {
-  var url = Uri.parse('https://fetch-api-skeleton.vercel.app/check_user_email');
-  Map data = {'email': email.text};
-  //encode Map to JSON
-  var body = json.encode(data);
+Future checkEmailAvailability(TextEditingController email) async {
+  var ret = -100;
 
-  var response = await http.post(url,
-      headers: {"Content-Type": "application/json"}, body: body);
-  return response.body;
+  try {
+    final data = await SupabaseCredentials.supabaseClient
+        .from('users')
+        .select('firstName').eq('email', email.text) as List<dynamic>;
+
+    // parse response
+    for (var entry in data){
+      entry = Map.from(entry);
+    }
+
+    if (data.isEmpty) ret = 200;
+
+  } on PostgrestException catch (error) {
+    print(error.message);
+
+  } catch (error) {
+    print('Unexpeted error occured');
+
+  }finally{
+    return ret;
+  }
 }
 
-Future<String> checkPhoneAvailability(TextEditingController phoneNumber) async {
-  var url = Uri.parse('https://fetch-api-skeleton.vercel.app/check_user_phone');
-  Map data = {'phone': phoneNumber.text};
-  //encode Map to JSON
-  var body = json.encode(data);
+Future checkPhoneAvailability(TextEditingController phoneNumber) async {
+  var ret = -100;
 
-  var response = await http.post(url,
-      headers: {"Content-Type": "application/json"}, body: body);
-  return response.body;
-}
+  try {
+    final pNumber = int.parse(phoneNumber.text);
+    final data = await SupabaseCredentials.supabaseClient
+        .from('users')
+        .select('*')
+        .eq('phone', pNumber) as List<dynamic>;
 
-Future<String> authenticate_user(String email, String password) async {
-  var url = Uri.parse('https://fetch-api-skeleton.vercel.app/auth_user');
-  Map data = {
-    'email': email,
-    'password': password,
-  };
-  //encode Map to JSON
-  var body = json.encode(data);
+    // parse response
+    for (var entry in data){
+      entry = Map.from(entry);
+    }
 
-  var response = await http.post(url,
-      headers: {"Content-Type": "application/json"}, body: body);
-  return response.body;
+    if (data.isEmpty) ret = 200;
+
+    print(data);
+  } on PostgrestException catch (error) {
+    print(error.message);
+
+  } catch (error) {
+    print('Unexpeted error occured');
+
+  }finally{
+    return ret;
+  }
+
+
 }
 
 //check if user is registered in database
-Future<email_verif> userInDb(String email, String uid) async {
-  email_verif ret = email_verif.connectionError;
+Future<usrState> userInDb(String email, String uid) async {
+  usrState ret = usrState.connectionError;
+  var data = await SupabaseCredentials.supabaseClient
+      .from('users')
+      .select('id')
+      .eq('email', email) as List<dynamic>;
 
+  // parse response
+  for (var entry in data){
+    entry = Map.from(entry);
+  }
 
-  try {
-    var url = Uri.parse('https://fetch-api-skeleton.vercel.app/auth_user');
-    Map data = {
-      'email': email,
-      'uid': uid
-    };
-    //encode Map to JSON
-    var body = json.encode(data);
-
-    var response = await http.post(url,
-        headers: {"Content-Type": "application/json"}, body: body);
-
-    final ans = userAvailCheckFromJson(response.body).code;
-    if (ans == 200){
-      ret = email_verif.completeUser;
-    }else if (ans == 0){
-      ret = email_verif.newUser;
-    }else if (ans == -100){
-      ret = email_verif.userAlreadyExists;
-    }else{
-      ret = email_verif.connectionError;
+  if (data.isNotEmpty) {
+    if (data[0]['id'].toString() == uid) {
+      ret = usrState.completeUser;
+    } else {
+      ret = usrState.userAlreadyExists;
     }
-  } catch (e) {
+  } else {
+    ret = usrState.newUser;
+  }
+
+  return ret;
+}
+
+// Future testingSupa() async{
+//
+//   final data = await SupabaseCredentials.supabaseClient.from('users').select('*').eq('phone', 1224363456) as List<dynamic>;
+//
+//   for (var entry in data) {
+//     entry = Map.from(entry);
+//   }
+//
+//   print(data);
+//
+// }
+
+Future<String> uploadPhoto(io.File imgFile) async {
+  late final ImgUploaded img;
+  try{
+    var url = Uri.parse('https://freeimage.host/api/1/upload?key=6d207e02198a847aa98d0a2a901485a5');
+    var request = http.MultipartRequest('POST', url);
+
+    var multipartFile = await http.MultipartFile.fromPath('source', imgFile.path,
+        filename: basename(imgFile.path),
+        contentType: new MediaType("image", "jpeg"));
+
+    request.files.add(multipartFile);
+
+    var _res = await request.send();
+    var response = await http.Response.fromStream(_res);
+
+    img = imgUploadedFromJson(response.body);
+
+    if (img.statusCode != 200){
+      return '-100';
+    }
+    return img.image.url;
+
+  }catch (e){
     print(e);
-    var url = Uri.parse('https://fetch-api-skeleton.vercel.app/check_user_email');
-    Map data = {
-      'email': email,
-      'uid': uid,
-    };
-    //encode Map to JSON
-    var body = json.encode(data);
+    return '';
+  }
 
-    var response = await http.post(url,
-        headers: {"Content-Type": "application/json"}, body: body);
+}
 
-    final ans = userAvailCheckFromJson(response.body).code;
-    if (ans == 200){
-      ret = email_verif.completeUser;
-    }else if (ans == 0){
-      ret = email_verif.newUser;
-    }else if (ans == -100){
-      ret = email_verif.userAlreadyExists;
-    }else{
-      ret = email_verif.connectionError;
+Future<bool> fetchUserPets() async{
+
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+  final data = await SupabaseCredentials.supabaseClient.from('pets').select('id').eq('owner_id', uid) as List<dynamic>;
+
+  final prefs = await SharedPreferences.getInstance();
+
+  if (data.isNotEmpty){
+    prefs.setBool('hasPets', true);
+    return true;
+  }else{
+    if (prefs.get('hasPets') != null){
+      prefs.remove('hasPets');
     }
-  }finally{
-    print(ret);
+    return false;
+  }
+}
+
+Future<List<PetPod>>fetchPets() async{
+  try{
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final petList = await SupabaseCredentials.supabaseClient.from('pets').select('*').eq('owner_id', uid ) as List<dynamic>;
+    print(petList);
+    final pets = petProfileFromJson(jsonEncode(petList));
+    var ret = List<PetPod>.generate(pets.length, (index){
+      return PetPod(pets[index]);
+    });
     return ret;
+  }catch (e){
+    print(e);
+    return List<PetPod>.empty();
   }
 }

@@ -42,31 +42,36 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-
+    final height = MediaQuery.of(context).size.height;
+    final width = MediaQuery.of(context).size.width;
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Column(
         children: <Widget>[
           Container(
-              padding: EdgeInsets.symmetric(vertical:50),
-              margin: EdgeInsets.symmetric(horizontal: 50),
-              child: Column(
+              padding: EdgeInsets.fromLTRB(0, height/12, 0, 0),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(height: 20),
-                  Text('FETCH',
-                      style: TextStyle(
-                        fontFamily: 'Roboto',
-                        fontSize: 40,
-                        fontWeight: FontWeight.w900,
-                      )),
-                  SizedBox(height: 5),
-                  Text('for dog community',
-                      style: TextStyle(
-                        fontFamily: 'Roboto',
-                        fontSize: 12,
-                      ))
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(height: 20),
+                      Text('FETCH',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: 40,
+                            fontWeight: FontWeight.w900,
+                          )),
+                      SizedBox(height: 5),
+                      Text('for dog community',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: 12,
+                          ))
+                    ],
+                  ),
                 ],
               )
           ),
@@ -85,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
                           fontSize: 25,
                           fontWeight: FontWeight.w900,
                         )),
-                    SizedBox(height: 30),
+                    SizedBox(height: height/10),
                     TextFormField(
                       controller: emailField,
                       decoration: InputDecoration(
@@ -210,7 +215,7 @@ class _LoginPageState extends State<LoginPage> {
                           backgroundColor: Colors.blueGrey,
                         ),
                         onPressed: () {
-                          print(FirebaseAuth.instance.currentUser!.email);
+                          // userInDb("steveroseik@gmail.com", "ghasjdgjsa");
                         },
                         child: Text("Signup with google", textAlign: TextAlign.center),
                       )

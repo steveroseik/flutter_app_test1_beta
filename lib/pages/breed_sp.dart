@@ -22,6 +22,7 @@ class breedSearchPage extends StatefulWidget {
 
 
 class _breedSearchPageState extends State<breedSearchPage> {
+  final breedKey = GlobalKey<DropdownSearchState<Breed>>();
   BorderRadiusGeometry radius = const BorderRadius.only(
     topLeft: Radius.circular(24.0),
     topRight: Radius.circular(24.0),
@@ -56,7 +57,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Expanded(child: BreedSearchWidget()),
+                    Expanded(child: BreedSearchWidget(formKey: breedKey)),
                   ],
                 ),
               ),

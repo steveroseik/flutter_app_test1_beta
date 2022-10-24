@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:flutter_app_test1/mainApp.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:intl/intl.dart';
@@ -35,9 +36,10 @@ class _HomePageState extends State<HomePage> {
             actions: [
               IconButton(
                 enableFeedback: false,
-                onPressed: () {
+                onPressed: () async {
 
-                  FirebaseAuth.instance.signOut();
+                  // testingSupa();
+                  // FirebaseAuth.instance.signOut();
                   // print(UniqueKey().hashCode);
                   // UserNav_key.currentState?.pushNamed('/user_profile');
                   // mainApp().update_nav_index(3);

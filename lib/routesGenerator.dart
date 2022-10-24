@@ -5,12 +5,14 @@ import 'package:flutter_app_test1/pages/breed_sp.dart';
 import 'package:flutter_app_test1/pages/breed_registration.dart';
 import 'package:flutter_app_test1/pages/emailVerify.dart';
 import 'package:flutter_app_test1/pages/forgotPassword.dart';
+import 'package:flutter_app_test1/pages/homeBreedPage.dart';
 import 'package:flutter_app_test1/pages/user_profile.dart';
 import 'package:flutter_app_test1/pages/home.dart';
 import 'package:flutter_app_test1/pages/login.dart';
 import 'package:flutter_app_test1/pages/signup_completion.dart';
 import 'package:flutter_app_test1/mainApp.dart';
 import 'package:flutter_app_test1/pages/signupWithEmail.dart';
+import 'package:flutter_app_test1/verifyPhone.dart';
 
 // This is for routes configurations across the whole application
 
@@ -19,6 +21,7 @@ GlobalKey<NavigatorState> BA_key = GlobalKey();
 GlobalKey<NavigatorState> rootNav_key = GlobalKey();
 GlobalKey<NavigatorState> AppNav_key = GlobalKey();
 GlobalKey<NavigatorState> UserNav_key = GlobalKey();
+GlobalKey<NavigatorState> phoneNav_key = GlobalKey();
 
 class RouteGenerator {
   // Main Routes Generator
@@ -51,6 +54,7 @@ class RouteGenerator {
         }
         print("args not Text");
         return _errorRoute();
+
       default:
         return _errorRoute();
     }
@@ -64,6 +68,8 @@ class RouteGenerator {
     //for each case called, checks are applied to navigation to the correct next page
     switch (settings.name) {
       case '/':
+        return MaterialPageRoute(builder: (_) => HomeBreedPage());
+      case '/add_pet':
         return MaterialPageRoute(builder: (_) => addBreedPage());
       case '/pet_register':
         //this case is for second step of pet verification after taking a picture of the pet
@@ -105,6 +111,19 @@ class RouteGenerator {
 
       default:
         // if an unmatched route is called, return error route
+        return _errorRoute();
+    }
+  }
+
+  static Route<dynamic> generateRoute_phone(RouteSettings settings) {
+    final args = settings.arguments;
+
+    switch (settings.name) {
+      case '/':
+        return MaterialPageRoute(builder: (_) => VerifyPhone());
+      case '/code':
+        return MaterialPageRoute(builder: (_) => CodeSent(phone: args));
+      default:
         return _errorRoute();
     }
   }

@@ -1,6 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:http/http.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 enum NavPages{
   home,
@@ -10,15 +14,13 @@ enum NavPages{
   settings
 }
 
-enum email_verif{
+// user states
+enum usrState{
   completeUser,
   newUser,
   userAlreadyExists,
   connectionError
 }
-
-// temp variable to store user ID
-var UserCurrentID = '107346742';
 
 Color primaryColor = Color(0xff376565);
 
@@ -82,3 +84,12 @@ String encryptString(String s) {
   // print(decrypted);
 
 }
+
+class SupabaseCredentials{
+  static const String APIKEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzbXFvdWVvYmVic29ldWhpYWF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2NjYyNTI3MjIsImV4cCI6MTk4MTgyODcyMn0.AD-WjgLJl21S0G9Dtlx7cwOT2bQM2a73n6ysNI9jrfA";
+  static const String APIURL = "https://lsmqoueobebsoeuhiaaw.supabase.co";
+
+  static SupabaseClient supabaseClient = SupabaseClient(APIURL, APIKEY);
+
+}
+

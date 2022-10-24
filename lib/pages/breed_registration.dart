@@ -1,13 +1,17 @@
 import 'package:dropdown_search/dropdown_search.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app_test1/configuration.dart';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:age_calculator/age_calculator.dart';
-
 import '../FETCH_wdgts.dart';
 import '../JsonObj.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
+import 'package:flutter_multi_select_items/flutter_multi_select_items.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class petRegPage extends StatefulWidget {
   final File recFile;
@@ -19,19 +23,17 @@ class petRegPage extends StatefulWidget {
 }
 
 class _petRegPageState extends State<petRegPage> {
-  var rabies = false;
-  var parvoVirus = false;
-  var distemper = false;
-  var dhpp_1 = false;
-  var dhpp_2 = false;
-  var dhpp_3 = false;
-  var parainfluenza = false;
-  var hepatitis = false;
 
-  DateTime petBirthDate = DateTime.now();
-  final openDropDownProgKey = GlobalKey<DropdownSearchState<Breed>>();
-  final TextEditingController ageFieldController = TextEditingController();
+  final MultiSelectController _controller = MultiSelectController();
+
+  late DateTime petBirthDate = DateTime.now();
+  final breedKey = GlobalKey<DropdownSearchState<Breed>>();
+  final ageFieldController = TextEditingController();
+  final nameField = TextEditingController();
+  bool isMale = true;
+  var photoUrl;
   List<Gender> genders = <Gender>[];
+  bool btn_clicked = false;
 
   Breed? _selected;
   late Future<List<Breed>> bList;
@@ -48,6 +50,14 @@ class _petRegPageState extends State<petRegPage> {
   @override
   Widget build(BuildContext context) {
     DateDuration petAge = AgeCalculator.age(petBirthDate);
+    final height = MediaQuery
+        .of(context)
+        .size
+        .height;
+    final width = MediaQuery
+        .of(context)
+        .size
+        .width;
 
     //DatePicker Widget
     void showDatePicker() {
@@ -55,7 +65,11 @@ class _petRegPageState extends State<petRegPage> {
           context: context,
           builder: (BuildContext builder) {
             return Container(
-              height: MediaQuery.of(context).copyWith().size.height * 0.25,
+              height: MediaQuery
+                  .of(context)
+                  .copyWith()
+                  .size
+                  .height * 0.25,
               color: Colors.white,
               child: Column(
                 children: [
@@ -70,21 +84,25 @@ class _petRegPageState extends State<petRegPage> {
                             petAge = AgeCalculator.age(value);
                             ageFieldController.text = petAge.years > 0
                                 ? petAge.years.toString() +
-                                    ' Years' +
-                                    (petAge.months > 0
-                                        ? ' and ' +
-                                            petAge.months.toString() +
-                                            ' Months'
-                                        : '')
+                                ' Years' +
+                                (petAge.months > 0
+                                    ? ' and ' +
+                                    petAge.months.toString() +
+                                    ' Months'
+                                    : '')
                                 : (petAge.months > 0
-                                    ? petAge.months.toString() + ' Months'
-                                    : '');
+                                ? petAge.months.toString() + ' Months'
+                                : '');
                           }
                         });
                       },
-                      initialDateTime: petBirthDate,
-                      minimumYear: DateTime.now().year - 30,
-                      maximumYear: DateTime.now().year,
+                      initialDateTime: DateTime.now(),
+                      minimumYear: DateTime
+                          .now()
+                          .year - 30,
+                      maximumYear: DateTime
+                          .now()
+                          .year,
                       maximumDate: DateTime.now(),
                     ),
                   ),
@@ -115,12 +133,15 @@ class _petRegPageState extends State<petRegPage> {
                         fontWeight: FontWeight.w700),
                   ),
                   Spacer(),
-                  CircleAvatar(
-                    radius: 35,
-                    backgroundColor: Colors.teal,
+                  Container(
+                    padding: EdgeInsets.fromLTRB(0, 0, 20, 0),
                     child: CircleAvatar(
-                      radius: 30,
-                      backgroundImage: FileImage(widget.recFile),
+                      radius: 31,
+                      backgroundColor: Colors.grey,
+                      child: CircleAvatar(
+                        radius: 30,
+                        backgroundImage: FileImage(widget.recFile),
+                      ),
                     ),
                   )
                 ],
@@ -149,14 +170,32 @@ class _petRegPageState extends State<petRegPage> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2.5),
-                      child: CupertinoTextField(
-                        padding: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                            color: CupertinoColors.extraLightBackgroundGray,
-                            borderRadius: BorderRadius.circular(10)),
-                        placeholder: 'Teddy',
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: TextFormField(
+                        controller: nameField,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(borderRadius: BorderRadius
+                              .circular(20)),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide(color: CupertinoColors
+                                  .extraLightBackgroundGray)),
+                          focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Colors.grey),
+                              borderRadius: BorderRadius.circular(20)),
+                          filled: true,
+                          fillColor: CupertinoColors.extraLightBackgroundGray,
+                          labelStyle: TextStyle(color: Colors.grey),
+                        ),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        validator: (value) {
+                          if (value!.length < 2) {
+                            return "Enter your dog's full name";
+                          }
+                          return null;
+                        },
                       ),
+
                     ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
@@ -174,21 +213,39 @@ class _petRegPageState extends State<petRegPage> {
                         ),
                       ],
                     ),
+                    SizedBox(height: 10),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2.5),
                       child: Row(
                         children: [
                           Expanded(
-                            child: CupertinoTextField(
-                              controller: ageFieldController,
-                              readOnly: true,
-                              placeholder: 'Select birth date',
-                              padding: EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                  color:
-                                      CupertinoColors.extraLightBackgroundGray,
-                                  borderRadius: BorderRadius.circular(10)),
-                            ),
+                              child: TextFormField(
+                                controller: ageFieldController,
+                                enabled: false,
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(20)),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                      borderSide: BorderSide(
+                                          color: CupertinoColors
+                                              .extraLightBackgroundGray)),
+                                  focusedBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                          color: Colors.grey),
+                                      borderRadius: BorderRadius.circular(20)),
+                                  filled: true,
+                                  fillColor: CupertinoColors
+                                      .extraLightBackgroundGray,
+                                  labelStyle: TextStyle(color: Colors.grey),
+                                ),
+                                validator: (value) {
+                                  if (value!.length == 0) {
+                                    return "Select birthdate";
+                                  }
+                                  return null;
+                                },
+                              )
                           ),
                           IconButton(
                               color: Colors.teal.shade100,
@@ -217,245 +274,143 @@ class _petRegPageState extends State<petRegPage> {
                         ),
                       ],
                     ),
+                    SizedBox(height: 10),
                     Visibility(
                       visible: true,
                       child: Row(
                         children: [
-                          Expanded(child: BetaTest()),
+                          Expanded(
+                            child: BreedSearchWidget(formKey: breedKey),
+                          ),
                         ],
                       ),
                     ),
                     SizedBox(height: 20),
                     Container(
-                      height: 100,
-                      width: 300,
+                      height: 60,
+                      width: 500,
                       alignment: Alignment.center,
-                      child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          shrinkWrap: true,
-                          itemCount: genders.length,
-                          itemBuilder: (context, index) {
-                            return InkWell(
-                              onTap: () {
-                                setState(() {
-                                  for (var gender in genders) {
-                                    gender.isSelected = false;
-                                  }
-                                  genders[index].isSelected = true;
-                                });
-                              },
-                              child: CustomRadio(genders[index]),
-                            );
-                          }),
-                    ),
-                    SizedBox(height: 20),
-                    Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 10.0),
-                              child: Text(
-                                'Vaccinations',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                      child: Row(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10.0),
+                            child: Text(
+                              'Gender',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Flexible(
-                                flex: 1,
-                                child: SizedBox(
-                                  child: CheckboxListTile(
-                                    activeColor: Colors.teal.shade300,
-                                    title: Text(
-                                      "Rabies",
-                                      style: TextStyle(
-                                          color: Colors.grey.shade600),
-                                    ),
-                                    value: rabies,
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        rabies = newValue!;
-                                      });
-                                    },
-                                    controlAffinity: ListTileControlAffinity
-                                        .leading, //  <-- leading Checkbox
-                                  ),
-                                )),
-                            Flexible(
-                                flex: 1,
-                                child: SizedBox(
-                                  child: CheckboxListTile(
-                                    activeColor: Colors.teal.shade300,
-                                    title: Text(
-                                      "ParvoVirus",
-                                      style: TextStyle(
-                                          color: Colors.grey.shade600),
-                                    ),
-                                    value: parvoVirus,
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        parvoVirus = newValue!;
-                                      });
-                                    },
-                                    controlAffinity: ListTileControlAffinity
-                                        .leading, //  <-- leading Checkbox
-                                  ),
-                                )),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Flexible(
-                                flex: 1,
-                                child: SizedBox(
-                                  child: CheckboxListTile(
-                                    activeColor: Colors.teal.shade300,
-                                    title: Text(
-                                      "Distemper",
-                                      style: TextStyle(
-                                          color: Colors.grey.shade600),
-                                    ),
-                                    value: distemper,
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        distemper = newValue!;
-                                      });
-                                    },
-                                    controlAffinity: ListTileControlAffinity
-                                        .leading, //  <-- leading Checkbox
-                                  ),
-                                )),
-                            Flexible(
-                                flex: 1,
-                                child: SizedBox(
-                                  child: CheckboxListTile(
-                                    activeColor: Colors.teal.shade300,
-                                    title: Text(
-                                      "Hepatitis",
-                                      style: TextStyle(
-                                          color: Colors.grey.shade600),
-                                    ),
-                                    value: hepatitis,
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        hepatitis = newValue!;
-                                      });
-                                    },
-                                    controlAffinity: ListTileControlAffinity
-                                        .leading, //  <-- leading Checkbox
-                                  ),
-                                )),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Flexible(
-                                flex: 1,
-                                child: SizedBox(
-                                  child: CheckboxListTile(
-                                    activeColor: Colors.teal.shade300,
-                                    title: Text(
-                                      "Parainfluenza",
-                                      overflow: TextOverflow.fade,
-                                      style: TextStyle(
-                                          color: Colors.grey.shade600),
-                                    ),
-                                    value: parainfluenza,
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        parainfluenza = newValue!;
-                                      });
-                                    },
-                                    controlAffinity: ListTileControlAffinity
-                                        .leading, //  <-- leading Checkbox
-                                  ),
-                                )),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Flexible(
-                                flex: 1,
-                                child: SizedBox(
-                                  child: CheckboxListTile(
-                                    activeColor: Colors.teal.shade300,
-                                    title: Text(
-                                      "DHPP 1st shot",
-                                      style: TextStyle(
-                                          color: Colors.grey.shade600),
-                                    ),
-                                    value: dhpp_1,
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        dhpp_1 = newValue!;
-                                      });
-                                    },
-                                    controlAffinity: ListTileControlAffinity
-                                        .leading, //  <-- leading Checkbox
-                                  ),
-                                )),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Flexible(
-                                flex: 1,
-                                child: SizedBox(
-                                  child: CheckboxListTile(
-                                    activeColor: Colors.teal.shade300,
-                                    title: Text(
-                                      "DHPP 2nd shot",
-                                      style: TextStyle(
-                                          color: Colors.grey.shade600),
-                                    ),
-                                    value: dhpp_2,
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        dhpp_2 = newValue!;
-                                      });
-                                    },
-                                    controlAffinity: ListTileControlAffinity
-                                        .leading, //  <-- leading Checkbox
-                                  ),
-                                )),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Flexible(
-                                flex: 1,
-                                child: SizedBox(
-                                  child: CheckboxListTile(
-                                    activeColor: Colors.teal.shade300,
-                                    title: Text(
-                                      "DHPP 3rd shot",
-                                      style: TextStyle(
-                                          color: Colors.grey.shade600),
-                                    ),
-                                    value: dhpp_3,
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        dhpp_3 = newValue!;
-                                      });
-                                    },
-                                    controlAffinity: ListTileControlAffinity
-                                        .leading, //  <-- leading Checkbox
-                                  ),
-                                )),
-                          ],
+                          ),
+                          Spacer(),
+                          ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              shrinkWrap: true,
+                              itemCount: genders.length,
+                              itemBuilder: (context, index) {
+                                return InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      for (var gender in genders) {
+                                        gender.isSelected = false;
+                                      }
+                                      genders[index].isSelected = true;
+                                      if (genders[index].name == "Male"){
+                                        isMale = true;
+                                      }else{
+                                        isMale = false;
+                                      }
+                                    });
+                                  },
+                                  child: CustomRadio(genders[index]),
+                                );
+                              }),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 10.0),
+                          child: Text(
+                            'Vaccines',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 10.0),
+                          child: Text(
+                            'Select all vaccines taken by your pet',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: height / 40),
+                    MultiSelectContainer(
+                        itemsDecoration: MultiSelectDecorations(
+                            decoration: BoxDecoration(
+                              color: CupertinoColors.extraLightBackgroundGray,
+                              borderRadius: BorderRadius.circular(20),
+                            )
+                        ),
+                        prefix: MultiSelectPrefix(
+                            selectedPrefix: Padding(
+                              padding: EdgeInsets.only(right: 5),
+                              child: Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                            disabledPrefix: Padding(
+                              padding: EdgeInsets.only(right: 5),
+                              child: Icon(
+                                Icons.do_disturb_alt_sharp,
+                                size: 14,
+                              ),
+                            )),
+                        items: [
+                          MultiSelectCard(value: 'rabies', label: 'Rabies'),
+                          MultiSelectCard(
+                              value: 'parvoVirus', label: 'ParvoVirus'),
+                          MultiSelectCard(
+                              value: 'distemper', label: 'Distemper'),
+                          MultiSelectCard(
+                              value: 'hepatitis', label: 'Hepatitis'),
+                          MultiSelectCard(
+                              value: 'parainfluenza', label: 'Parainfluenza'),
+                          MultiSelectCard(
+                              value: 'dhpp1', label: 'DHPP first shot'),
+                          MultiSelectCard(
+                              value: 'dhpp2', label: 'DHPP second shot'),
+                          MultiSelectCard(
+                              value: 'dhpp3', label: 'DHPP third shot'),
+                        ],
+                        controller: _controller,
+                        onChange: (allSelectedItems, selectedItem) {
+
+                        }),
+                    SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -463,17 +418,67 @@ class _petRegPageState extends State<petRegPage> {
                           width: 100,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.teal.shade100,
-                                backgroundColor: Colors.white,
+                                backgroundColor: Colors.blueGrey,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10.0))),
-                            onPressed: () {
-                              BA_key.currentState?.pushNamed('/pet_adopt');
-                            },
-                            child: Text(
-                              'FINISH',
-                              style: TextStyle(color: Colors.black),
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Text(
+                                'FINISH',
+                                style: TextStyle(color: Colors.white)),
                             ),
+                            onPressed: btn_clicked ? null : () async{
+                              setState(() {
+                                btn_clicked = true;
+                              });
+                              final dogBreed;
+                              if (breedKey.currentState!.getSelectedItem != null){
+                                dogBreed = breedKey.currentState!.getSelectedItem!.name;
+                              }else {
+                                dogBreed = '';
+                              }
+
+                              bool genderCheck = false;
+
+                              for (Gender item in genders){
+                                if (item.isSelected){
+                                  genderCheck = true;
+                                }
+                              }
+                              //check variables
+                              if (dogBreed != ''
+                                  && nameField.text.length > 0
+                                  && petBirthDate != null && genderCheck){
+
+                                String petBDate = petBirthDate.year.toString() + '-' + petBirthDate.month.toString() + '-' + petBirthDate.day.toString();
+                                photoUrl = await uploadPhoto(widget.recFile);
+                                if (photoUrl != '-100'){
+
+                                  int value = await addPet(nameField.text.capitalize(),
+                                      dogBreed, isMale,
+                                      petBDate,
+                                      photoUrl, FirebaseAuth.instance.currentUser!.uid, _controller.getSelectedItems());
+
+                                  print(value);
+                                  if (value == 200){
+                                    print('all Good: ' + photoUrl);
+                                    await fetchUserPets();
+                                    BA_key.currentState?.pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
+                                  }else{
+                                    print("error signing up pet");
+                                  }
+                                }else{
+                                  print('Photo upload error');
+                                }
+
+                              }else{
+                                print('incomplete form');
+                              }
+                              setState(() {
+                                btn_clicked = false;
+                              });
+
+                            },
                           ),
                         ),
                       ],
@@ -488,86 +493,5 @@ class _petRegPageState extends State<petRegPage> {
     );
   }
 
-  Widget BetaTest() {
-    return Container(
-      width: 100,
-      child: FutureBuilder<List<Breed>>(
-        future: bList,
-        builder: (context, snapshot) {
-          if (snapshot.data == null || snapshot.data!.isEmpty) {
-            return DropdownSearch<String>(
-              items: ['...'],
-            );
-          }
-          switch (snapshot.connectionState) {
-            case ConnectionState.done:
-              return Container(
-                padding: EdgeInsets.fromLTRB(5, 0, 5, 0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-                child: DropdownSearch<Breed>(
-                  key: openDropDownProgKey,
-                  selectedItem: _selected,
-                  onChanged: (Breed? b) {
-                    _selected = b;
-                  },
-                  compareFn: (i1, i2) => i1.name == i2.name,
-                  items: snapshot.data!,
-                  itemAsString: (Breed b) => b.name,
-                  dropdownDecoratorProps: DropDownDecoratorProps(
-                      dropdownSearchDecoration: InputDecoration()),
-                  dropdownBuilder: _customDropDownView,
-                  popupProps: PopupProps.modalBottomSheet(
-                    showSearchBox: true,
-                    fit: FlexFit.tight,
-                    constraints: BoxConstraints(
-                        maxWidth: double.infinity, maxHeight: 500),
-                    searchFieldProps: TextFieldProps(
-                        decoration: InputDecoration(
-                      hintText: 'Type breed name',
-                    )),
-                    itemBuilder: (ctx, item, isSelected) {
-                      return ListTile(
-                        title: Text(item.name,
-                            textAlign: TextAlign.left,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 13.5, color: Colors.black)),
-                        leading: CircleAvatar(
-                            backgroundImage: NetworkImage(item.image.url)),
-                      );
-                    },
-                  ),
-                  filterFn: (breed, filter) => breed.filterBreedItem(filter),
-                ),
-              );
-            default:
-              return CircularProgressIndicator();
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _customDropDownView(BuildContext context, Breed? selectedItem) {
-    if (selectedItem == null) {
-      return ListTile(
-        contentPadding: EdgeInsets.all(0),
-        title: Text(
-          "No breed selected",
-          style: TextStyle(color: Colors.grey),
-        ),
-        leading: CircleAvatar(),
-      );
-    }
-    return ListTile(
-      title: Text(selectedItem.name,
-          textAlign: TextAlign.left,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 13.5, color: Colors.black)),
-      leading:
-          CircleAvatar(backgroundImage: NetworkImage(selectedItem.image.url)),
-    );
-  }
 }
+
