@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/configuration.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_app_test1/JsonObj.dart';
 import 'package:path/path.dart';
@@ -47,7 +48,84 @@ Future<List<Breed>> getBreedList(int counter) async {
     }
   }
 }
+Future Display(double latitude, double longitude, String type) async {
+  int ret = -100;
+  final  markers = List<Marker>.empty(growable: true);
+  try {
+    final data = await SupabaseCredentials.supabaseClient
+        .from('locations')
+        .select('longitude, latitude, id, title').eq('type', type) as List<dynamic>;
 
+    for (var entry in data){
+      final map = Map.from(entry);
+      var x = map['longitude'];
+      var y =map['latitude'];
+      var id = map['id'];
+      var title = map['title'];
+      markers.add(Marker(
+          markerId: id,
+          position: LatLng(x,y), infoWindow: InfoWindow(title: title)));
+    }
+    return markers;
+  }
+  on PostgrestException catch (error) {
+    print(error.message);
+  }
+  catch (e){
+    print(e);
+  }
+  return List<Marker>.empty();
+}
+
+Future initializeMarkers() async {
+  int ret = -100;
+  final  markers = List<Marker>.empty(growable: true);
+  try {
+    final data = await SupabaseCredentials.supabaseClient
+        .from('locations')
+        .select('longitude, latitude, id, title') as List<dynamic>;
+
+    for (var entry in data){
+      print(entry);
+      final map = Map.from(entry);
+      var x = map['longitude'];
+      var y =map['latitude'];
+      var id = map['id'];
+      var title = map['title'];
+      markers.add(Marker(
+          markerId: MarkerId(id.toString()),
+          position: LatLng(y, x), infoWindow: InfoWindow(title: title)));
+    }
+    return markers;
+  }
+  on PostgrestException catch (error) {
+    print(error.message);
+  }
+  catch (e){
+    print(e);
+  }
+  return List<Marker>.empty();
+}
+Future item_details(String title,String type,String address,int phone,String website,String thumbnail, double latitude, double longitude) async {
+  int ret = -100;
+  try {
+    final data = await SupabaseCredentials.supabaseClient
+        .from('locations')
+        .select('*') as List<dynamic>;
+
+    ret = 200;
+
+  }
+  on PostgrestException catch (error) {
+    print(error.message);
+  }
+  catch (e){
+    print(e);
+  }
+  finally{
+    return ret;
+  }
+}
 // POST Request for sending pet photo to thedogapi API for verification
 Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
   late final PhotoResponse pRes;
