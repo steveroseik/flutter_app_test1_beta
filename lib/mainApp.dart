@@ -30,11 +30,12 @@ class _mainAppState extends State<mainApp> {
 
   var _selectedIndex = 0;
   List<Widget> _pages = [
-  home_root(),
-  ReminderPage(),
-  MapsPage(),
-  BA_root(),
-  SettingsPage()];
+    home_root(),
+    ReminderPage(),
+    BA_root(),
+    MapsPage(),
+    SettingsPage()
+  ];
 
   @override
   void initState() {
@@ -60,10 +61,10 @@ class _mainAppState extends State<mainApp> {
 
         },
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home, color: _selectedIndex == 0 ? Colors.black : Colors.grey.shade500), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.health_and_safety, color: _selectedIndex == 1 ? Colors.black : Colors.grey.shade500), label: 'Health'),
-          BottomNavigationBarItem(icon: Icon(Icons.map, color: _selectedIndex == 2 ? Colors.black : Colors.grey.shade500), label: 'Explore'),
-          BottomNavigationBarItem(icon: Icon(Icons.pets,  color: _selectedIndex == 3 ? Colors.black : Colors.grey.shade500), label: 'Breed & Adopt'),
+          BottomNavigationBarItem(icon: Icon(Icons.notes, color: _selectedIndex == 0 ? Colors.black : Colors.grey.shade500), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.timer, color: _selectedIndex == 1 ? Colors.black : Colors.grey.shade500), label: 'Health'),
+          BottomNavigationBarItem(icon: Icon(Icons.pets,  color: _selectedIndex == 2 ? Colors.black : Colors.grey.shade500), label: 'Breed & Adopt'),
+          BottomNavigationBarItem(icon: ImageIcon(AssetImage("assets/mapsIcon.png"), size: 25, color: _selectedIndex == 3 ? Colors.black : Colors.grey.shade500), label: 'Explore'),
           BottomNavigationBarItem(
               icon: Icon(Icons.settings, color: _selectedIndex == 4 ? Colors.black : Colors.grey.shade500), label: 'Settings'),
         ],

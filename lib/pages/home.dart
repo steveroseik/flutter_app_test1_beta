@@ -39,7 +39,7 @@ class _HomePageState extends State<HomePage> {
                 onPressed: () async {
 
                   // testingSupa();
-                  // FirebaseAuth.instance.signOut();
+                  FirebaseAuth.instance.signOut();
                   // print(UniqueKey().hashCode);
                   // UserNav_key.currentState?.pushNamed('/user_profile');
                   // mainApp().update_nav_index(3);

@@ -1,32 +1,35 @@
 import 'dart:convert';
 
-// Breed List Object
 List<Breed> breedFromJson(String str) => List<Breed>.from(json.decode(str).map((x) => Breed.fromJson(x)));
 
 String breedToJson(List<Breed> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
 
 class Breed {
   Breed({
-    required this.image,
+    required this.id,
     required this.name,
+    required this.photoUrl,
+    required this.breedGroup,
   });
 
-  Image image;
+  int id;
   String name;
+  String photoUrl;
+  String breedGroup;
 
   factory Breed.fromJson(Map<String, dynamic> json) => Breed(
-    image: Image.fromJson(json["image"]),
+    id: json["id"],
     name: json["name"],
+    photoUrl: json["photoUrl"],
+    breedGroup: json["breed_group"],
   );
 
   Map<String, dynamic> toJson() => {
-    "image": image.toJson(),
+    "id": id,
     "name": name,
+    "photoUrl": photoUrl,
+    "breed_group": breedGroup,
   };
-
-  String userAsString() {
-    return '$name';
-  }
 
   ///this method will prevent the override of toString
   bool filterBreedItem(String filter) {
@@ -38,39 +41,7 @@ class Breed {
   bool isEqual(Breed m) {
     return name == m.name;
   }
-
-  @override
-  String toString() => name;
 }
-
-class Image {
-  Image({
-    required this.height,
-    required this.id,
-    required this.url,
-    required this.width,
-  });
-
-  int height;
-  String id;
-  String url;
-  int width;
-
-  factory Image.fromJson(Map<String, dynamic> json) => Image(
-    height: json["height"],
-    id: json["id"],
-    url: json["url"],
-    width: json["width"],
-  );
-
-  Map<String, dynamic> toJson() => {
-    "height": height,
-    "id": id,
-    "url": url,
-    "width": width,
-  };
-}
-
 
 // end of breed list obj
 
@@ -517,6 +488,62 @@ class PetProfile {
   List<String> vaccines;
 
   factory PetProfile.fromJson(Map<String, dynamic> json) => PetProfile(
+    id: json["id"],
+    name: json["name"],
+    breed: json["breed"],
+    isMale: json["isMale"],
+    birthdate: DateTime.parse(json["birthdate"]),
+    photoUrl: json["photo_url"],
+    ownerId: json["owner_id"],
+    ready: json["ready"],
+    createdAt: DateTime.parse(json["created_at"]),
+    vaccines: List<String>.from(json["vaccines"].map((x) => x)),
+  );
+
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "name": name,
+    "breed": breed,
+    "isMale": isMale,
+    "birthdate": "${birthdate.year.toString().padLeft(4, '0')}-${birthdate.month.toString().padLeft(2, '0')}-${birthdate.day.toString().padLeft(2, '0')}",
+    "photo_url": photoUrl,
+    "owner_id": ownerId,
+    "ready": ready,
+    "created_at": createdAt.toIso8601String(),
+    "vaccines": List<dynamic>.from(vaccines.map((x) => x)),
+  };
+}
+
+SinglePetProfile singlePetProfileFromJson(String str) => SinglePetProfile.fromJson(json.decode(str));
+
+String singlePetProfileToJson(SinglePetProfile data) => json.encode(data.toJson());
+
+class SinglePetProfile {
+  SinglePetProfile({
+   required this.id,
+   required this.name,
+   required this.breed,
+   required this.isMale,
+   required this.birthdate,
+   required this.photoUrl,
+   required this.ownerId,
+   required this.ready,
+   required this.createdAt,
+   required this.vaccines,
+  });
+
+  String id;
+  String name;
+  String breed;
+  bool isMale;
+  DateTime birthdate;
+  String photoUrl;
+  String ownerId;
+  bool ready;
+  DateTime createdAt;
+  List<String> vaccines;
+
+  factory SinglePetProfile.fromJson(Map<String, dynamic> json) => SinglePetProfile(
     id: json["id"],
     name: json["name"],
     breed: json["breed"],

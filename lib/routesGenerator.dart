@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_test1/JsonObj.dart';
 import 'dart:io';
 import 'package:flutter_app_test1/pages/breed.dart';
 import 'package:flutter_app_test1/pages/breed_sp.dart';
 import 'package:flutter_app_test1/pages/breed_registration.dart';
+import 'package:flutter_app_test1/pages/editPetPage.dart';
 import 'package:flutter_app_test1/pages/emailVerify.dart';
 import 'package:flutter_app_test1/pages/forgotPassword.dart';
 import 'package:flutter_app_test1/pages/homeBreedPage.dart';
+import 'package:flutter_app_test1/pages/petMatchPage.dart';
 import 'package:flutter_app_test1/pages/user_profile.dart';
 import 'package:flutter_app_test1/pages/home.dart';
 import 'package:flutter_app_test1/pages/login.dart';
@@ -13,6 +16,8 @@ import 'package:flutter_app_test1/pages/signup_completion.dart';
 import 'package:flutter_app_test1/mainApp.dart';
 import 'package:flutter_app_test1/pages/signupWithEmail.dart';
 import 'package:flutter_app_test1/verifyPhone.dart';
+
+import 'FETCH_wdgts.dart';
 
 // This is for routes configurations across the whole application
 
@@ -71,6 +76,15 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => HomeBreedPage());
       case '/add_pet':
         return MaterialPageRoute(builder: (_) => addBreedPage());
+      case '/petMatch':
+        if (args is List){
+          return MaterialPageRoute(builder: (_) => PetMatchPage(senderPet: args[0],pets: args[1]));
+        }else{
+          return _errorRoute();
+        }
+
+      case '/search_manual':
+        return MaterialPageRoute(builder: (_) => breedSearchPage());
       case '/pet_register':
         //this case is for second step of pet verification after taking a picture of the pet
         // if happens to navigate to the page with an unidentified photo will navigate to error route
@@ -78,6 +92,11 @@ class RouteGenerator {
           return MaterialPageRoute(
             builder: (_) => petRegPage(recFile: args), // Second Page
           );
+        }
+        return _errorRoute();
+      case '/editPet':
+        if (args is PetProfile){
+          return MaterialPageRoute(builder: (_) => EditPetPage(pod: args));
         }
         return _errorRoute();
       case '/pet_adopt':

@@ -140,7 +140,7 @@ class _ForgotPassEmailState extends State<ForgotPass> {
     try{
       await FirebaseAuth.instance.sendPasswordResetEmail(email: emailField.text.trim());
     }on FirebaseAuthException catch (e){
-      print(e);
+      showSnackbar(context, e.message!);
     }
 
   }

@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 
@@ -70,8 +71,17 @@ class _SignUpEmailState extends State<SignUpEmail> {
                             horizontal: 8, vertical: 8),
                         child: TextFormField(
                           controller: emailField,
-                          decoration: const InputDecoration(
-                            border: UnderlineInputBorder(),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                            focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(20)),
+                            filled: true,
+                            fillColor: CupertinoColors.extraLightBackgroundGray,
+                            labelStyle: TextStyle(color: Colors.grey),
                             labelText: 'Email',
                           ),
                           autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -92,8 +102,17 @@ class _SignUpEmailState extends State<SignUpEmail> {
                         child: TextFormField(
                           controller: passField,
                           obscureText: true,
-                          decoration: const InputDecoration(
-                            border: UnderlineInputBorder(),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                            focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(20)),
+                            filled: true,
+                            fillColor: CupertinoColors.extraLightBackgroundGray,
+                            labelStyle: TextStyle(color: Colors.grey),
                             labelText: 'Password',
                           ),
                           autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -111,9 +130,18 @@ class _SignUpEmailState extends State<SignUpEmail> {
                         child: TextFormField(
                           controller: passField2,
                           obscureText: true,
-                          decoration: const InputDecoration(
-                            border: UnderlineInputBorder(),
-                            labelText: 'Password',
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                            focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(20)),
+                            filled: true,
+                            fillColor: CupertinoColors.extraLightBackgroundGray,
+                            labelStyle: TextStyle(color: Colors.grey),
+                            labelText: 'Re-enter password',
                           ),
                           autovalidateMode: AutovalidateMode.onUserInteraction,
                           validator: (value) {
@@ -126,16 +154,26 @@ class _SignUpEmailState extends State<SignUpEmail> {
                         )),
                     SizedBox(height: 20),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              backgroundColor: Colors.blueGrey,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.0)
+                              )
+                          ),
                           onPressed: () async {
                             final validForm = _formKey.currentState!.validate();
                             if (validForm) {
                               SignupAuth();
                             }
                           },
-                          child: Text("Sign up", textAlign: TextAlign.center),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: Text("Sign up", textAlign: TextAlign.center),
+                          ),
                         ),
                       ],
                     ),
@@ -153,10 +191,6 @@ class _SignUpEmailState extends State<SignUpEmail> {
                           },
                           child: Text('login',
                             textAlign: TextAlign.left,
-                            style: TextStyle(
-                              decoration: TextDecoration.underline,
-                              color: Colors.blue,
-                            ),
                           ),
                         )
                       ],
@@ -182,7 +216,7 @@ class _SignUpEmailState extends State<SignUpEmail> {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: emailField.text, password: passField.text);
     } on FirebaseAuthException catch (e) {
-      print(e);
+      showSnackbar(context, e.message!);
     }
     setState(() {});
     if (loading.mounted) {

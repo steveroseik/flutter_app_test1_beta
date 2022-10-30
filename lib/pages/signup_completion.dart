@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
+import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_app_test1/verifyPhone.dart';
 import 'package:http/http.dart' as http;
@@ -56,11 +57,11 @@ class _SignupState extends State<Signup> {
 
     switch(emailController){
       case usrState.connectionError:
-        print('connection time out');
+        showSnackbar(context, 'connection time out');
         FirebaseAuth.instance.signOut();
         break;
       case usrState.userAlreadyExists:
-        print('duplicate email: ' + uid);
+        showSnackbar(context, 'Duplicate email.');
         // FirebaseAuth.instance.currentUser?.delete();
         FirebaseAuth.instance.signOut();
         break;
@@ -404,18 +405,15 @@ class _SignupState extends State<Signup> {
                               }
                               if (firstName.text == ""){
                                 // first name invalid
-                                print('fname invalid');
                                 grantedRegistration = false;
                               }
                               if (lastName.text == ""){
                                 // last name invalid
-                                print('lname invalid');
                                 grantedRegistration = false;
                               }
 
                               if (phoneNumber.text.length != 10){
                                 //invalid phone number
-                                print('phone invalid');
                                 grantedRegistration = false;
                               }
                               if (country.isEmpty){
@@ -439,23 +437,21 @@ class _SignupState extends State<Signup> {
                                     if (await checkEmailAvailability(email) == 200){
                                       var resp = await addUser(curUser!.uid, email.text, int.parse(phoneNumber.text), firstName.text,
                                           lastName.text, country, city, ageFieldController.text);
-                                      print(resp);
                                       if (resp == 200){
                                         failedToSignup = false;
-
                                       }
                                     }else{
-                                      print('email address already exists');
+                                      showSnackbar(context, 'Email address already exists.');
                                     }
 
                                   }else{
-                                    print('phone number already exists');
+                                    showSnackbar(context, 'Phone number already exists.');
                                   }
                                 }catch(error){
-                                  print('exception caught sign up button: ' + error.toString());
+                                  showSnackbar(context, error.toString());
                                 }finally{
                                  if (failedToSignup){
-                                   print('Error in connection.');
+                                   showSnackbar(context, 'Error in connection.');
                                  }else{
                                    userVerified();
                                  }

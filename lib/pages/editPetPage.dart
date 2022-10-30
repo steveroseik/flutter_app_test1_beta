@@ -13,19 +13,18 @@ import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:flutter_multi_select_items/flutter_multi_select_items.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class petRegPage extends StatefulWidget {
-  final File recFile;
+class EditPetPage extends StatefulWidget {
+  final PetProfile pod;
 
-  const petRegPage({Key? key, required this.recFile}) : super(key: key);
+  const EditPetPage({Key? key, required this.pod}) : super(key: key);
 
   @override
-  State<petRegPage> createState() => _petRegPageState();
+  State<EditPetPage> createState() => _EditPetPageState();
 }
 
-class _petRegPageState extends State<petRegPage> {
+class _EditPetPageState extends State<EditPetPage> {
 
   final _controller = MultiSelectController();
-
   late DateTime petBirthDate = DateTime.now();
   final breedKey = GlobalKey<DropdownSearchState<Breed>>();
   final ageFieldController = TextEditingController();
@@ -38,13 +37,41 @@ class _petRegPageState extends State<petRegPage> {
   Breed? _selected;
   late Future<List<Breed>> bList;
   var bError = 5;
+  final items = List<MultiSelectCard>.empty(growable: true);
+
+  initData() {
+
+    for (MapEntry entry in vaccineFList.entries){
+      final vaccine = MultiSelectCard(value: entry.key, label: entry.value,
+          selected: widget.pod.vaccines.contains(entry.key) ? true : false);
+      items.add(vaccine);
+    }
+    petBirthDate = widget.pod.birthdate;
+    nameField.text = widget.pod.name;
+    isMale = widget.pod.isMale;
+    final petAge = AgeCalculator.age(petBirthDate);
+    ageFieldController.text = petAge.years > 0
+        ? petAge.years.toString() +
+        ' Years' +
+        (petAge.months > 0
+            ? ' and ' +
+            petAge.months.toString() +
+            ' Months'
+            : '')
+        : (petAge.months > 0
+        ? petAge.months.toString() + ' Months'
+        : '');
+
+  }
 
   @override
   void initState() {
-    super.initState();
+    initData();
     bList = getBreedList(0);
-    genders.add(new Gender("Male", Icons.male, false));
-    genders.add(new Gender("Female", Icons.female, false));
+    genders.add(new Gender("Male", Icons.male, widget.pod.isMale ? true : false));
+    genders.add(new Gender("Female", Icons.female, widget.pod.isMale ? false : true));
+    super.initState();
+
   }
 
   @override
@@ -126,7 +153,7 @@ class _petRegPageState extends State<petRegPage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    'Continue Pet Registration',
+                    "Edit ${widget.pod.name}'s info",
                     style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 15,
@@ -140,7 +167,7 @@ class _petRegPageState extends State<petRegPage> {
                       backgroundColor: Colors.grey,
                       child: CircleAvatar(
                         radius: 30,
-                        backgroundImage: FileImage(widget.recFile),
+                        backgroundImage: NetworkImage(widget.pod.photoUrl),
                       ),
                     ),
                   )
@@ -258,34 +285,6 @@ class _petRegPageState extends State<petRegPage> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                          child: Text(
-                            'Breed',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 10),
-                    Visibility(
-                      visible: true,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: BreedSearchWidget(formKey: breedKey),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 20),
                     Container(
                       height: 60,
                       width: 500,
@@ -389,23 +388,7 @@ class _petRegPageState extends State<petRegPage> {
                                 size: 14,
                               ),
                             )),
-                        items: [
-                          MultiSelectCard(value: 'rabies', label: 'Rabies'),
-                          MultiSelectCard(
-                              value: 'parvoVirus', label: 'ParvoVirus'),
-                          MultiSelectCard(
-                              value: 'distemper', label: 'Distemper'),
-                          MultiSelectCard(
-                              value: 'hepatitis', label: 'Hepatitis'),
-                          MultiSelectCard(
-                              value: 'parainfluenza', label: 'Parainfluenza'),
-                          MultiSelectCard(
-                              value: 'dhpp1', label: 'DHPP first shot'),
-                          MultiSelectCard(
-                              value: 'dhpp2', label: 'DHPP second shot'),
-                          MultiSelectCard(
-                              value: 'dhpp3', label: 'DHPP third shot'),
-                        ],
+                        items: items,
                         controller: _controller,
                         onChange: (allSelectedItems, selectedItem) {
                         }),
@@ -423,19 +406,13 @@ class _petRegPageState extends State<petRegPage> {
                             child: Padding(
                               padding: const EdgeInsets.all(10),
                               child: Text(
-                                'FINISH',
-                                style: TextStyle(color: Colors.white)),
+                                  'FINISH',
+                                  style: TextStyle(color: Colors.white)),
                             ),
                             onPressed: btn_clicked ? null : () async{
                               setState(() {
                                 btn_clicked = true;
                               });
-                              final dogBreed;
-                              if (breedKey.currentState!.getSelectedItem != null){
-                                dogBreed = breedKey.currentState!.getSelectedItem!.name;
-                              }else {
-                                dogBreed = '';
-                              }
 
                               bool genderCheck = false;
 
@@ -445,27 +422,20 @@ class _petRegPageState extends State<petRegPage> {
                                 }
                               }
                               //check variables
-                              if (dogBreed != ''
-                                  && nameField.text.length > 0
+                              if (nameField.text.length > 0
                                   && petBirthDate != null && genderCheck){
 
                                 String petBDate = petBirthDate.year.toString() + '-' + petBirthDate.month.toString() + '-' + petBirthDate.day.toString();
-                                photoUrl = await uploadPhoto(widget.recFile);
-                                if (photoUrl != '-100'){
 
-                                  int value = await addPet(nameField.text.capitalize(),
-                                      dogBreed, isMale,
-                                      petBDate,
-                                      photoUrl, FirebaseAuth.instance.currentUser!.uid, _controller.getSelectedItems());
+                                int value = await editPet(nameField.text.capitalize(), isMale,
+                                    petBDate,
+                                    _controller.getSelectedItems(), FirebaseAuth.instance.currentUser!.uid, widget.pod.id);
 
-                                  if (value == 200){
-                                    await fetchUserPets();
-                                    BA_key.currentState?.pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
-                                  }else{
-                                    showSnackbar(context, "Error signing up pet.");
-                                  }
+                                if (value == 200){
+                                  await fetchUserPets();
+                                  BA_key.currentState?.pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
                                 }else{
-                                  showSnackbar(context, 'Photo upload issue, Try again.');
+                                  showSnackbar(context, "Error updating pet info.");
                                 }
 
                               }else{

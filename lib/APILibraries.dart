@@ -7,8 +7,6 @@ import 'package:flutter_app_test1/configuration.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_app_test1/JsonObj.dart';
 import 'package:path/path.dart';
-import 'package:async/async.dart';
-import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,22 +30,21 @@ Future<T> retry<T>(int retries, FutureGenerator aFuture) async {
 
 // Function returns breeds of dogs with image url
 Future<List<Breed>> getBreedList(int counter) async {
+  int ret = -100;
   try {
-    Map<String, String> headers = {
-      'x-api-key': '7312afbd-ed2d-4fe2-b7d9-b66602ea58f7'
-    };
-    var url = Uri.parse('https://api.thedogapi.com/v1/breeds');
-    var response = await http.get(url, headers: headers);
+    final resp = await SupabaseCredentials.supabaseClient.from('breed').select('name,photoUrl') as List<dynamic>;
+    final List<Breed> bList = breedFromJson(jsonEncode(resp));
+    ret = 200;
+    return bList;
 
-    if (response.statusCode == 200) {
-      final List<Breed> bList = breedFromJson(response.body);
-      return bList;
-    } else {
-      print('Response error with code ${response.statusCode}');
-      return List<Breed>.empty();
-    }
   } catch (e) {
     return List<Breed>.empty();
+  }finally{
+    if (ret == 200){
+      print('succeeded fetching pets');
+    }else{
+      print('succeeded fetching pets');
+    }
   }
 }
 
@@ -134,6 +131,26 @@ Future addPet(String name, dogBreed, bool isMale, String petBirthDate, String ph
 
 }
 
+Future editPet(String name, bool isMale, String petBirthDate, List<dynamic> vaccines, String uid, String pid) async{
+  int ret = -100;
+  try{
+
+    await SupabaseCredentials.supabaseClient.from('pets').update({
+      'name': name,
+      'isMale': isMale ? true : false,
+      'birthdate': petBirthDate,
+      'vaccines': vaccines
+    }).eq('id', pid).eq('owner_id', uid);
+    ret = 200;
+  } on PostgrestException catch (error) {
+    print(error.message);
+  }catch (e){
+    print(e);
+  }finally{
+    return ret;
+  }
+
+}
 // POST request for adding new user
 Future addUser(String userid, String email, int phone, String fname,
     String lname, String country, String city, String birthdate) async {
@@ -207,8 +224,6 @@ Future checkPhoneAvailability(TextEditingController phoneNumber) async {
     }
 
     if (data.isEmpty) ret = 200;
-
-    print(data);
   } on PostgrestException catch (error) {
     print(error.message);
 
@@ -307,18 +322,94 @@ Future<bool> fetchUserPets() async{
   }
 }
 
-Future<List<PetPod>>fetchPets() async{
+Future<List<PetPod>>fetchPets(int petIndex) async{
   try{
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final petList = await SupabaseCredentials.supabaseClient.from('pets').select('*').eq('owner_id', uid ) as List<dynamic>;
-    print(petList);
     final pets = petProfileFromJson(jsonEncode(petList));
     var ret = List<PetPod>.generate(pets.length, (index){
-      return PetPod(pets[index]);
+      if (petIndex == index) {
+
+        return PetPod(pets[index], true);
+      }
+        return PetPod(pets[index], false);
     });
     return ret;
   }catch (e){
     print(e);
     return List<PetPod>.empty();
   }
+}
+
+Future<List<PetProfile>> getPetMatch() async{
+  try{
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final petList = await SupabaseCredentials.supabaseClient.from('pets').select('*') as List<dynamic>;
+    final pets = petProfileFromJson(jsonEncode(petList));
+
+    return pets;
+  }catch (e){
+    print(e);
+    return List<PetProfile>.empty();
+  }
+}
+
+Future updateVaccine(String petId, List<dynamic> data) async{
+  int i = -100;
+ try{
+   await SupabaseCredentials.supabaseClient.from('pets').update({'vaccines': data}).eq('id', petId);
+   i = 200;
+  }catch (e){
+     print(e);
+   }
+   return i;
+}
+
+Future sendMateRequest(String sid, String rid, String spid, String rpid) async{
+  int i = -100;
+  try{
+    final data = await SupabaseCredentials.supabaseClient.from('mate_requests')
+        .insert({
+      "sender_id": sid,
+      "receiver_id": rid,
+      "sender_pet": spid,
+      "receiver_pet": rpid,
+      "status": 0
+    }).single();
+    i = 200;
+  }catch (e){
+    print(e);
+  }
+  return i;
+}
+
+Future<List<MateItem>> fetchPetRequests(String uid) async{
+
+  try{
+    final data = await SupabaseCredentials.supabaseClient.from('mate_requests').select('*').eq('receiver_id', uid).eq('status', 0) as List<dynamic>;
+    late List<MateItem> pets = List.empty(growable: true);
+    for (dynamic p in data){
+      Map map = Map.from(p);
+      final pet = singlePetProfileFromJson(jsonEncode(await SupabaseCredentials.supabaseClient.from('pets').select('*').eq('id', map['sender_pet']).single()));
+      final item = MateItem(pet, map['receiver_pet'], map['id']);
+      pets.add(item);
+    }
+    return pets;
+  }catch (e){
+    print(e);
+  }
+return List<MateItem>.empty();
+
+
+}
+
+Future updateMateRequest(String reqID, int val) async{
+  int i = -100;
+  try{
+    await SupabaseCredentials.supabaseClient.from('mate_requests').update({"status": val}).eq('id', reqID);
+    i = 200;
+  }catch (e){
+    print(e);
+  }
+  return i;
 }

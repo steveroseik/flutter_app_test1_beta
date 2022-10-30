@@ -32,6 +32,17 @@ String details = 'My job requires moving to another country. '
     'I do not have the opportunity to take the cat with me. '
     'I am looking for good people who will shelter my pet';
 
+Map vaccineFList = {
+  "rabies": "Rabies",
+  "parvoVirus": "Parvo Virus",
+  "distemper": "Distemper",
+  "hepatitis": "Hepatitis",
+  "parainfluenza": "Parainfluenza",
+  "dhpp1": "DHPP first shot",
+  "dhpp2": "DHPP second shot",
+  "dhpp3": "DHPP third shot",
+};
+
 List<Map> categories = [
   {"name": 'Feed',"imagePath":'assets/images/Bone.png'},
   {"name": 'Health',"imagePath":'assets/images/Health.png'},

@@ -42,7 +42,7 @@ class _addBreedPageState extends State<addBreedPage> {
 
 
 
-    Future<int> analyzeImage() async {
+    Future<int> analyzeImage(BuildContext context) async {
       try{
         final resp = await getUploadResponse(imageFile!);
         if (resp.approved == 1){
@@ -52,25 +52,24 @@ class _addBreedPageState extends State<addBreedPage> {
           return -1;
         }
       } on PlatformException catch (e){
-        print('Error fetching response');
+        showSnackbar(context, 'Error fetching response');
         return -2;
       }
     }
 
-    Future<int> pickImage(ImageSource src) async {
+    Future<int> pickImage(BuildContext context, ImageSource src) async {
       try{
         final image = await ImagePicker().pickImage(source: src);
         if (image == null) {
-          print('no image');
+          showSnackbar(context, 'no image');
           // img_src.value = 0;
         }
         imageFile = File(image!.path);
-        print(imageFile.toString());
         img_src.value = 1;
         return 1;
 
       } on PlatformException catch (e){
-        print('Exception caught for camera access : $e');
+        showSnackbar(context, e.toString());
         // img_src.value = 0;
         return 0;
 
@@ -228,7 +227,7 @@ class _addBreedPageState extends State<addBreedPage> {
               ),
               onPressed: () async{
                 if (cam_Btn){
-                  await pickImage(ImageSource.gallery);
+                  await pickImage(context, ImageSource.gallery);
                   // print(cam_Btn);
                   // refresh UI elements
                   setState(() {});
