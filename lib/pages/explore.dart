@@ -6,6 +6,7 @@ import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 
 import '../configuration.dart';
 
@@ -36,8 +37,11 @@ class MapsPage extends StatefulWidget {
 
 class _MapsPageState extends State<MapsPage> {
   // late BitmapDescriptor customIcon;
+  String review = "";
   TextEditingController _searchController = TextEditingController();
+  TextEditingController reviewController = TextEditingController();
   final markers = List<Marker>.empty(growable: true);
+  double rating = 0;
   CustomInfoWindowController _customInfoWindowController =
   CustomInfoWindowController();
 
@@ -138,7 +142,7 @@ class _MapsPageState extends State<MapsPage> {
             ),
             CustomInfoWindow(
               controller: _customInfoWindowController,
-              height: 100,
+              height: 190,
               width: 510,
               offset: 50,
             ),
@@ -161,7 +165,7 @@ class _MapsPageState extends State<MapsPage> {
 
               alignment:Alignment.bottomCenter,
 child:SizedBox(
-    height: 50,
+    height: 45,
     width: 150,
 
               child: TextButton(
@@ -233,7 +237,7 @@ child:SizedBox(
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
-                                child: Row(
+                                child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
@@ -246,7 +250,7 @@ child:SizedBox(
                                     ),
                                     Text(
                                       title+'\n'+type+'\n'+address
-                                      +'\n'+phone+'\n'+website,
+                                      +'\n'+phone+'\n'+website+'\nRating: $rating',
                                       style:
                                       Theme
                                           .of(context)
@@ -255,7 +259,55 @@ child:SizedBox(
                                           .copyWith(
                                         color: Colors.black,
                                       ),
-                                    )
+                                    ),
+                                    Wrap(
+  spacing:0,
+              children:[
+                RatingBar.builder(
+
+                                      minRating:1,
+                                      itemSize:20,
+                                      itemBuilder:(context, _)=>Icon(Icons.star,color:Colors.amber),
+                                      updateOnDrag:true,
+                                      onRatingUpdate:(rating)=> setState((){
+                                        this.rating = rating;
+
+                                      }),
+                                    ),
+                                    SizedBox(
+                                      width: 200.0,
+                                      height: 20,
+                                      child: TextField(
+                                        controller: reviewController,
+                                        onChanged: (value){
+                                          setState((){
+                                            review = value;
+                                          });
+                                        },
+                                      decoration: InputDecoration(
+                                        border: OutlineInputBorder(),
+                                        labelText: 'Review',
+                                      ),
+                                      ),
+
+                                    ),
+                                      Container(
+                                          child:SizedBox(
+                                              height: 25,
+                                              width: 50,
+                                              child:ElevatedButton(onPressed: (){
+                                                insert(review);
+
+                                              },
+                                         child: Icon(
+                                           Icons.send_rounded
+                                         )
+                                      )
+                                      )
+                                      )
+                                      ]
+                                      )
+
                                   ],
                                 ),
                               ),
@@ -267,7 +319,8 @@ child:SizedBox(
                         ],
                       ), LatLng(y, x)
                   );
-                }));
+                }
+                ));
       }
       return markers;
     }
@@ -314,7 +367,7 @@ child:SizedBox(
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
-                                child: Row(
+                                child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
@@ -327,7 +380,7 @@ child:SizedBox(
                                     ),
                                     Text(
                                       title+'\n'+type+'\n'+address
-                                          +'\n'+phone+'\n'+website,
+                                          +'\n'+phone+'\n'+website+'\nRating: $rating',
                                       style:
                                       Theme
                                           .of(context)
@@ -336,7 +389,55 @@ child:SizedBox(
                                           .copyWith(
                                         color: Colors.black,
                                       ),
+                                    ),
+                                    Wrap(
+                                        spacing:0,
+                                        children:[
+                                          RatingBar.builder(
+
+                                            minRating:1,
+                                            itemSize:20,
+                                            itemBuilder:(context, _)=>Icon(Icons.star,color:Colors.amber),
+                                            updateOnDrag:true,
+                                            onRatingUpdate:(rating)=> setState((){
+                                              this.rating = rating;
+
+                                            }),
+                                          ),
+                                          SizedBox(
+                                            width: 200.0,
+                                            height: 20,
+                                            child: TextField(
+                                              controller: reviewController,
+                                              onChanged: (value){
+                                                setState((){
+                                                  review = value;
+                                                });
+                                              },
+                                              decoration: InputDecoration(
+                                                border: OutlineInputBorder(),
+                                                labelText: 'Review',
+                                              ),
+                                            ),
+
+                                          ),
+                                          Container(
+                                              child:SizedBox(
+                                                  height: 25,
+                                                  width: 50,
+                                                  child:ElevatedButton(onPressed: (){
+                                                    insert(review);
+
+                                                  },
+                                                      child: Icon(
+                                                          Icons.send_rounded
+                                                      )
+                                                  )
+                                              )
+                                          )
+                                        ]
                                     )
+
                                   ],
                                 ),
                               ),
@@ -348,7 +449,8 @@ child:SizedBox(
                         ],
                       ), LatLng(y, x)
                   );
-                }));
+                }
+                ));
       }
       return markers;
     }
@@ -360,5 +462,18 @@ child:SizedBox(
     }
     return List<Marker>.empty();
   }
-
+Future insert(String review) async {
+  if (review != "") {
+    try {
+      final data = await SupabaseCredentials.supabaseClient.from('locations')
+          .insert({
+        "review": review
+      }
+      );
+    }
+    catch (e) {
+      print(e);
+    }
+  }
+}
 }
