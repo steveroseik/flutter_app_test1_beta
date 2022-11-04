@@ -96,6 +96,41 @@ class _MapsPageState extends State<MapsPage> {
     initMarkers();
     super.initState();
   }
+  shortcutMarkers(String type) async{
+    markers.clear();
+    final data = await Display(type);
+    markers.addAll(data);
+    setState(() {});
+  }
+
+  Widget shortcuts() {
+    return ButtonBar(
+      mainAxisSize: MainAxisSize.min, // this will take space as minimum as posible(to center)
+      children: <Widget>[
+        new ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey,
+          ),
+          child: new Text('Vets'),
+          onPressed: ()  =>  shortcutMarkers('Veterinarian'),
+        ),
+        new ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey,
+          ),child: new Text('Parks'),
+          onPressed: ()  =>  shortcutMarkers('Dog park'),
+        ),
+        new ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey,
+          ),child: new Text('Pet Stores'),
+          onPressed: ()  =>  shortcutMarkers('Pet store'),
+        ),
+      ],
+    );
+
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,8 +159,8 @@ class _MapsPageState extends State<MapsPage> {
             ),
             CustomInfoWindow(
               controller: _customInfoWindowController,
-              height: 75,
-              width: 150,
+              height: 100,
+              width: 510,
               offset: 50,
             ),
             TextFormField (
@@ -137,8 +172,16 @@ class _MapsPageState extends State<MapsPage> {
                 border: OutlineInputBorder(),
                 labelText: 'Search',
               ),),
+
+            Padding(
+              padding: const EdgeInsets.all(50.0),
+              child: shortcuts(),
+            ),
           ],
-        )
+
+        ),
+
+
     );
   }
   void _onTap(int index)
@@ -155,7 +198,7 @@ class _MapsPageState extends State<MapsPage> {
     try {
       final data = await SupabaseCredentials.supabaseClient
           .from('locations')
-          .select('longitude, latitude, id, title') as List<dynamic>;
+          .select('*') as List<dynamic>;
 
       for (var entry in data){
         final map = Map.from(entry);
@@ -163,56 +206,143 @@ class _MapsPageState extends State<MapsPage> {
         var y =map['latitude'];
         var id = map['id'];
         var title = map['title'];
+        var address = map['address'];
+        var website = map['website'];
+        var phone = map['phone'];
+        var thumbnail = map['thumbnail'];
+        var type = map['type'];
         markers.add(
             Marker(
                 markerId: MarkerId(id.toString()),
                 position: LatLng(y, x),
                 onTap: () {
-              _customInfoWindowController.addInfoWindow!(
-                Column(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.account_circle,
+                  _customInfoWindowController.addInfoWindow!(
+                      Column(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
                                 color: Colors.white,
-                                size: 30,
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              SizedBox(
-                                width: 8.0,
-                              ),
-                              Text(
-                                "I am here",
-                                style:
-                                Theme
-                                    .of(context)
-                                    .textTheme
-                                    .headline6!
-                                    .copyWith(
-                                  color: Colors.white,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.account_circle,
+                                      color: Colors.blue,
+                                      size: 30,
+                                    ),
+                                    SizedBox(
+                                      width: 8.0,
+                                    ),
+                                    Text(
+                                      title+'\n'+type+'\n'+address
+                                      +'\n'+phone+'\n'+website,
+                                      style:
+                                      Theme
+                                          .of(context)
+                                          .textTheme
+                                          .bodyText1!
+                                          .copyWith(
+                                        color: Colors.black,
+                                      ),
+                                    )
+                                  ],
                                 ),
-                              )
-                            ],
+                              ),
+                              width: double.infinity,
+                              height: double.infinity,
+                            ),
                           ),
-                        ),
-                        width: double.infinity,
-                        height: double.infinity,
-                      ),
-                    ),
 
-                  ],
-                ), LatLng(y, x)
-              );
-            }));
+                        ],
+                      ), LatLng(y, x)
+                  );
+                }));
+      }
+      return markers;
+    }
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
+    catch (e){
+      print(e);
+    }
+    return List<Marker>.empty();
+  }
+  Future Display(String type) async {
+    int ret = -100;
+    final  markers = List<Marker>.empty(growable: true);
+    try {
+      final data = await SupabaseCredentials.supabaseClient
+          .from('locations')
+          .select('*').eq('type', type) as List<dynamic>;
+
+      for (var entry in data){
+        final map = Map.from(entry);
+        var x = map['longitude'];
+        var y =map['latitude'];
+        var id = map['id'];
+        var title = map['title'];
+        var address = map['address'];
+        var website = map['website'];
+        var phone = map['phone'];
+        var thumbnail = map['thumbnail'];
+        var type = map['type'];
+        markers.add(
+            Marker(
+                markerId: MarkerId(id.toString()),
+                position: LatLng(y, x),
+                onTap: () {
+                  _customInfoWindowController.addInfoWindow!(
+                      Column(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.account_circle,
+                                      color: Colors.blue,
+                                      size: 30,
+                                    ),
+                                    SizedBox(
+                                      width: 8.0,
+                                    ),
+                                    Text(
+                                      title+'\n'+type+'\n'+address
+                                          +'\n'+phone+'\n'+website,
+                                      style:
+                                      Theme
+                                          .of(context)
+                                          .textTheme
+                                          .bodyText1!
+                                          .copyWith(
+                                        color: Colors.black,
+                                      ),
+                                    )
+                                  ],
+                                ),
+                              ),
+                              width: double.infinity,
+                              height: double.infinity,
+                            ),
+                          ),
+
+                        ],
+                      ), LatLng(y, x)
+                  );
+                }));
       }
       return markers;
     }
