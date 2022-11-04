@@ -43,57 +43,6 @@ Future<List<Breed>> getBreedList(int counter) async {
 
   }
 }
-Future Display(String type) async {
-  int ret = -100;
-  final  markers = List<Marker>.empty(growable: true);
-  try {
-    final data = await SupabaseCredentials.supabaseClient
-        .from('locations')
-        .select('longitude, latitude, id, title').eq('type', type) as List<dynamic>;
-
-    for (var entry in data){
-      final map = Map.from(entry);
-      var x = map['longitude'];
-      var y =map['latitude'];
-      var id = map['id'];
-      var title = map['title'];
-      markers.add(Marker(
-          markerId: MarkerId(id.toString()),
-          position: LatLng(y, x), infoWindow: InfoWindow(title: title)));
-    }
-    return markers;
-  }
-  on PostgrestException catch (error) {
-    print(error.message);
-  }
-  catch (e){
-    print(e);
-  }
-  return List<Marker>.empty();
-}
-
-
-Future item_details(String title,String type,String address,int phone,String website,String thumbnail, double latitude, double longitude) async {
-  int ret = -100;
-  try {
-    final data = await SupabaseCredentials.supabaseClient
-        .from('locations')
-        .select('*') as List<dynamic>;
-
-    ret = 200;
-
-  }
-  on PostgrestException catch (error) {
-    print(error.message);
-  }
-  catch (e){
-    print(e);
-  }
-  finally{
-    return ret;
-  }
-}
-
 Future generateBreedPossibilities(String id) async{
   try {
     Map<String, String> headers = {
