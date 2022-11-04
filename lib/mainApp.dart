@@ -8,6 +8,7 @@ import 'package:flutter_app_test1/pages/home.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app_test1/configuration.dart';
+import 'package:flutter_app_test1/settings_main.dart';
 
 
 
@@ -28,13 +29,13 @@ class mainApp extends StatefulWidget {
 
 class _mainAppState extends State<mainApp> {
 
-  var _selectedIndex = 0;
+  var _selectedIndex = 2;
   List<Widget> _pages = [
     home_root(),
     ReminderPage(),
     BA_root(),
     MapsPage(),
-    SettingsPage()
+    SettingsMain()
   ];
 
   @override

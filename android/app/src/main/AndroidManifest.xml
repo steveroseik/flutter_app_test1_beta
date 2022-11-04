@@ -3,7 +3,7 @@
    <application
         android:label="flutter_app_test1"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
        <meta-data android:name="com.google.android.geo.API_KEY"
            android:value="AIzaSyBpChCwkoYTIWD7689JL1E7_dRt6qE0dMU"/>
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:age_calculator/age_calculator.dart';
+import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/cupertino.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_app_test1/pages/editPetPage.dart';
 import 'package:flutter_app_test1/pages/loadingPage.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 import '../FETCH_wdgts.dart';
 import '../routesGenerator.dart';
 import 'package:percent_indicator/percent_indicator.dart';
@@ -41,8 +43,10 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   late AnimationController _controller2;
   late Animation<double> _animation2;
 
-  late Future<List<PetPod>> petPods;
-  late Future<List<MateItem>> petRequests;
+  List<PetPod> petPods = <PetPod>[];
+
+  List<MateItem> petRequests = <MateItem>[];
+
   final petIndex = ValueNotifier<int>(-1);
   late PetPod selectedPet;
   final vaccineList = List<selectItem>.empty(growable: true);
@@ -50,13 +54,23 @@ class _HomeBreedPageState extends State<HomeBreedPage>
 
   final Size windowSize = MediaQueryData.fromWindow(window).size;
   late OverlayEntry loading = initLoading(context, windowSize);
+  bool requestsLoading = true;
 
   // if user has no pets he is forced to add at least one pet
   usrHasPets() async {
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.get('hasPets') == null) {
+    if (prefs.get('hasPets') != null && prefs.get('hasPets') == false) {
+      setState(() {
+        isLoading = false;
+      });
       BA_key.currentState?.pushNamedAndRemoveUntil(
           '/add_pet', (Route<dynamic> route) => false);
+    }else{
+      final resp = await fetchUserPets();
+      if (!resp){
+        BA_key.currentState?.pushNamedAndRemoveUntil(
+            '/add_pet', (Route<dynamic> route) => false);
+      }
     }
     await updatePets(petIndex.value);
     await getRequests();
@@ -65,23 +79,19 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     });
   }
 
-  updatePets(int index) {
-    petPods = fetchPets(index);
+  updatePets(int index) async {
+    petPods = await fetchPets(index);
   }
 
   getRequests() async {
-    if (!loading.mounted) {
-      OverlayState? overlay =
-      Overlay.of(context);
-      overlay?.insert(loading);
-    }
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    petRequests = fetchPetRequests(uid).whenComplete(() {
-      if (loading.mounted){
-        loading.remove();
-      }
-      setState(() {});
+   requestsLoading = true;
+   setState(() {});
+    final uid = await FirebaseAuth.instance.currentUser!.uid;
+    petRequests = await fetchPetRequests(uid).whenComplete(() {
+     requestsLoading = false;
     });
+
+   setState(() {});
 
 
   }
@@ -133,9 +143,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
-    return isLoading
-        ? LoadingPage()
-        : Scaffold(
+    return Scaffold(
             appBar: init_appBarBreed(BA_key),
             body: Padding(
               padding: EdgeInsets.all(8.0),
@@ -178,63 +186,51 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                     children: [
                       Container(
                         height: height / 6,
+                        width: width * 0.9,
                         padding: EdgeInsets.all(10),
-                        child: FutureBuilder<List<PetPod>>(
-                            future: petPods,
-                            builder: (context, snapshot) {
-                              if (snapshot.hasData) {
-                                switch (snapshot.connectionState) {
-                                  case (ConnectionState.done):
-                                    return ListView.builder(
-                                        scrollDirection: Axis.horizontal,
-                                        shrinkWrap: true,
-                                        itemCount: snapshot.data!.length,
-                                        itemBuilder: (context, index) {
-                                          return InkWell(
-                                            onTap: tapped ? null
-                                                : () async {
-                                                    tapped = true;
-                                                    for (var item in snapshot.data!) {
-                                                      item.isSelected = false;
-                                                    }
-                                                    snapshot.data![index].isSelected = true;
-                                                    if (petIndex.value == -1 && index != -1) {
-                                                      selectedPet = snapshot.data![index];
-                                                      petIndex.value = index;
-                                                      _controller.forward().then((value) {});
-                                                      createPetVaccines();
-                                                      setState(() {});
-                                                    } else {
-                                                      if (index != -1) {
-                                                        if (selectedPet != snapshot.data![index]) {
-                                                          _controller.reverse().then((value) {
-                                                            selectedPet = snapshot.data![index];
-                                                            createPetVaccines();
-                                                            setState(() {
-                                                              viewVaccines.value = 0;
-                                                              petIndex.value = index;
+                        child: isLoading ? ShimmerOwnerPetCard() : ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            shrinkWrap: true,
+                            itemCount: petPods.length,
+                            itemBuilder: (context, index) {
+                              return InkWell(
+                                onTap: tapped ? null
+                                    : () async {
+                                  tapped = true;
+                                  for (var item in petPods) {
+                                    item.isSelected = false;
+                                  }
+                                  petPods[index].isSelected = true;
+                                  if (petIndex.value == -1 && index != -1) {
+                                    selectedPet = petPods[index];
+                                    petIndex.value = index;
+                                    _controller.forward().then((value) {});
+                                    createPetVaccines();
+                                    setState(() {});
+                                  } else {
+                                    if (index != -1) {
+                                      if (selectedPet != petPods[index]) {
+                                        _controller.reverse().then((value) {
+                                          selectedPet = petPods[index];
+                                          createPetVaccines();
+                                          setState(() {
+                                            viewVaccines.value = 0;
+                                            petIndex.value = index;
 
-                                                            });
+                                          });
 
-                                                            _controller.forward();
-                                                          });
-                                                        }
-                                                      }
-                                                    }
-
-                                                    tapped = false;
-                                                  },
-                                            child: CustomPet(
-                                                pod: snapshot.data![index]),
-                                          );
+                                          _controller.forward();
                                         });
-                                  default:
-                                    return Text('Loading');
-                                }
-                              } else {
-                                return Text('Loading');
-                              }
-                            }),
+                                      }
+                                    }
+                                  }
+
+                                  tapped = false;
+                                },
+                                child: CustomPet(
+                                    pod: petPods[index]),
+                              );
+                            })
                       ),
                     ],
                   ),
@@ -260,75 +256,83 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                             opacity: _controller,
                                             child: Column(
                                               children: [
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                  children: [
-                                                    Column(
-                                                      children: [
-                                                        Text('Age',
-                                                          style: TextStyle(
-                                                            fontWeight: FontWeight.w800,
-                                                          ),),
-                                                        SizedBox(height: 5),
-                                                        Container(
-                                                            decoration: BoxDecoration(
-                                                              borderRadius: BorderRadius.circular(20),
-                                                              color: Colors.blueGrey.shade900,
-                                                            ),child: Padding(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
-                                                          child: Text("${AgeCalculator.dateDifference(fromDate: selectedPet.pet.birthdate, toDate: DateTime.now()).years}",
+                                                Padding(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 30.0),
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      Column(
+                                                        children: [
+                                                          Text('Age',
                                                             style: TextStyle(
-                                                              color: Colors.white,
-                                                              fontWeight: FontWeight.w600,
+                                                              fontWeight: FontWeight.w800,
+                                                              color: Colors.grey
                                                             ),),
-                                                        )),
-                                                      ],
-                                                    ),
-                                                    VerticalDivider(),
-                                                    Column(
-                                                      children: [
-                                                        Text('Gender',
-                                                          style: TextStyle(
-                                                            fontWeight: FontWeight.w800,
-                                                          ),),
-                                                        SizedBox(height: 5),
-                                                        Container(
-                                                            decoration: BoxDecoration(
-                                                              borderRadius: BorderRadius.circular(20),
-                                                              color: Colors.blueGrey.shade900,
-                                                            ),child: Padding(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
-                                                          child: Text((selectedPet.pet.isMale ? 'Male' : 'Female'),
+                                                          SizedBox(height: 5),
+                                                          Container(
+                                                            padding: EdgeInsets.symmetric(horizontal: 5),
+                                                              decoration: BoxDecoration(
+                                                                borderRadius: BorderRadius.circular(20),
+                                                                color: CupertinoColors.extraLightBackgroundGray,
+                                                              ),child: Padding(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
+                                                            child: Text("${AgeCalculator.dateDifference(fromDate: selectedPet.pet.birthdate, toDate: DateTime.now()).years}",
+                                                              style: TextStyle(
+                                                                color: Colors.grey,
+                                                                fontWeight: FontWeight.w800,
+                                                              ),),
+                                                          )),
+                                                        ],
+                                                      ),
+                                                      Spacer(),
+                                                      Column(
+                                                        children: [
+                                                          Text('Gender',
                                                             style: TextStyle(
-                                                              color: Colors.white,
-                                                              fontWeight: FontWeight.w600,
+                                                              fontWeight: FontWeight.w800,
+                                                              color: Colors.grey,
                                                             ),),
-                                                        )),
-                                                      ],
-                                                    ),
-                                                    VerticalDivider(),
-                                                    Column(
-                                                      children: [
-                                                        Text('Mates',
-                                                          style: TextStyle(
-                                                            fontWeight: FontWeight.w800,
-                                                          ),),
-                                                        SizedBox(height: 5),
-                                                        Container(
-                                                            decoration: BoxDecoration(
-                                                              borderRadius: BorderRadius.circular(20),
-                                                              color: Colors.blueGrey.shade900,
-                                                            ),child: Padding(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
-                                                          child: Text("${0}",
+                                                          SizedBox(height: 5),
+                                                          Container(
+                                                              padding: EdgeInsets.symmetric(horizontal: 5),
+                                                              decoration: BoxDecoration(
+                                                                borderRadius: BorderRadius.circular(20),
+                                                                color: CupertinoColors.extraLightBackgroundGray,
+                                                              ),child: Padding(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
+                                                            child: Text((selectedPet.pet.isMale ? 'Male' : 'Female'),
+                                                              style: TextStyle(
+                                                                color: Colors.grey,
+                                                                fontWeight: FontWeight.w600,
+                                                              ),),
+                                                          )),
+                                                        ],
+                                                      ),
+                                                      Spacer(),
+                                                      Column(
+                                                        children: [
+                                                          Text('Mates',
                                                             style: TextStyle(
-                                                              color: Colors.white,
-                                                              fontWeight: FontWeight.w600,
+                                                              fontWeight: FontWeight.w800,
+                                                              color: Colors.grey,
                                                             ),),
-                                                        )),
-                                                      ],
-                                                    ),
-                                                  ],
+                                                          SizedBox(height: 5),
+                                                          Container(
+                                                              decoration: BoxDecoration(
+                                                                borderRadius: BorderRadius.circular(20),
+                                                                color: CupertinoColors.extraLightBackgroundGray,
+                                                              ),child: Padding(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
+                                                            child: Text("${0}",
+                                                              style: TextStyle(
+                                                                color: Colors.grey,
+                                                                fontWeight: FontWeight.w600,
+                                                              ),),
+                                                          )),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
 
                                                 SizedBox(height: 10,),
@@ -337,10 +341,9 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                   duration: Duration(
                                                       milliseconds: 1000),
                                                   decoration: BoxDecoration(
-                                                      color: Colors.black,
+                                                      color: CupertinoColors.extraLightBackgroundGray,
                                                       border: Border.all(
-                                                          color: CupertinoColors
-                                                              .extraLightBackgroundGray,
+                                                          color: Colors.grey.shade300,
                                                           width: 1),
                                                       borderRadius:
                                                           BorderRadius.circular(
@@ -352,9 +355,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                         child: ListTile(
                                                           leading: CircleAvatar(
                                                               backgroundColor:
-                                                                  Colors
-                                                                      .deepOrangeAccent
-                                                                      .shade200,
+                                                                  Colors.blueGrey,
                                                               child: Icon(
                                                                   Icons
                                                                       .vaccines,
@@ -369,7 +370,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                                   'Vaccinations',
                                                                   style: TextStyle(
                                                                       color: Colors
-                                                                          .white,
+                                                                          .blueGrey,
                                                                       fontFamily:
                                                                       'Roboto',
                                                                       fontWeight:
@@ -388,9 +389,9 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                                   Radius.circular(
                                                                       20),
                                                                   backgroundColor:
-                                                                  Colors.grey,
+                                                                  Colors.grey.shade300,
                                                                   progressColor:
-                                                                  Colors.white,
+                                                                  Colors.blueGrey,
                                                                   trailing: Text(
                                                                     '${(selectedPet.pet.vaccines.length / 8 * 100).toInt()}%',
                                                                     style: TextStyle(
@@ -398,7 +399,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                                         FontWeight
                                                                             .w600,
                                                                         color: Colors
-                                                                            .white),
+                                                                            .blueGrey),
                                                                   ),
                                                                 ),
                                                               ],
@@ -412,16 +413,16 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                 SizedBox(height: 2,),
                                                 ElevatedButton.icon(
                                                   style: ElevatedButton.styleFrom(
-                                                      backgroundColor: Colors.blueGrey.shade900,
+                                                      backgroundColor: Colors.white,
                                                       shape: RoundedRectangleBorder(
                                                           borderRadius: BorderRadius.circular(30.0))),
-                                                  icon: Icon(Icons.edit, size: 10),
+                                                  icon: Icon(Icons.edit, size: 10, color: Colors.blueGrey),
                                                   onPressed: () {
                                                     _customSheet();
                                                   },
                                                   label: Text('Edit pet info',
                                                       style: TextStyle(
-                                                          color: Colors.white,
+                                                          color: Colors.blueGrey,
                                                           fontSize: 10,
                                                           fontWeight: FontWeight.w600)),
                                                 ),
@@ -436,10 +437,44 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                   },
                                 )),
                             SizedBox(height: 10),
+                            isLoading ?
                             Container(
+                              height: 100,
+                              padding: EdgeInsets.all(5),
+                              child: Row(
+                                children: [
+                                  Flexible(
+                                    flex: 1,
+                                    child: Shimmer(
+                                      gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(20),
+                                            color: Colors.grey.shade300
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Flexible(
+                                    flex: 1,
+                                    child: Shimmer(
+                                      gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(20),
+                                            color: Colors.grey.shade300
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                                : Container(
                               padding: EdgeInsets.symmetric(horizontal: 20),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
                                   GestureDetector(
                                     onTap: () async {
@@ -463,12 +498,12 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                     child: Container(
                                       padding: EdgeInsets.all(15),
                                       decoration: BoxDecoration(
-                                        color: Colors.black,
+                                        color: Colors.blueGrey,
                                         border: Border.all(
                                             color: CupertinoColors
                                                 .extraLightBackgroundGray,
                                             width: 1),
-                                        borderRadius: BorderRadius.circular(20),
+                                        borderRadius: BorderRadius.circular(30),
                                       ),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,7 +529,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                       ),
                                     ),
                                   ),
-                                  SizedBox(width: 20),
+                                  SizedBox(width: 5),
                                   Flexible(
                                     flex: 1,
                                     child: GestureDetector(
@@ -504,12 +539,12 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                       child: Container(
                                         padding: EdgeInsets.all(15),
                                         decoration: BoxDecoration(
-                                          color: Colors.black,
+                                          color: Colors.blueGrey,
                                           border: Border.all(
                                               color: CupertinoColors
                                                   .extraLightBackgroundGray,
                                               width: 1),
-                                          borderRadius: BorderRadius.circular(20),
+                                          borderRadius: BorderRadius.circular(30),
                                         ),
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -556,7 +591,9 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                         fontWeight: FontWeight.w900,
                                       )),
                                   Spacer(),
-                                  IconButton(onPressed: (){},
+                                  IconButton(onPressed: (){
+                                    getRequests();
+                                  },
                                       icon: Icon(Icons.refresh_rounded),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.blueGrey.shade900,
@@ -568,28 +605,19 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                             Divider(),
                             Container(
                               height: 300,
-                              child: FutureBuilder<List<MateItem>>(
-                                future: petRequests,
-                                builder: (context, snapshot) {
-                                    switch (snapshot.connectionState) {
-                                      case (ConnectionState.done):
-                                        return ListView.builder(
-                                            scrollDirection: Axis.vertical,
-                                            itemCount: snapshot.data!.length,
-                                            itemBuilder: (context, index) {
-                                              return InkWell(
-                                                onTap: (){
-                                                  _modalBottomSheetMenu(snapshot.data![index]);
-                                                },
-                                                child: PetRequestBanner(
-                                                    pod: snapshot.data![index]),
-                                              );
-                                            });
-                                      default:
-                                        return Text('Loading');
-                                    }
-                                },
-                              ),
+                              child: requestsLoading ? ShimmerPetRequestBanner(context):
+                              ListView.builder(
+                                  scrollDirection: Axis.vertical,
+                                  itemCount: petRequests.length,
+                                  itemBuilder: (context, index) {
+                                    return InkWell(
+                                      onTap: (){
+                                        _modalBottomSheetMenu(petRequests[index]);
+                                      },
+                                      child: PetRequestBanner(
+                                          pod: petRequests[index]),
+                                    );
+                                  }),
                             ),
                           ],
                         ),

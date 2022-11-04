@@ -176,10 +176,10 @@ class _LoginPageState extends State<LoginPage> {
                             child: Text("Login", textAlign: TextAlign.center),
                           ),
                           style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.blueGrey,
-                              backgroundColor: Colors.teal.shade100,
+                            foregroundColor: Colors.white,
+                              backgroundColor: Colors.blueGrey,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0)
+                                  borderRadius: BorderRadius.circular(20.0)
                               )
                           ),
                         )
@@ -201,13 +201,16 @@ class _LoginPageState extends State<LoginPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueGrey,
+                            backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20.0)
+                              )
                           ),
                           onPressed: () {
 
                             rootNav_key.currentState?.popAndPushNamed('/signupEmail');
                           },
-                          child: Text("Signup with email", textAlign: TextAlign.center),
+                          child: Text("Signup with email", textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey),),
                         )
                         ],
                       ),
@@ -215,12 +218,16 @@ class _LoginPageState extends State<LoginPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueGrey,
+                            backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20.0)
+                              )
                           ),
+
                           onPressed: () {
                             // userInDb("steveroseik@gmail.com", "ghasjdgjsa");
                           },
-                          child: Text("Signup with google", textAlign: TextAlign.center),
+                          child: Text("Signup with google", textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey)),
                         )
                         ],
                       )

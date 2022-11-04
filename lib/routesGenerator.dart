@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/JsonObj.dart';
+import 'package:flutter_app_test1/pages/BreedsArticles.dart';
+import 'package:flutter_app_test1/pages/EditProfile.dart';
+import 'package:flutter_app_test1/pages/FoodArticles.dart';
+import 'package:flutter_app_test1/pages/HealthArticles.dart';
+import 'package:flutter_app_test1/pages/TrainingArticles.dart';
 import 'dart:io';
 import 'package:flutter_app_test1/pages/breed.dart';
 import 'package:flutter_app_test1/pages/breed_sp.dart';
@@ -9,6 +14,7 @@ import 'package:flutter_app_test1/pages/emailVerify.dart';
 import 'package:flutter_app_test1/pages/forgotPassword.dart';
 import 'package:flutter_app_test1/pages/homeBreedPage.dart';
 import 'package:flutter_app_test1/pages/petMatchPage.dart';
+import 'package:flutter_app_test1/pages/settings.dart';
 import 'package:flutter_app_test1/pages/user_profile.dart';
 import 'package:flutter_app_test1/pages/home.dart';
 import 'package:flutter_app_test1/pages/login.dart';
@@ -27,6 +33,7 @@ GlobalKey<NavigatorState> rootNav_key = GlobalKey();
 GlobalKey<NavigatorState> AppNav_key = GlobalKey();
 GlobalKey<NavigatorState> UserNav_key = GlobalKey();
 GlobalKey<NavigatorState> phoneNav_key = GlobalKey();
+GlobalKey<NavigatorState> settingsNav_key = GlobalKey();
 
 class RouteGenerator {
   // Main Routes Generator
@@ -123,13 +130,21 @@ class RouteGenerator {
           );
         }
         return _errorRoute();
+      case '/food_articles':
+        return MaterialPageRoute(builder: (_) => FoodArticles());
+      case '/health_articles':
+        return MaterialPageRoute(builder: (_) => HealthArticles());
+      case '/breeds_articles':
+        return MaterialPageRoute(builder: (_) => BreedsArticles());
+      case '/training_articles':
+        return MaterialPageRoute(builder: (_) => TrainingArticles());
       case '/no_pass':
         return MaterialPageRoute(
           builder: (_) => breedSearchPage(), // Second Page
         );
 
       default:
-        // if an unmatched route is called, return error route
+      // if an unmatched route is called, return error route
         return _errorRoute();
     }
   }
@@ -143,6 +158,22 @@ class RouteGenerator {
       case '/code':
         return MaterialPageRoute(builder: (_) => CodeSent(phone: args));
       default:
+        return _errorRoute();
+    }
+  }
+
+  // This is the User routesGenerator
+  static Route<dynamic> generateRoute_settings(RouteSettings settings) {
+    final args = settings.arguments;
+
+    switch (settings.name) {
+      case '/':
+        return MaterialPageRoute(builder: (_) => SettingsPage());
+      case '/editProfile':
+        return MaterialPageRoute(builder: (_) => EditProfile());
+
+      default:
+      // if an unmatched route is called, return error route
         return _errorRoute();
     }
   }

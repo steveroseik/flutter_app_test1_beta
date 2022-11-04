@@ -11,7 +11,6 @@ import 'package:path/path.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'FETCH_wdgts.dart';
 
 // Function to retry requests : retry(int, Future<>);
@@ -41,14 +40,10 @@ Future<List<Breed>> getBreedList(int counter) async {
   } catch (e) {
     return List<Breed>.empty();
   }finally{
-    if (ret == 200){
-      print('succeeded fetching pets');
-    }else{
-      print('succeeded fetching pets');
-    }
+
   }
 }
-Future Display(double latitude, double longitude, String type) async {
+Future Display(String type) async {
   int ret = -100;
   final  markers = List<Marker>.empty(growable: true);
   try {
@@ -57,36 +52,6 @@ Future Display(double latitude, double longitude, String type) async {
         .select('longitude, latitude, id, title').eq('type', type) as List<dynamic>;
 
     for (var entry in data){
-      final map = Map.from(entry);
-      var x = map['longitude'];
-      var y =map['latitude'];
-      var id = map['id'];
-      var title = map['title'];
-      markers.add(Marker(
-          markerId: id,
-          position: LatLng(x,y), infoWindow: InfoWindow(title: title)));
-    }
-    return markers;
-  }
-  on PostgrestException catch (error) {
-    print(error.message);
-  }
-  catch (e){
-    print(e);
-  }
-  return List<Marker>.empty();
-}
-
-Future initializeMarkers() async {
-  int ret = -100;
-  final  markers = List<Marker>.empty(growable: true);
-  try {
-    final data = await SupabaseCredentials.supabaseClient
-        .from('locations')
-        .select('longitude, latitude, id, title') as List<dynamic>;
-
-    for (var entry in data){
-      print(entry);
       final map = Map.from(entry);
       var x = map['longitude'];
       var y =map['latitude'];
@@ -106,6 +71,8 @@ Future initializeMarkers() async {
   }
   return List<Marker>.empty();
 }
+
+
 Future item_details(String title,String type,String address,int phone,String website,String thumbnail, double latitude, double longitude) async {
   int ret = -100;
   try {
@@ -126,6 +93,50 @@ Future item_details(String title,String type,String address,int phone,String web
     return ret;
   }
 }
+
+Future generateBreedPossibilities(String id) async{
+  try {
+    Map<String, String> headers = {
+      'x-api-key': '7312afbd-ed2d-4fe2-b7d9-b66602ea58f7'
+    };
+
+    var url = Uri.parse('https://api.thedogapi.com/v1/images/${id}/analysis');
+
+    var response = await http.get(url, headers: headers);
+    final obj = petAnalysisFromJson(response.body);
+
+    final breeds = await getBreedList(0);
+    final List<String> names = <String>[];
+    final matches = <Breed>[];
+    for(Label label in obj[0].labels){
+      names.add(label.name);
+      for(Parent parent in label.parents){
+        names.add(parent.name);
+      }
+    }
+
+    for (Breed breed in breeds){
+      for (String name in names){
+        if (breed.name.toUpperCase().contains(name.toUpperCase())){
+          if (!breed.name.toUpperCase().contains('DOG')
+              && !breed.name.toUpperCase().contains('TERRIER')
+              && !breed.name.toUpperCase().contains('PET')){
+            matches.add(breed);
+          }
+
+        }
+      }
+
+    }
+
+    return matches;
+
+  } catch (e) {
+    print(e);
+  }
+  return List<String>.empty();
+}
+
 // POST Request for sending pet photo to thedogapi API for verification
 Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
   late final PhotoResponse pRes;
@@ -165,7 +176,7 @@ Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
 
     return PhotoResponse(
         id: '-503',
-        url: 'No response receieved',
+        url: 'No response received',
         subId: '-11',
         originalFilename: '-11',
         pending: -1,
@@ -394,7 +405,7 @@ Future<bool> fetchUserPets() async{
     return true;
   }else{
     if (prefs.get('hasPets') != null){
-      prefs.remove('hasPets');
+      prefs.setBool('hasPets', false);
     }
     return false;
   }
@@ -490,4 +501,14 @@ Future updateMateRequest(String reqID, int val) async{
     print(e);
   }
   return i;
+}
+
+Future fetchUserData(String uid) async{
+  try{
+    final data = await SupabaseCredentials.supabaseClient.from('users').select('*').eq('id', uid).single();
+    print(jsonEncode(data));
+
+  }catch (e){
+    print(e);
+  }
 }

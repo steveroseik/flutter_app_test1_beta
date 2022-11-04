@@ -15,6 +15,7 @@ import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
+import 'package:shimmer/shimmer.dart';
 
 import 'JsonObj.dart';
 
@@ -99,10 +100,10 @@ class _BreedSearchWidgetState extends State<BreedSearchWidget> {
                       )
                     )
                   ),
-                  popupProps: PopupProps.bottomSheet(
+                  popupProps: PopupProps.modalBottomSheet(
                     showSearchBox: true,
-                    fit: FlexFit.loose,
-                    constraints: BoxConstraints.tightFor(),
+                    fit: FlexFit.tight,
+                    constraints: BoxConstraints.tightForFinite(height: MediaQuery.of(context).size.height * 0.7),
                     searchFieldProps: TextFieldProps(
                         decoration: InputDecoration(
                           hintText: 'Type breed name',
@@ -178,6 +179,7 @@ class Gender {
 
   Gender(this.name, this.icon, this.isSelected);
 }
+
 class selectItem {
   String name;
   bool isSelected;
@@ -224,6 +226,25 @@ class CustomSelectionItem extends StatelessWidget {
   }
 }
 
+class miniCustomRadio extends StatelessWidget {
+  Gender _gender;
+
+  miniCustomRadio(this._gender);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+        color: _gender.isSelected ? Colors.black : Colors.white,
+        child: Container(
+          margin: new EdgeInsets.all(5.0),
+          child: Icon(
+            _gender.icon,
+            color: _gender.isSelected ? Colors.white : Colors.grey,
+            size: 20,
+          ),
+        ));
+  }
+}
 
 class CustomRadio extends StatelessWidget {
   Gender _gender;
@@ -742,10 +763,10 @@ class _PetRequestCardState extends State<PetRequestCard> {
                           child:   Column(
                             children: [
                               Text("${widget.request.sender_pet.name}'s Vaccinations List",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
 
-                              ),),
+                                ),),
                               Divider(),
                               Expanded(
                                 child: SingleChildScrollView(
@@ -975,3 +996,423 @@ void showNotification(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(snackBar);
 }
 
+class PetMatchCard extends StatefulWidget {
+  final PetProfile pet;
+  final PetProfile sender;
+  const PetMatchCard({Key? key, required this.pet, required this.sender}) : super(key: key);
+
+  State<PetMatchCard> createState() => _PetMatchCardState();
+}
+
+class _PetMatchCardState extends State<PetMatchCard> {
+
+  final _controller = MultiSelectController();
+
+  @override
+  Widget build(BuildContext context) {
+
+    final height = MediaQuery.of(context).size.height;
+    final petAge = AgeCalculator.age(widget.pet.birthdate);
+    String petText = (petAge == 0 ? '' : petAge.years == 1 ? "${petAge.years} yr\n" : "${petAge.years} yrs\n") +
+        (petAge.months == 0 ? '' : petAge.months == 1 ? "${petAge.months} month" : "${petAge.months} months");
+
+
+    final vaccinesItems = List<MultiSelectCard>.generate(8, (index) {
+      final key = vaccineFList.entries.elementAt(index).key;
+      final value = vaccineFList.entries.elementAt(index).value;
+      return MultiSelectCard(value: key, label: value, selected: widget.pet.vaccines.contains(key) ? true : false);
+    });
+    return ColumnSuper(innerDistance: -height/2.8 - 50,
+      children: [
+        Container(
+          padding: EdgeInsets.fromLTRB(10,10,10,0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.blueGrey.shade800,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueGrey.shade800,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.0))),
+                        icon: Icon(Icons.location_pin, size: 15, color: Colors.white,),
+                        onPressed: () {
+                          showSnackbar(context, 'Need to accept request in order to view location');
+                        },
+                        label: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text('1.3 km',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      Spacer(),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueGrey.shade800,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.0))),
+                        icon: Icon(Icons.article_rounded, size: 15, color: Colors.white,),
+                        onPressed: () {
+                        },
+                        label: Text('Documents',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600)),
+                      )
+                    ],
+                  )
+              ),
+              Text('${widget.pet.name}',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900)),
+              SizedBox(height: 5),
+              Text('${widget.pet.breed}',
+                  style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800)),
+              Divider(),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 30),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      child: Column(
+                        children: [
+                          Text('Age', style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w600
+                          ),),
+                          Divider(),
+                          Text(petText,textAlign: TextAlign.center, style: TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.w600
+                          ),)
+                        ],
+                      ),
+                    ),
+                    Spacer(),
+                    Container(
+                      child: Column(
+                        children: [
+                          Text('Gender', style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w600
+                          ),),
+                          Divider(),
+                          Icon(widget.pet.isMale ? Icons.male_rounded : Icons.female_rounded, color: widget.pet.isMale ? Colors.blue : Colors.pinkAccent,)
+                        ],
+                      ),
+                    ),
+                    Spacer(),
+                    Container(
+                      child: Column(
+                        children: [
+                          Text('Mates', style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w600
+                          ),),
+                          Divider(),
+                          Text('0',textAlign: TextAlign.center, style: TextStyle(
+                              color: Colors.white,fontWeight: FontWeight.w600
+                          ),)
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () async{
+                  await showDialog(
+                    context: context,
+                    builder: (ctx) {
+                      return  Dialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Container(
+                          padding: EdgeInsets.all(20),
+                          height: 300,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            child:   Column(
+                              children: [
+                                Text("${widget.pet.name}'s Vaccinations List",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+
+                                  ),),
+                                Divider(),
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    child: Container(
+                                      child: AbsorbPointer(
+                                        absorbing: true,
+                                        child: MultiSelectContainer(
+                                            itemsDecoration: MultiSelectDecorations(
+                                                decoration: BoxDecoration(
+                                                  color: CupertinoColors.extraLightBackgroundGray,
+                                                  borderRadius: BorderRadius.circular(20),
+                                                )
+                                            ),
+                                            prefix: MultiSelectPrefix(
+                                                selectedPrefix: Padding(
+                                                  padding: EdgeInsets.only(right: 5),
+                                                  child: Icon(
+                                                    Icons.check,
+                                                    color: Colors.white,
+                                                    size: 14,
+                                                  ),
+                                                ),
+                                                enabledPrefix: Padding(
+                                                  padding: EdgeInsets.only(right: 5),
+                                                  child: Icon(
+                                                    Icons.close,
+                                                    size: 14,
+                                                  ),
+                                                )),
+                                            items: vaccinesItems,
+                                            onChange: (allSelectedItems, selectedItem) {
+                                            }),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Icon(Icons.vaccines_rounded, color: Colors.white,),
+                      Flexible(
+                        child: LinearPercentIndicator(
+                          lineHeight: 5.0,
+                          percent: widget.pet.vaccines.length / 8,
+                          barRadius: Radius.circular(20),
+                          backgroundColor: Colors.grey,
+                          progressColor: Colors.white,
+                          trailing: Text(
+                            '${(widget.pet.vaccines.length / 8 * 100).toInt()}%',
+                            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.all(10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.blue,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50.0))),
+                      onPressed: () async{
+                        final uid = FirebaseAuth.instance.currentUser!.uid;
+                        if (uid == widget.sender.ownerId){
+                          final resp = await sendMateRequest(uid, widget.pet.ownerId, widget.sender.id, widget.pet.id);
+                          if (resp == 200){
+                            showNotification(context, 'Request Sent Successfully.');
+                          }else{
+                            showSnackbar(context, 'Failed to send request!');
+                          }
+                        }else{
+                          showSnackbar(context, 'Error handling request');
+                        }
+
+
+                      },child: Icon(CupertinoIcons.heart_fill, size: 20, color: Colors.white),
+                    )
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        CircleAvatar(
+          radius: 60,
+          backgroundColor: Colors.blueGrey.shade800,
+          child: CircleAvatar(
+            radius: 49,
+            backgroundColor: Colors.blue,
+            backgroundImage: NetworkImage(widget.pet.photoUrl),
+          ),
+        ),
+      ],
+
+    );
+  }
+}
+
+Future<void> _showMyDialog(BuildContext context, petName) async {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false, // user must tap button!
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Confirm Request'),
+        content: SingleChildScrollView(
+          child: Column(
+            children: <Widget>[
+              Text(' ${petName}')
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueGrey,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50.0))),
+            onPressed: () async{
+
+            },child: Text('Confirm'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+                foregroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50.0))),
+            onPressed: () async{
+              Navigator.of(context).pop();
+            },child: Text('Cancel'),
+          )
+        ],
+      );
+    },
+  );
+}
+
+ShimmerOwnerPetCard(){
+  return ListView.builder(
+    itemCount: 3,
+    scrollDirection: Axis.horizontal,
+    itemBuilder: (context, index){
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Container(
+          width: 80,
+          height: 10,
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: Colors.grey.shade300
+          ),
+          child: Column(
+            children: [
+              SizedBox(height: 10,),
+              Shimmer(
+                gradient: LinearGradient(
+                    colors: [Colors.white, Colors.grey]),
+                child: CircleAvatar(
+                  radius: 25,
+                  backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                ),
+              ),
+              SizedBox(height: 20,),
+              Shimmer(
+                gradient: LinearGradient(
+                    colors: [Colors.white, Colors.grey]),
+                child: Container(
+                  height: 5,
+                  width: 30,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      color: CupertinoColors.extraLightBackgroundGray
+                  ),
+                ),
+              )
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+ShimmerPetRequestBanner(BuildContext context){
+  return ListView.builder(
+    itemCount: 3,
+    itemBuilder: (context, index){
+      return Container(
+        height: MediaQuery.of(context).size.height * 0.09,
+        width: MediaQuery.of(context).size.width,
+        padding: EdgeInsets.all(10),
+        margin: EdgeInsets.symmetric(vertical: 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          color: CupertinoColors.extraLightBackgroundGray,
+        ),
+        child: Row(
+            children: [
+              Shimmer(
+              gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+              child: CircleAvatar(
+                radius: MediaQuery.of(context).size.width * 0.07,
+              ),
+            ),
+            SizedBox(width: 10,),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Shimmer(
+                  gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                  child: Container(
+                    height: 5,
+                    width:  MediaQuery.of(context).size.width * 0.5,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.white
+                    ),
+                  ),
+                ),
+                SizedBox(height: 5),
+                Shimmer(
+                  gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                  child: Container(
+                    height: 5,
+                    width:  MediaQuery.of(context).size.width * 0.3,
+                    decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.white
+                    ),
+                  ),
+                ),
+              ],
+            )
+      ]
+        ),
+      );
+    },
+  );
+}

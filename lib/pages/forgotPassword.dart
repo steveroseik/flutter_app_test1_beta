@@ -142,6 +142,7 @@ class _ForgotPassEmailState extends State<ForgotPass> {
     }on FirebaseAuthException catch (e){
       showSnackbar(context, e.message!);
     }
+    showNotification(context, 'An email has been sent to reset your password.');
 
   }
 

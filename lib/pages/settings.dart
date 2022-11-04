@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
 
+import '../APILibraries.dart';
 import '../routesGenerator.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -13,154 +15,165 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: init_appBar(rootNav_key),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            //  color: Colors.white,
-            const Text(
-              " Notifications",
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+            elevation: 8,
+            shadowColor: Colors.cyanAccent[70],
+            title: const Text(
+              "FETCH",
               style: TextStyle(
                 color: Colors.black,
-                fontSize: 25,
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            Container(
-              margin: const EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 0),
-              color: Colors.grey[200],
-              width: 500.0,
-              height: 48.0,
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    const Text(
-                      " Show Notifications",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 20,
+            centerTitle: false,
+            leadingWidth: 0,
+            backgroundColor: Colors.white70,
+            actions: const []),
+        body: Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: MediaQuery.of(context).size.height * .5,
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 40.0),
+                      child: Container(
+                        height: MediaQuery.of(context).size.height,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.elliptical(
+                                MediaQuery.of(context).size.width * 0.5, 100.0),
+                            bottomRight: Radius.elliptical(
+                                MediaQuery.of(context).size.width * 0.5, 100.0),
+                          ),
+                          image: const DecorationImage(
+                            fit: BoxFit.cover,
+                            image: AssetImage('assets/images/DogFamily.jpg'),
+                          ),
+                        ),
                       ),
                     ),
-                    SwitchScreen(),
-                  ]),
-            ),
-            Container(
-              margin: const EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0),
-              color: Colors.grey[200],
-              width: 500.0,
-              height: 48.0,
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    const Text(
-                      " Vibrate",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 20,
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: Stack(
+                        children: [],
                       ),
                     ),
-                    SwitchScreen(),
-                  ]),
-            ),
-            Container(
-              margin: const EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0),
-              color: Colors.grey[200],
-              width: 500.0,
-              height: 48.0,
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    const Text(
-                      " Sound",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 20,
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: const [
+                          CircleAvatar(
+                            radius: 70,
+                            backgroundImage:
+                            AssetImage('assets/images/Avatar.png'),
+                          ),
+                        ],
                       ),
                     ),
-                    SwitchScreen(),
-                  ]),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              " Location Services",
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 25,
+                  ],
+                ),
               ),
-            ),
-            Container(
-              margin: const EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 0),
-              color: Colors.grey[200],
-              width: 500.0,
-              height: 48.0,
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    const Text(
-                      " GPS",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 20,
+              Padding(
+                padding: const EdgeInsets.only(left: 10, top: 0),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Text(
+                    'Username',
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 25,
+                    ),
+                  ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: const [
+                  Text(
+                    'Dogs',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '|',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Hiking',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '|',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Food',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 10, right: 10, top: 0),
+                child: Text(
+                  'I have 2 dogs Roy and Leo and they are my life',
+                  style: TextStyle(fontSize: 15),
+                ),
+              ),
+              Container(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white, primary: Colors.teal[400],
+                        shape: const BeveledRectangleBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(3))),
+                        textStyle: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 20,
+                        ),
+                      ),
+                      onPressed: () async{
+                        FirebaseAuth.instance.signOut();
+                        // final uid = FirebaseAuth.instance.currentUser!.uid;
+                        // final userData = await fetchUserData(uid);
+                        // settingsNav_key.currentState?.pushNamed('/editProfile', arguments: userData);
+                      },
+                      child: const Text(
+                        'Edit Profile',
                       ),
                     ),
-                    SwitchScreen(),
-
-                  ]),
-            ),
-          ],
+                  ],
+                ),
+              ),
+              const SizedBox(
+                height: 1,
+              ),
+            ],
+          ),
         ),
       ),
     );
-  }
-}
-
-class SwitchScreen extends StatefulWidget {
-  @override
-  SwitchClass createState() => new SwitchClass();
-}
-
-class SwitchClass extends State {
-  bool isSwitched = false;
-
-//  var textValue = 'Switch is OFF';
-
-  void toggleSwitch(bool value) {
-    if (isSwitched == false) {
-      setState(() {
-        isSwitched = true;
-//        textValue = 'Switch Button is ON';
-      });
-//      print('Switch Button is ON');
-    } else {
-      setState(() {
-        isSwitched = false;
-//        textValue = 'Switch Button is OFF';
-      });
-//      print('Switch Button is OFF');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Transform.scale(
-          scale: 1.5,
-          child: Switch(
-            onChanged: toggleSwitch,
-            value: isSwitched,
-            activeColor: Colors.cyan,
-            activeTrackColor: Colors.cyan[100],
-            inactiveThumbColor: Colors.blueGrey[400],
-            inactiveTrackColor: Colors.blueGrey[200],
-          )),
-//          Text('$textValue', style: TextStyle(fontSize: 20),)
-    ]);
   }
 }

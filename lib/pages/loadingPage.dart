@@ -13,10 +13,14 @@ class _LoadingPageState extends State<LoadingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: SpinKitFadingCube(
-          size: 50,
-          color: Colors.black
-        )
+        child: Image.asset(
+          "assets/loadingDog.gif",
+          height: 125.0,
+          width: 125.0,
+        )//SpinKitFadingCube(
+        //   size: 50,
+        //   color: Colors.black
+        // )
       ),
     );
   }

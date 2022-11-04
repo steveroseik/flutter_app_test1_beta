@@ -23,6 +23,9 @@ class breedSearchPage extends StatefulWidget {
 
 class _breedSearchPageState extends State<breedSearchPage> {
   final breedKey = GlobalKey<DropdownSearchState<Breed>>();
+  List<Gender> genders = <Gender>[];
+  bool isMale = true;
+
   BorderRadiusGeometry radius = const BorderRadius.only(
     topLeft: Radius.circular(24.0),
     topRight: Radius.circular(24.0),
@@ -32,6 +35,8 @@ class _breedSearchPageState extends State<breedSearchPage> {
 
   @override
   void initState() {
+    genders.add(Gender('male', Icons.male, false));
+    genders.add(Gender('female', Icons.female, false));
     super.initState();
     // _pc.open();
   }
@@ -42,7 +47,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
       child: SlidingUpPanel(
         backdropEnabled: true,
         minHeight: 50,
-        maxHeight: 250,
+        maxHeight: 300,
         controller: _pc,
 
         panel: SizedBox(
@@ -53,7 +58,18 @@ class _breedSearchPageState extends State<breedSearchPage> {
             children: [
               SizedBox(height: 20),
               Container(
-                padding: EdgeInsets.fromLTRB(10, 20, 10, 0),
+                alignment: Alignment.bottomLeft,
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Breed',
+                  style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.fromLTRB(10, 10, 10, 0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -70,7 +86,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 13,
-                  ),
+                      fontWeight: FontWeight.w800),
                 ),
               ),
               RangeSlider(
@@ -93,27 +109,33 @@ class _breedSearchPageState extends State<breedSearchPage> {
                   children: [
                     Text(
                       'Gender ',
-                      style: TextStyle(fontFamily: 'Poppins', fontSize: 13),
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w800),
                     ),
-                    SizedBox(width: 20),
-                    DropdownButton<String>(
-                      value: _genderValue,
-                      iconSize: 24,
-                      elevation: 16,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _genderValue = newValue!;
-                        });
-                      },
-                      items: <String>['Male', 'Female']
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value,
-                              style: TextStyle(
-                                  fontFamily: 'Poppins', fontSize: 12)),
-                        );
-                      }).toList(),
+                    VerticalDivider(),
+                    Container(
+                      height: 50,
+                      child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          shrinkWrap: true,
+                          itemCount: genders.length,
+                          itemBuilder: (context, index) {
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  for (var gender in genders) {
+                                    gender.isSelected = false;
+                                  }
+                                  genders[index].isSelected = true;
+                                  if (genders[index].name == "Male"){
+                                    isMale = true;
+                                  }else{
+                                    isMale = false;
+                                  }
+                                });
+                              },
+                              child: miniCustomRadio(genders[index]),
+                            );
+                          }),
                     ),
                     Expanded(
                       child: Row(
@@ -125,13 +147,16 @@ class _breedSearchPageState extends State<breedSearchPage> {
                                 _pc.close();
                               } else {}
                             },
-                            style: ButtonStyle(
-                                backgroundColor:
-                                    MaterialStateProperty.all(Colors.teal)),
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              backgroundColor: Colors.teal,
+                            ),
                             child: Text(
-                              'Find matches',
+                              'Apply Filter',
                               style: TextStyle(
-                                  fontFamily: 'Poppins', fontSize: 13),
+                                  fontFamily: 'Poppins', fontSize: 10),
                             ),
                           ),
                         ],

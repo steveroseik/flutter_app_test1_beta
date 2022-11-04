@@ -569,3 +569,136 @@ class SinglePetProfile {
     "vaccines": List<dynamic>.from(vaccines.map((x) => x)),
   };
 }
+
+
+
+// To parse this JSON data, do
+//
+
+List<PetAnalysis> petAnalysisFromJson(String str) => List<PetAnalysis>.from(json.decode(str).map((x) => PetAnalysis.fromJson(x)));
+
+String petAnalysisToJson(List<PetAnalysis> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
+
+class PetAnalysis {
+  PetAnalysis({
+    required this.labels,
+    required this.moderationLabels,
+    required this.vendor,
+    required this.imageId,
+    required this.createdAt,
+  });
+
+  List<Label> labels;
+  List<dynamic> moderationLabels;
+  String vendor;
+  String imageId;
+  DateTime createdAt;
+
+  factory PetAnalysis.fromJson(Map<String, dynamic> json) => PetAnalysis(
+    labels: List<Label>.from(json["labels"].map((x) => Label.fromJson(x))),
+    moderationLabels: List<dynamic>.from(json["moderation_labels"].map((x) => x)),
+    vendor: json["vendor"],
+    imageId: json["image_id"],
+    createdAt: DateTime.parse(json["created_at"]),
+  );
+
+  Map<String, dynamic> toJson() => {
+    "labels": List<dynamic>.from(labels.map((x) => x.toJson())),
+    "moderation_labels": List<dynamic>.from(moderationLabels.map((x) => x)),
+    "vendor": vendor,
+    "image_id": imageId,
+    "created_at": createdAt.toIso8601String(),
+  };
+}
+
+class Label {
+  Label({
+    required this.name,
+    required this.confidence,
+    required this.instances,
+    required this.parents,
+  });
+
+  String name;
+  double confidence;
+  List<Instance> instances;
+  List<Parent> parents;
+
+  factory Label.fromJson(Map<String, dynamic> json) => Label(
+    name: json["Name"],
+    confidence: json["Confidence"].toDouble(),
+    instances: List<Instance>.from(json["Instances"].map((x) => Instance.fromJson(x))),
+    parents: List<Parent>.from(json["Parents"].map((x) => Parent.fromJson(x))),
+  );
+
+  Map<String, dynamic> toJson() => {
+    "Name": name,
+    "Confidence": confidence,
+    "Instances": List<dynamic>.from(instances.map((x) => x.toJson())),
+    "Parents": List<dynamic>.from(parents.map((x) => x.toJson())),
+  };
+}
+
+class Instance {
+  Instance({
+    required this.boundingBox,
+    required this.confidence,
+  });
+
+  BoundingBox boundingBox;
+  double confidence;
+
+  factory Instance.fromJson(Map<String, dynamic> json) => Instance(
+    boundingBox: BoundingBox.fromJson(json["BoundingBox"]),
+    confidence: json["Confidence"].toDouble(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    "BoundingBox": boundingBox.toJson(),
+    "Confidence": confidence,
+  };
+}
+
+class BoundingBox {
+  BoundingBox({
+    required this.width,
+    required this.height,
+    required this.left,
+    required this.top,
+  });
+
+  double width;
+  double height;
+  double left;
+  double top;
+
+  factory BoundingBox.fromJson(Map<String, dynamic> json) => BoundingBox(
+    width: json["Width"].toDouble(),
+    height: json["Height"].toDouble(),
+    left: json["Left"].toDouble(),
+    top: json["Top"].toDouble(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    "Width": width,
+    "Height": height,
+    "Left": left,
+    "Top": top,
+  };
+}
+
+class Parent {
+  Parent({
+    required this.name,
+  });
+
+  String name;
+
+  factory Parent.fromJson(Map<String, dynamic> json) => Parent(
+    name: json["Name"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "Name": name,
+  };
+}

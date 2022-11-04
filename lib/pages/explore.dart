@@ -1,9 +1,13 @@
+import 'package:custom_info_window/custom_info_window.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../configuration.dart';
 
 class Category {
   String name;
@@ -50,16 +54,17 @@ class MapsPage extends StatefulWidget {
 }
 
 class _MapsPageState extends State<MapsPage> {
+  // late BitmapDescriptor customIcon;
   TextEditingController _searchController = TextEditingController();
   final markers = List<Marker>.empty(growable: true);
-
+  CustomInfoWindowController _customInfoWindowController =
+  CustomInfoWindowController();
 
   List<Category> categories = [
     Category(name: 'Vets'),
     Category(name: 'Parks'),
     Category(name: 'Pet Stores'),
   ];
-
   Future coordinates(double long, double lat) async {
     Expanded(
       child: GoogleMap(
@@ -74,6 +79,12 @@ class _MapsPageState extends State<MapsPage> {
   }
 
   initMarkers() async{
+    // BitmapDescriptor.fromAssetImage(ImageConfiguration(size: Size(5, 5)),
+    //     'assets/icon_male.png')
+    //     .then((d) {
+    //   customIcon = d;
+    // });
+
     markers.clear();
     final data = await initializeMarkers();
     markers.addAll(data);
@@ -89,9 +100,34 @@ class _MapsPageState extends State<MapsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: init_appBar(rootNav_key), // CHANGE KEY!!!
-        body: Column(
+        body: Stack(
           children:
           [
+            GoogleMap(
+              onTap: (position) {
+                _customInfoWindowController.hideInfoWindow!();
+              },
+              onCameraMove: (position) {
+                _customInfoWindowController.onCameraMove!();
+              },
+              onMapCreated: (GoogleMapController controller) async {
+                _customInfoWindowController.googleMapController = controller;
+              },
+              initialCameraPosition: CameraPosition(
+                  target:LatLng(31.233334,30.033333),zoom: 5.4746
+
+                //    target:LatLng(80,30),zoom: 10.4746,
+
+              ),
+              markers: Set<Marker>.of(markers),
+
+            ),
+            CustomInfoWindow(
+              controller: _customInfoWindowController,
+              height: 75,
+              width: 150,
+              offset: 50,
+            ),
             TextFormField (
               controller: _searchController,
               onChanged: (value){
@@ -101,14 +137,6 @@ class _MapsPageState extends State<MapsPage> {
                 border: OutlineInputBorder(),
                 labelText: 'Search',
               ),),
-            Expanded(
-              child: GoogleMap(
-                initialCameraPosition: CameraPosition(
-                    target:LatLng(31.233334,30.033333),zoom: 5.4746
-                ),
-                markers: Set<Marker>.of(markers),
-              ),
-            ),
           ],
         )
     );
@@ -119,6 +147,82 @@ class _MapsPageState extends State<MapsPage> {
     setState(() {
 
     });
+  }
+
+  Future initializeMarkers() async {
+    int ret = -100;
+    final  markers = List<Marker>.empty(growable: true);
+    try {
+      final data = await SupabaseCredentials.supabaseClient
+          .from('locations')
+          .select('longitude, latitude, id, title') as List<dynamic>;
+
+      for (var entry in data){
+        final map = Map.from(entry);
+        var x = map['longitude'];
+        var y =map['latitude'];
+        var id = map['id'];
+        var title = map['title'];
+        markers.add(
+            Marker(
+                markerId: MarkerId(id.toString()),
+                position: LatLng(y, x),
+                onTap: () {
+              _customInfoWindowController.addInfoWindow!(
+                Column(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.account_circle,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                              SizedBox(
+                                width: 8.0,
+                              ),
+                              Text(
+                                "I am here",
+                                style:
+                                Theme
+                                    .of(context)
+                                    .textTheme
+                                    .headline6!
+                                    .copyWith(
+                                  color: Colors.white,
+                                ),
+                              )
+                            ],
+                          ),
+                        ),
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+                    ),
+
+                  ],
+                ), LatLng(y, x)
+              );
+            }));
+      }
+      return markers;
+    }
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
+    catch (e){
+      print(e);
+    }
+    return List<Marker>.empty();
   }
 
 }
