@@ -9,26 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../configuration.dart';
 
-class Category {
-  String name;
-  Category({required this.name});
-}
 
-
-class CategoryRenderingService {
-  List<Category> categories;
-  int selectedIndex = 0;
-  CategoryRenderingService({required this.categories});
-
-  List<Widget> render() {
-    return categories.map((category) {
-      bool selected = categories.indexOf(category) == selectedIndex;
-
-      TextStyle style = selected ? TextStyle(fontWeight: FontWeight.bold) : TextStyle(fontWeight: FontWeight.normal);
-      return Text(category.name, style: style);
-    }).toList();
-  }
-}
 
 class ListButtons extends StatefulWidget {
   const ListButtons({Key? key}) : super(key: key);
