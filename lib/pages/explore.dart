@@ -60,23 +60,6 @@ class _MapsPageState extends State<MapsPage> {
   CustomInfoWindowController _customInfoWindowController =
   CustomInfoWindowController();
 
-  List<Category> categories = [
-    Category(name: 'Vets'),
-    Category(name: 'Parks'),
-    Category(name: 'Pet Stores'),
-  ];
-  Future coordinates(double long, double lat) async {
-    Expanded(
-      child: GoogleMap(
-        initialCameraPosition: CameraPosition(
-          //      target:LatLng(31.233334,30.033333),zoom: 5.4746,
-
-          target:LatLng(long,lat),zoom: 10.4746,
-        ),
-      ),
-    );
-
-  }
 
   initMarkers() async{
     // BitmapDescriptor.fromAssetImage(ImageConfiguration(size: Size(5, 5)),
@@ -109,22 +92,37 @@ class _MapsPageState extends State<MapsPage> {
       children: <Widget>[
         new ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey,
+            backgroundColor: Colors.white,
           ),
-          child: new Text('Vets'),
+          child: new Text('Vets',style: TextStyle(
+            color: Colors.black),
+          ),
           onPressed: ()  =>  shortcutMarkers('Veterinarian'),
         ),
         new ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey,
-          ),child: new Text('Parks'),
+            backgroundColor: Colors.white,
+          ),child: new Text('Parks',style: TextStyle(
+    color: Colors.black),
+        ),
           onPressed: ()  =>  shortcutMarkers('Dog park'),
         ),
         new ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey,
-          ),child: new Text('Pet Stores'),
+            backgroundColor: Colors.white,
+          ),child: new Text('Pet Stores',style: TextStyle(
+            color: Colors.black),
+        ),
           onPressed: ()  =>  shortcutMarkers('Pet store'),
+        ),
+        new ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+          ),
+          child: new Text('Meets',style: TextStyle(
+              color: Colors.black),
+          ),
+          onPressed: (){},
         ),
       ],
     );
@@ -174,8 +172,35 @@ class _MapsPageState extends State<MapsPage> {
               ),),
 
             Padding(
-              padding: const EdgeInsets.all(50.0),
+              padding: const EdgeInsets.fromLTRB(30.0,50.0,30.0,50.0),
               child: shortcuts(),
+            ),
+
+            Container(
+
+              alignment:Alignment.bottomCenter,
+child:SizedBox(
+    height: 50,
+    width: 150,
+
+              child: TextButton(
+                onPressed:(){},
+                  child: Text("+",style: TextStyle(fontSize: 25, color:Colors.white)),
+                style:ButtonStyle(
+                    foregroundColor: MaterialStateProperty.all<Color>(Colors.red),
+                    backgroundColor: MaterialStateProperty.all<Color>(Colors.red),
+
+                    shape:MaterialStateProperty.all<CircleBorder>(
+
+                      CircleBorder(
+                      side: BorderSide(color:Colors.red)
+                    )
+                  ),
+
+                )
+
+              ),
+            ),
             ),
           ],
 
