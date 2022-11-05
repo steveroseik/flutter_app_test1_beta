@@ -227,154 +227,32 @@ child:SizedBox(
                 position: LatLng(y, x),
                 onTap: () {
                   _customInfoWindowController.addInfoWindow!(
-                      Column(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Padding(
+                      Container(
+                        decoration:BoxDecoration(
+                          color:Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width:510,
+                                height:50,
+                                decoration: BoxDecoration(
+
+                                  image:DecorationImage(
+                                      image:NetworkImage(thumbnail),
+
+                                      fit:BoxFit.fitWidth,
+                                      filterQuality: FilterQuality.high
+                                  ),  ),),
+                              Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
-                                      Icons.account_circle,
-                                      color: Colors.blue,
-                                      size: 30,
-                                    ),
-                                    SizedBox(
-                                      width: 8.0,
-                                    ),
-                                    Text(
-                                      title+'\n'+type+'\n'+address
-                                      +'\n'+phone+'\n'+website+'\nRating: $rating',
-                                      style:
-                                      Theme
-                                          .of(context)
-                                          .textTheme
-                                          .bodyText1!
-                                          .copyWith(
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    Wrap(
-  spacing:0,
-              children:[
-                RatingBar.builder(
 
-                                      minRating:1,
-                                      itemSize:20,
-                                      itemBuilder:(context, _)=>Icon(Icons.star,color:Colors.amber),
-                                      updateOnDrag:true,
-                                      onRatingUpdate:(rating)=> setState((){
-                                        this.rating = rating;
-
-                                      }),
-                                    ),
-                                    SizedBox(
-                                      width: 200.0,
-                                      height: 20,
-                                      child: TextField(
-                                        controller: reviewController,
-                                        onChanged: (value){
-                                          setState((){
-                                            review = value;
-                                          });
-                                        },
-                                      decoration: InputDecoration(
-                                        border: OutlineInputBorder(),
-                                        labelText: 'Review',
-                                      ),
-                                      ),
-
-                                    ),
-                                      Container(
-                                          child:SizedBox(
-                                              height: 25,
-                                              width: 50,
-                                              child:ElevatedButton(onPressed: (){
-                                                insert(review);
-
-                                              },
-                                         child: Icon(
-                                           Icons.send_rounded
-                                         )
-                                      )
-                                      )
-                                      )
-                                      ]
-                                      )
-
-                                  ],
-                                ),
-                              ),
-                              width: double.infinity,
-                              height: double.infinity,
-                            ),
-                          ),
-
-                        ],
-                      ), LatLng(y, x)
-                  );
-                }
-                ));
-      }
-      return markers;
-    }
-    on PostgrestException catch (error) {
-      print(error.message);
-    }
-    catch (e){
-      print(e);
-    }
-    return List<Marker>.empty();
-  }
-  Future Display(String type) async {
-    int ret = -100;
-    final  markers = List<Marker>.empty(growable: true);
-    try {
-      final data = await SupabaseCredentials.supabaseClient
-          .from('locations')
-          .select('*').eq('type', type) as List<dynamic>;
-
-      for (var entry in data){
-        final map = Map.from(entry);
-        var x = map['longitude'];
-        var y =map['latitude'];
-        var id = map['id'];
-        var title = map['title'];
-        var address = map['address'];
-        var website = map['website'];
-        var phone = map['phone'];
-        var thumbnail = map['thumbnail'];
-        var type = map['type'];
-        markers.add(
-            Marker(
-                markerId: MarkerId(id.toString()),
-                position: LatLng(y, x),
-                onTap: () {
-                  _customInfoWindowController.addInfoWindow!(
-                      Column(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.account_circle,
-                                      color: Colors.blue,
-                                      size: 30,
-                                    ),
                                     SizedBox(
                                       width: 8.0,
                                     ),
@@ -441,12 +319,147 @@ child:SizedBox(
                                   ],
                                 ),
                               ),
-                              width: double.infinity,
-                              height: double.infinity,
-                            ),
-                          ),
+                            ]),
 
-                        ],
+
+
+                      ), LatLng(y, x)
+                  );
+                }
+                ));
+      }
+      return markers;
+    }
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
+    catch (e){
+      print(e);
+    }
+    return List<Marker>.empty();
+  }
+  Future Display(String type) async {
+    int ret = -100;
+    final  markers = List<Marker>.empty(growable: true);
+    try {
+      final data = await SupabaseCredentials.supabaseClient
+          .from('locations')
+          .select('*').eq('type', type) as List<dynamic>;
+
+      for (var entry in data){
+        final map = Map.from(entry);
+        var x = map['longitude'];
+        var y =map['latitude'];
+        var id = map['id'];
+        var title = map['title'];
+        var address = map['address'];
+        var website = map['website'];
+        var phone = map['phone'];
+        var thumbnail = map['thumbnail'];
+        var type = map['type'];
+        markers.add(
+            Marker(
+                markerId: MarkerId(id.toString()),
+                position: LatLng(y, x),
+                onTap: () {
+
+                  _customInfoWindowController.addInfoWindow!(
+                      Container(
+                        decoration:BoxDecoration(
+                          color:Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                         Container(
+                           width:510,
+                              height:50,
+                              decoration: BoxDecoration(
+
+                                image:DecorationImage(
+                                    image:NetworkImage(thumbnail),
+
+                                    fit:BoxFit.fitWidth,
+                                    filterQuality: FilterQuality.high
+                      ),  ),),
+                               Padding(
+                                 padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+
+                                    SizedBox(
+                                      width: 8.0,
+                                    ),
+                                    Text(
+                                      title+'\n'+type+'\n'+address
+                                          +'\n'+phone+'\n'+website+'\nRating: $rating',
+                                      style:
+                                      Theme
+                                          .of(context)
+                                          .textTheme
+                                          .bodyText1!
+                                          .copyWith(
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    Wrap(
+                                        spacing:0,
+                                        children:[
+                                          RatingBar.builder(
+
+                                            minRating:1,
+                                            itemSize:20,
+                                            itemBuilder:(context, _)=>Icon(Icons.star,color:Colors.amber),
+                                            updateOnDrag:true,
+                                            onRatingUpdate:(rating)=> setState((){
+                                              this.rating = rating;
+
+                                            }),
+                                          ),
+                                          SizedBox(
+                                            width: 200.0,
+                                            height: 20,
+                                            child: TextField(
+                                              controller: reviewController,
+                                              onChanged: (value){
+                                                setState((){
+                                                  review = value;
+                                                });
+                                              },
+                                              decoration: InputDecoration(
+                                                border: OutlineInputBorder(),
+                                                labelText: 'Review',
+                                              ),
+                                            ),
+
+                                          ),
+                                          Container(
+                                              child:SizedBox(
+                                                  height: 25,
+                                                  width: 50,
+                                                  child:ElevatedButton(onPressed: (){
+                                                    insert(review);
+
+                                                  },
+                                                      child: Icon(
+                                                          Icons.send_rounded
+                                                      )
+                                                  )
+                                              )
+                                          )
+                                        ]
+                                    )
+
+                                  ],
+                                ),
+                              ),
+                             ]),
+
+
+
                       ), LatLng(y, x)
                   );
                 }
