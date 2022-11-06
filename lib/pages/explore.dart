@@ -158,15 +158,53 @@ class _MapsPageState extends State<MapsPage> {
 
             Padding(
               padding: const EdgeInsets.fromLTRB(30.0,50.0,30.0,50.0),
-              child: shortcuts(),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: <Widget>[
+                  new ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                    ),
+                    child: new Text('Vets',style: TextStyle(
+                        color: Colors.black),
+                    ),
+                    onPressed: ()  =>  shortcutMarkers('Veterinarian'),
+                  ),
+                  new ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                    ),child: new Text('Parks',style: TextStyle(
+                      color: Colors.black),
+                  ),
+                    onPressed: ()  =>  shortcutMarkers('Dog park'),
+                  ),
+                  new ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                    ),child: new Text('Pet Stores',style: TextStyle(
+                      color: Colors.black),
+                  ),
+                    onPressed: ()  =>  shortcutMarkers('Pet store'),
+                  ),
+                  new ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: new Text('Meets',style: TextStyle(
+                        color: Colors.black),
+                    ),
+                    onPressed: (){},
+                  ),
+                ],
+              ),
             ),
 
             Container(
 
               alignment:Alignment.bottomCenter,
-child:SizedBox(
-    height: 45,
-    width: 150,
+                child:SizedBox(
+                  height: 45,
+                  width: 150,
 
               child: TextButton(
                 onPressed:(){},
@@ -199,6 +237,7 @@ child:SizedBox(
     _selectedIndex = index;
     setState(() {
 
+      explore_key.currentState?.pushNamed('/newr');
     });
   }
 

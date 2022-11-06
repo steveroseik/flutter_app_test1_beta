@@ -11,6 +11,7 @@ import 'package:flutter_app_test1/pages/breed_sp.dart';
 import 'package:flutter_app_test1/pages/breed_registration.dart';
 import 'package:flutter_app_test1/pages/editPetPage.dart';
 import 'package:flutter_app_test1/pages/emailVerify.dart';
+import 'package:flutter_app_test1/pages/explore.dart';
 import 'package:flutter_app_test1/pages/forgotPassword.dart';
 import 'package:flutter_app_test1/pages/homeBreedPage.dart';
 import 'package:flutter_app_test1/pages/petMatchPage.dart';
@@ -34,6 +35,7 @@ GlobalKey<NavigatorState> AppNav_key = GlobalKey();
 GlobalKey<NavigatorState> UserNav_key = GlobalKey();
 GlobalKey<NavigatorState> phoneNav_key = GlobalKey();
 GlobalKey<NavigatorState> settingsNav_key = GlobalKey();
+GlobalKey<NavigatorState> explore_key = GlobalKey();
 
 class RouteGenerator {
   // Main Routes Generator
@@ -142,6 +144,20 @@ class RouteGenerator {
         return MaterialPageRoute(
           builder: (_) => breedSearchPage(), // Second Page
         );
+
+      default:
+      // if an unmatched route is called, return error route
+        return _errorRoute();
+    }
+  }
+
+  // This is the User routesGenerator
+  static Route<dynamic> generateRoute_explore(RouteSettings settings) {
+    final args = settings.arguments;
+
+    switch (settings.name) {
+      case '/':
+        return MaterialPageRoute(builder: (_) => MapsPage());
 
       default:
       // if an unmatched route is called, return error route

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/breedAdopt_main.dart';
+import 'package:flutter_app_test1/explore_main.dart';
 import 'package:flutter_app_test1/home_main.dart';
 import 'package:flutter_app_test1/pages/explore.dart';
 import 'package:flutter_app_test1/pages/reminder.dart';
@@ -34,7 +35,7 @@ class _mainAppState extends State<mainApp> {
     home_root(),
     ReminderPage(),
     BA_root(),
-    MapsPage(),
+    explore_root(),
     SettingsMain()
   ];
 
