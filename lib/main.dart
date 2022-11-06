@@ -24,13 +24,8 @@ void main() async {
         builder: (context, snapshot){
           if (snapshot.hasData){
             if (FirebaseAuth.instance.currentUser!.emailVerified){
-              if (FirebaseAuth.instance.currentUser!.phoneNumber != null){
-                return VerifyPhoneWidget();
-              }else{
-                print(FirebaseAuth.instance.currentUser!.phoneNumber);
-                fetchUserPets();
-                return Signup();
-              }
+              fetchUserPets();
+              return Signup();
             }else{
               return verifyEmail();
             }
