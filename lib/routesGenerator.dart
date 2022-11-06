@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:flutter_app_test1/pages/breed.dart';
 import 'package:flutter_app_test1/pages/breed_sp.dart';
 import 'package:flutter_app_test1/pages/breed_registration.dart';
+import 'package:flutter_app_test1/pages/editPass.dart';
 import 'package:flutter_app_test1/pages/editPetPage.dart';
 import 'package:flutter_app_test1/pages/emailVerify.dart';
 import 'package:flutter_app_test1/pages/explore.dart';
@@ -186,8 +187,13 @@ class RouteGenerator {
       case '/':
         return MaterialPageRoute(builder: (_) => SettingsPage());
       case '/editProfile':
-        return MaterialPageRoute(builder: (_) => EditProfile());
-
+        if (args is Map)
+          return MaterialPageRoute(builder: (_) => EditProfile(userData: args));
+        return _errorRoute();
+      case '/editPass':
+        if (args is Map)
+          return MaterialPageRoute(builder: (_) => editPass(userData: args));
+        return _errorRoute();
       default:
       // if an unmatched route is called, return error route
         return _errorRoute();

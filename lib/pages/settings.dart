@@ -13,6 +13,20 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  Map userData = Map<String, dynamic>();
+
+  initUser() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    userData = await fetchUserData(uid);
+    setState(() {});
+  }
+
+  @override
+  void initState() {
+    initUser();
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -37,11 +51,11 @@ class _SettingsPageState extends State<SettingsPage> {
             borderRadius: BorderRadius.circular(15.0),
           ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: MediaQuery.of(context).size.height * .5,
+                height: MediaQuery.of(context).size.height * .3,
                 child: Stack(
                   children: [
                     Padding(
@@ -55,10 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             bottomRight: Radius.elliptical(
                                 MediaQuery.of(context).size.width * 0.5, 100.0),
                           ),
-                          image: const DecorationImage(
-                            fit: BoxFit.cover,
-                            image: AssetImage('assets/images/DogFamily.jpg'),
-                          ),
+                          color: Colors.blue[200],
                         ),
                       ),
                     ),
@@ -85,11 +96,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(left: 10, top: 0),
+                padding: const EdgeInsets.only(left: 0, top: 15),
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: Text(
-                    'Username',
+                    userData == ''
+                        ? ''
+                        : '${userData['firstName']} ${userData['lastName']}',
                     style: TextStyle(
                       color: Colors.grey[700],
                       fontWeight: FontWeight.bold,
@@ -98,78 +111,97 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: const [
-                  Text(
-                    'Dogs',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '|',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'Hiking',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '|',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'Food',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 10, right: 10, top: 0),
-                child: Text(
-                  'I have 2 dogs Roy and Leo and they are my life',
-                  style: TextStyle(fontSize: 15),
-                ),
-              ),
               Container(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white, primary: Colors.teal[400],
-                        shape: const BeveledRectangleBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(3))),
-                        textStyle: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 20,
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[400],
+                          shape: const BeveledRectangleBorder(
+                              borderRadius:
+                              BorderRadius.all(Radius.circular(3))),
                         ),
-                      ),
-                      onPressed: () async{
-                        FirebaseAuth.instance.signOut();
-                        // final uid = FirebaseAuth.instance.currentUser!.uid;
-                        // final userData = await fetchUserData(uid);
-                        // settingsNav_key.currentState?.pushNamed('/editProfile', arguments: userData);
-                      },
-                      child: const Text(
-                        'Edit Profile',
+                        onPressed: () async {
+                          settingsNav_key.currentState
+                              ?.pushNamed('/editProfile', arguments: userData);
+                        },
+                        child: const Text(
+                          'Edit Profile',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(
-                height: 1,
+              Spacer(),
+              Container(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Align(
+                        alignment: Alignment.bottomRight,
+                        child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[400],
+                              shape: const BeveledRectangleBorder(
+                                  borderRadius:
+                                  BorderRadius.all(Radius.circular(3))),
+                            ),
+                            onPressed: () async {
+                              settingsNav_key.currentState?.pushNamed(
+                                  '/editPass',
+                                  arguments: userData);
+                            },
+                            child: const Text('Change Email',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                )))),
+                    Align(
+                        alignment: Alignment.bottomRight,
+                        child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[400],
+                              shape: const BeveledRectangleBorder(
+                                  borderRadius:
+                                  BorderRadius.all(Radius.circular(3))),
+                            ),
+                            onPressed: ()  {
+
+                            },
+                            child: const Text('Change Password',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                ))))
+                  ],
+                ),
               ),
+              const SizedBox(
+                height: 10,
+              ),
+              Align(
+                  alignment: Alignment.center,
+                  child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[400],
+                        shape: const BeveledRectangleBorder(
+                            borderRadius:
+                            BorderRadius.all(Radius.circular(3))),
+                      ),
+                      onPressed: ()  {
+
+                        FirebaseAuth.instance.signOut();
+                      },
+                      child: const Text('Logout',
+                          style: TextStyle(
+                            fontSize: 15,
+                          ))))
             ],
           ),
         ),

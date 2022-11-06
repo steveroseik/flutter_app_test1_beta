@@ -454,9 +454,8 @@ Future updateMateRequest(String reqID, int val) async{
 
 Future fetchUserData(String uid) async{
   try{
-    final data = await SupabaseCredentials.supabaseClient.from('users').select('*').eq('id', uid).single();
-    print(jsonEncode(data));
-
+    final data = await SupabaseCredentials.supabaseClient.from('users').select('*').eq('id', uid).single() as Map;
+    return data;
   }catch (e){
     print(e);
   }
