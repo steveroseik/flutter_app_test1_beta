@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../APILibraries.dart';
 import '../routesGenerator.dart';
@@ -14,11 +18,26 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   Map userData = Map<String, dynamic>();
+  List<Marker> markers = <Marker>[];
+  Completer<GoogleMapController> _controller = Completer();
 
   initUser() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     userData = await fetchUserData(uid);
+    final location = await getUserCurrentLocation();
+    final GoogleMapController controller = await _controller.future;
+    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
+        zoom: 15,target: LatLng(location.latitude, location.longitude))));
     setState(() {});
+  }
+
+  Future<Position> getUserCurrentLocation() async {
+    await Geolocator.requestPermission().then((value){
+    }).onError((error, stackTrace) async {
+      await Geolocator.requestPermission();
+      print("ERROR"+error.toString());
+    });
+    return await Geolocator.getCurrentPosition();
   }
 
   @override
@@ -140,7 +159,30 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                 ),
               ),
-              Spacer(),
+              Center(
+                child: Container(
+                  height: 150,
+                  width: MediaQuery.of(context).size.width - 100,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.all(
+                      Radius.circular(30),
+                    ),
+                    child: GoogleMap(
+                      myLocationButtonEnabled: false,
+                      myLocationEnabled: true,
+                      markers: Set<Marker>.of(this.markers),
+                      initialCameraPosition: CameraPosition(
+                          target:LatLng(31.233334,30.033333),zoom: 13.4746),
+                      onMapCreated: (GoogleMapController controller){
+                        _controller.complete(controller);
+                      },
+                    ),
+                  ),
+                ),
+              ),
               Container(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,

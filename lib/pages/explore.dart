@@ -237,7 +237,7 @@ class _MapsPageState extends State<MapsPage> {
     _selectedIndex = index;
     setState(() {
 
-      explore_key.currentState?.pushNamed('/newr');
+      // explore_key.currentState?.pushNamed('/newr');
     });
   }
 
