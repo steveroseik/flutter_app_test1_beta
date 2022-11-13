@@ -18,14 +18,73 @@ class ListButtons extends StatefulWidget {
   @override
   State<ListButtons> createState() => _ListButtonsState();
 }
-
+class MapsPage extends StatelessWidget {//Edited
+  const MapsPage({Key? key}) : super(key: key);
+ 
+  // This is the root widget
+  // of your application
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Fetch Map',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: GFG(),
+    );
+  }
+}
+class GFG extends StatefulWidget {//Edited
+  const GFG({Key? key}) : super(key: key);
+ 
+  @override
+  State<GFG> createState() => _GFGState();
+}
+ 
+class _GFGState extends State<GFG> {//Edit
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold();
+  }
+}
 class _ListButtonsState extends State<ListButtons> {
   @override
   Widget build(BuildContext context) {
     return Container();
   }
 }
-
+class GFG extends StatefulWidget {//Edit
+  const GFG({Key? key}) : super(key: key);
+ 
+  @override
+  State<GFG> createState() => _GFGState();
+}
+ 
+class _GFGState extends State<GFG> {//Edited
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          "GeeksForGeeks",
+        ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              // method to show the search bar
+              showSearch(
+                context: context,
+                // delegate to customize the search bar
+                delegate: CustomSearchDelegate()
+              );
+            },
+            icon: const Icon(Icons.search),
+          )
+        ],
+      ),
+    );
+  }
+}//Last edit
 
 int _selectedIndex = 0;
 class MapsPage extends StatefulWidget {
