@@ -15,6 +15,7 @@ import 'package:path/path.dart';
 import 'package:flutter/src/widgets/image.dart' as IMAGE;
 import 'package:loading_indicator/loading_indicator.dart';
 
+
 int _selectedIndex = 0;
 var p_stat = ValueNotifier<int>(-2);
  final img_src =  ValueNotifier<int>(0);
@@ -85,25 +86,6 @@ class _addBreedPageState extends State<addBreedPage> {
       }
     }
 
-    Future<int> pickImage(BuildContext context, ImageSource src) async {
-      try{
-        final image = await ImagePicker().pickImage(source: src);
-        if (image == null) {
-          showSnackbar(context, 'no image');
-          // img_src.value = 0;
-        }
-        imageFile = File(image!.path);
-        img_src.value = 1;
-        return 1;
-
-      } on PlatformException catch (e){
-        showSnackbar(context, e.toString());
-        // img_src.value = 0;
-        return 0;
-
-      }
-
-    }
 
     _showToast(String _t) {
       Widget toast = Container(

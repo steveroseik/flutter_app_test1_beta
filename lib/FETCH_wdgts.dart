@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:age_calculator/age_calculator.dart';
 import 'package:dropdown_search/dropdown_search.dart';
+import 'package:edge_detection/edge_detection.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,8 @@ import 'package:flutter_multi_select_items/flutter_multi_select_items.dart';
 import 'package:loading_indicator/loading_indicator.dart';
 import 'package:flutter/src/widgets/image.dart' as img;
 import 'package:multi_select_flutter/multi_select_flutter.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
@@ -1415,4 +1418,179 @@ ShimmerPetRequestBanner(BuildContext context){
       );
     },
   );
+}
+
+
+
+IdResponse idResponseFromJson(String str) => IdResponse.fromJson(json.decode(str));
+
+String idResponseToJson(IdResponse data) => json.encode(data.toJson());
+
+class IdResponse {
+  IdResponse({
+    required this.parsedResults,
+    required this.ocrExitCode,
+    required this.isErroredOnProcessing,
+    required this.processingTimeInMilliseconds,
+    required this.searchablePdfurl,
+  });
+
+  List<ParsedResult> parsedResults;
+  int ocrExitCode;
+  bool isErroredOnProcessing;
+  String processingTimeInMilliseconds;
+  String searchablePdfurl;
+
+  factory IdResponse.fromJson(Map<String, dynamic> json) => IdResponse(
+    parsedResults: List<ParsedResult>.from(json["ParsedResults"].map((x) => ParsedResult.fromJson(x))),
+    ocrExitCode: json["OCRExitCode"],
+    isErroredOnProcessing: json["IsErroredOnProcessing"],
+    processingTimeInMilliseconds: json["ProcessingTimeInMilliseconds"],
+    searchablePdfurl: json["SearchablePDFURL"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "ParsedResults": List<dynamic>.from(parsedResults.map((x) => x.toJson())),
+    "OCRExitCode": ocrExitCode,
+    "IsErroredOnProcessing": isErroredOnProcessing,
+    "ProcessingTimeInMilliseconds": processingTimeInMilliseconds,
+    "SearchablePDFURL": searchablePdfurl,
+  };
+}
+
+class ParsedResult {
+  ParsedResult({
+    required this.textOverlay,
+    required this.textOrientation,
+    required this.fileParseExitCode,
+    required this.parsedText,
+    required this.errorMessage,
+    required this.errorDetails,
+  });
+
+  TextOverlay textOverlay;
+  String textOrientation;
+  int fileParseExitCode;
+  String parsedText;
+  String errorMessage;
+  String errorDetails;
+
+  factory ParsedResult.fromJson(Map<String, dynamic> json) => ParsedResult(
+    textOverlay: TextOverlay.fromJson(json["TextOverlay"]),
+    textOrientation: json["TextOrientation"],
+    fileParseExitCode: json["FileParseExitCode"],
+    parsedText: json["ParsedText"],
+    errorMessage: json["ErrorMessage"],
+    errorDetails: json["ErrorDetails"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "TextOverlay": textOverlay.toJson(),
+    "TextOrientation": textOrientation,
+    "FileParseExitCode": fileParseExitCode,
+    "ParsedText": parsedText,
+    "ErrorMessage": errorMessage,
+    "ErrorDetails": errorDetails,
+  };
+}
+
+class TextOverlay {
+  TextOverlay({
+    required this.lines,
+    required this.hasOverlay,
+    required this.message,
+  });
+
+  List<Line> lines;
+  bool hasOverlay;
+  String message;
+
+  factory TextOverlay.fromJson(Map<String, dynamic> json) => TextOverlay(
+    lines: List<Line>.from(json["Lines"].map((x) => Line.fromJson(x))),
+    hasOverlay: json["HasOverlay"],
+    message: json["Message"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "Lines": List<dynamic>.from(lines.map((x) => x.toJson())),
+    "HasOverlay": hasOverlay,
+    "Message": message,
+  };
+}
+
+class Line {
+  Line({
+    required this.lineText,
+    required this.words,
+    required this.maxHeight,
+    required this.minTop,
+  });
+
+  String lineText;
+  List<Word> words;
+  int maxHeight;
+  int minTop;
+
+  factory Line.fromJson(Map<String, dynamic> json) => Line(
+    lineText: json["LineText"].toString(),
+    words: List<Word>.from(json["Words"].map((x) => Word.fromJson(x))),
+    maxHeight: json["MaxHeight"],
+    minTop: json["MinTop"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "LineText": lineText,
+    "Words": List<dynamic>.from(words.map((x) => x.toJson())),
+    "MaxHeight": maxHeight,
+    "MinTop": minTop,
+  };
+}
+
+class Word {
+  Word({
+    required this.wordText,
+    required this.left,
+    required this.top,
+    required this.height,
+    required this.width,
+  });
+
+  String wordText;
+  int left;
+  int top;
+  int height;
+  int width;
+
+  factory Word.fromJson(Map<String, dynamic> json) => Word(
+    wordText: json["WordText"],
+    left: json["Left"],
+    top: json["Top"],
+    height: json["Height"],
+    width: json["Width"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "WordText": wordText,
+    "Left": left,
+    "Top": top,
+    "Height": height,
+    "Width": width,
+  };
+}
+
+
+Future scanID() async {
+  String? imagePath;
+
+  try {
+    //Make sure to await the call to detectEdge.
+    imagePath = await EdgeDetection.detectEdge;
+    return imagePath!;
+  } catch (e) {
+    print(e);
+    imagePath = '';
+    return imagePath;
+  }
+
+
 }

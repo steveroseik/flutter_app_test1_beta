@@ -4,6 +4,7 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:http/http.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 
 
 enum NavPages{
@@ -103,3 +104,10 @@ List<Article> health_articles =  [];
 List<Article> food_articles =  [];
 List<Article> training_articles =  [];
 List<Article> breeds_articles =  [];
+
+
+int getFileSize(File file){
+  int sizeInBytes = file.lengthSync();
+  int sizeInKb = sizeInBytes ~/ (1024);
+  return sizeInKb;
+}

@@ -3,10 +3,12 @@ import 'dart:io' as io;
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_app_test1/JsonObj.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -458,5 +460,47 @@ Future fetchUserData(String uid) async{
     return data;
   }catch (e){
     print(e);
+  }
+}
+
+
+Future pickImage(BuildContext context, ImageSource src) async {
+  var imageFile;
+  try {
+    final image = await ImagePicker().pickImage(source: src);
+    if (image == null) {
+      showSnackbar(context, 'no image');
+      // img_src.value = 0;
+    }
+    imageFile = io.File(image!.path);
+    return imageFile;
+  } on PlatformException catch (e) {
+    showSnackbar(context, e.toString());
+    // img_src.value = 0;
+    return '';
+  }
+}
+
+Future compareFacial(io.File rawImage1, io.File rawImage2) async {
+
+  Uint8List imagebytes = await rawImage1.readAsBytes(); //convert to bytes
+  String data1 = base64.encode(imagebytes);
+  imagebytes = await rawImage2.readAsBytes();
+  String data2 = base64.encode(imagebytes);
+
+  try {
+    String body = json.encode({
+      "encoded_image1": data1,
+      "encoded_image2": data2
+    });
+
+    final uri = Uri.parse('https://faceapi.mxface.ai/api/v2/face/verify');
+    final headers = {
+      'SubscriptionKey': 'AVj9iM1dHULqhfxIXE-KGLhU8YBxb1121',
+      io.HttpHeaders.contentTypeHeader: 'application/json'};
+    final response = await http.post(uri, headers: headers, body: body);
+    print(response.body);
+  } catch (e) {
+   print(e);
   }
 }

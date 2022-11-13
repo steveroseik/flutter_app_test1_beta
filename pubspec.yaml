@@ -64,6 +64,9 @@ dependencies:
   custom_info_window: ^1.0.1
   flutter_rating_bar: ^4.0.1
   geolocator: ^9.0.2
+  document_scanner_flutter: ^0.2.7
+  flutter_native_image: ^0.0.6+1
+  edge_detection: ^1.0.9
 
 
 dev_dependencies:
@@ -103,7 +106,8 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
       - assets/
-      -  assets/images/
+      - assets/images/
+      - assets/tessdata/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.
