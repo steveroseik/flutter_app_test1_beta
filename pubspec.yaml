@@ -66,7 +66,7 @@ dependencies:
   geolocator: ^9.0.2
   document_scanner_flutter: ^0.2.7
   flutter_native_image: ^0.0.6+1
-  edge_detection: ^1.0.9
+  edge_detection: ^1.0.8
 
 
 dev_dependencies:
