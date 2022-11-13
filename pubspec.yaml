@@ -64,9 +64,8 @@ dependencies:
   custom_info_window: ^1.0.1
   flutter_rating_bar: ^4.0.1
   geolocator: ^9.0.2
-  document_scanner_flutter: ^0.2.7
   flutter_native_image: ^0.0.6+1
-  edge_detection: ^1.0.8
+  edge_detection: ^1.0.9
 
 
 dev_dependencies:

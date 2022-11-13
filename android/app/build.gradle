@@ -60,6 +60,10 @@ android {
             signingConfig signingConfigs.debug
         }
     }
+
+    packagingOptions {
+        exclude 'lib/armeabi-v7a/libopencv_java3.so'
+    }
 }
 
 flutter {

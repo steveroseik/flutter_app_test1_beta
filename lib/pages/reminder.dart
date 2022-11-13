@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:document_scanner_flutter/configs/configs.dart';
-import 'package:document_scanner_flutter/document_scanner_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
