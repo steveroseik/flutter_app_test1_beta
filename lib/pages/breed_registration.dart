@@ -77,7 +77,7 @@ class _petRegPageState extends State<petRegPage> {
                   Flexible(
                     flex: 2,
                     child: CupertinoDatePicker(
-                      mode: CupertinoDatePickerMode.date,
+                      mode: CupertinoDatePickerMode.dateAndTime,
                       onDateTimeChanged: (value) {
                         setState(() {
                           if (value != null && value != petBirthDate) {
