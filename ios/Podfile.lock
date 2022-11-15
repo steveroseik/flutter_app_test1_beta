@@ -3,9 +3,6 @@ PODS:
     - Flutter
   - camera_avfoundation (0.0.1):
     - Flutter
-  - document_scanner_flutter (0.0.1):
-    - Flutter
-    - WeScan (>= 0.9)
   - edge_detection (1.0.9):
     - Flutter
     - WeScan
@@ -79,7 +76,6 @@ PODS:
 DEPENDENCIES:
   - app_links (from `.symlinks/plugins/app_links/ios`)
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
-  - document_scanner_flutter (from `.symlinks/plugins/document_scanner_flutter/ios`)
   - edge_detection (from `.symlinks/plugins/edge_detection/ios`)
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
@@ -111,8 +107,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/app_links/ios"
   camera_avfoundation:
     :path: ".symlinks/plugins/camera_avfoundation/ios"
-  document_scanner_flutter:
-    :path: ".symlinks/plugins/document_scanner_flutter/ios"
   edge_detection:
     :path: ".symlinks/plugins/edge_detection/ios"
   firebase_auth:
@@ -143,7 +137,6 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   app_links: ab4ba54d10a13d45825336bc9707b5eadee81191
   camera_avfoundation: 07c77549ea54ad95d8581be86617c094a46280d9
-  document_scanner_flutter: cbbff63c2e3060e0593729cea2596120b62e794c
   edge_detection: 9bc5ee35073b5a17c0b3b679908f01017ce3062a
   Firebase: 444b35a9c568a516666213c2f6cccd10cb12559f
   firebase_auth: 6e24814d3c9976a288da6bb7a49ac79616863b5b

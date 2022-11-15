@@ -66,6 +66,7 @@ dependencies:
   geolocator: ^9.0.2
   flutter_native_image: ^0.0.6+1
   edge_detection: ^1.0.9
+  introduction_screen: ^3.0.2
 
 
 dev_dependencies:
@@ -106,7 +107,7 @@ flutter:
   assets:
       - assets/
       - assets/images/
-      - assets/tessdata/
+      - assets/illustrations/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

@@ -499,8 +499,10 @@ Future compareFacial(io.File rawImage1, io.File rawImage2) async {
       'SubscriptionKey': 'AVj9iM1dHULqhfxIXE-KGLhU8YBxb1121',
       io.HttpHeaders.contentTypeHeader: 'application/json'};
     final response = await http.post(uri, headers: headers, body: body);
-    print(response.body);
+    final res = jsonDecode(response.body)['matchedFaces'][0]['confidence'];
+    return res;
   } catch (e) {
    print(e);
+   return 0;
   }
 }

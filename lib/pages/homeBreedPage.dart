@@ -29,6 +29,9 @@ class HomeBreedPage extends StatefulWidget {
 
 class _HomeBreedPageState extends State<HomeBreedPage>
     with TickerProviderStateMixin {
+  final emptyPet = PetPod(PetProfile(id: '', name: '', vaccines: [],
+    ownerId: '', birthdate: DateTime.now(), breed: '',
+    isMale: false, photoUrl: '', ready: false, createdAt: DateTime.now(),), true);
   late BuildContext scaffoldContext;
   bool tapped = false;
   bool petDataLoading = false;
@@ -196,36 +199,40 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                               return InkWell(
                                 onTap: tapped ? null
                                     : () async {
-                                  tapped = true;
-                                  for (var item in petPods) {
-                                    item.isSelected = false;
-                                  }
-                                  petPods[index].isSelected = true;
-                                  if (petIndex.value == -1 && index != -1) {
-                                    selectedPet = petPods[index];
-                                    petIndex.value = index;
-                                    _controller.forward().then((value) {});
-                                    createPetVaccines();
-                                    setState(() {});
-                                  } else {
-                                    if (index != -1) {
-                                      if (selectedPet != petPods[index]) {
-                                        _controller.reverse().then((value) {
-                                          selectedPet = petPods[index];
-                                          createPetVaccines();
-                                          setState(() {
-                                            viewVaccines.value = 0;
-                                            petIndex.value = index;
+                                  if (selectedPet == petPods[index]){
+                                    petPods[index].isSelected = false;
+                                    selectedPet = emptyPet;
+                                  }else{
+                                    tapped = true;
+                                    for (var item in petPods) {
+                                      item.isSelected = false;
+                                    }
+                                    petPods[index].isSelected = true;
+                                    if (petIndex.value == -1 && index != -1) {
+                                      selectedPet = petPods[index];
+                                      petIndex.value = index;
+                                      _controller.forward().then((value) {});
+                                      createPetVaccines();
+                                      setState(() {});
+                                    } else {
+                                      if (index != -1) {
+                                        if (selectedPet != petPods[index]) {
+                                          _controller.reverse().then((value) {
+                                            selectedPet = petPods[index];
+                                            createPetVaccines();
+                                            setState(() {
+                                              viewVaccines.value = 0;
+                                              petIndex.value = index;
 
+                                            });
+
+                                            _controller.forward();
                                           });
-
-                                          _controller.forward();
-                                        });
+                                        }
                                       }
                                     }
+                                    tapped = false;
                                   }
-
-                                  tapped = false;
                                 },
                                 child: CustomPet(
                                     pod: petPods[index]),
@@ -472,8 +479,8 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                               ),
                             )
                                 : Container(
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                              child: Row(
+                              padding: EdgeInsets.symmetric(horizontal: 30),
+                              child: Column(
                                 mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
                                   GestureDetector(
@@ -498,15 +505,15 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                     child: Container(
                                       padding: EdgeInsets.all(15),
                                       decoration: BoxDecoration(
-                                        color: Colors.blueGrey,
+                                        color: Colors.blueGrey.shade700,
                                         border: Border.all(
                                             color: CupertinoColors
                                                 .extraLightBackgroundGray,
                                             width: 1),
-                                        borderRadius: BorderRadius.circular(30),
+                                        borderRadius: BorderRadius.circular(25),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
                                         children: [
                                           CircleAvatar(
                                               backgroundColor:
@@ -516,7 +523,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                   AssetImage(
                                                       'assets/mateIcon.png'),
                                                   color: Colors.white, size: 20)),
-                                          SizedBox(height: 10),
+                                          SizedBox(width: 10),
                                           Text(
                                             'Find Mate',
                                             style: TextStyle(
@@ -529,45 +536,78 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                       ),
                                     ),
                                   ),
-                                  SizedBox(width: 5),
-                                  Flexible(
-                                    flex: 1,
-                                    child: GestureDetector(
-                                      onTap: (){
-                                        BA_key.currentState?.pushNamed('/search_manual');
-                                      },
-                                      child: Container(
-                                        padding: EdgeInsets.all(15),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blueGrey,
-                                          border: Border.all(
-                                              color: CupertinoColors
-                                                  .extraLightBackgroundGray,
-                                              width: 1),
-                                          borderRadius: BorderRadius.circular(30),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            CircleAvatar(
-                                                backgroundColor:
-                                                    Colors.redAccent,
-                                                radius: 15,
-                                                child: ImageIcon(
-                                                    AssetImage(
-                                                        'assets/searchIcon.png'),
-                                                    size: 20,
-                                                    color: Colors.white)),
-                                            SizedBox(height: 10),
-                                            Text(
-                                              'Search Manually',
-                                              style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontFamily: 'Roboto',
-                                                  fontWeight: FontWeight.w800),
-                                            ),
-                                          ],
-                                        ),
+                                  SizedBox(height: 5),
+                                  GestureDetector(
+                                    onTap: (){
+                                      BA_key.currentState?.pushNamed('/search_manual');
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.all(15),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blueGrey.shade800,
+                                        border: Border.all(
+                                            color: CupertinoColors
+                                                .extraLightBackgroundGray,
+                                            width: 1),
+                                        borderRadius: BorderRadius.circular(25),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          CircleAvatar(
+                                              backgroundColor:
+                                                  Colors.redAccent,
+                                              radius: 15,
+                                              child: ImageIcon(
+                                                  AssetImage(
+                                                      'assets/searchIcon.png'),
+                                                  size: 20,
+                                                  color: Colors.white)),
+                                          SizedBox(width: 10),
+                                          Text(
+                                            'Search Manually',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontFamily: 'Roboto',
+                                                fontWeight: FontWeight.w800),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: 5),
+                                  GestureDetector(
+                                    onTap: (){
+                                      BA_key.currentState?.pushNamed('/search_manual');
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.all(15),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blueGrey.shade900,
+                                        border: Border.all(
+                                            color: CupertinoColors
+                                                .extraLightBackgroundGray,
+                                            width: 1),
+                                        borderRadius: BorderRadius.circular(25),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          CircleAvatar(
+                                              backgroundColor:
+                                              Colors.redAccent,
+                                              radius: 15,
+                                              child: Icon(Icons.circle_outlined, color: Colors.white),
+                                          ),
+                                          SizedBox(width: 10),
+                                          Text(
+                                            'Pet Circle',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontFamily: 'Roboto',
+                                                fontWeight: FontWeight.w800),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),

@@ -39,11 +39,6 @@ class _HomePageState extends State<HomePage> {
         .map((element) => "${element.attributes['data-src']}")
         .toList();
 
-    print('Count: ${titles.length}');
-    for (final title in titles) {
-      debugPrint(title);
-    }
-
     setState(() {
       articles = List.generate(
         titles.length,

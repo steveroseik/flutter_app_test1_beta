@@ -156,7 +156,7 @@ Widget _customDropDownView(BuildContext context, Breed? selectedItem) {
 }
 
 OverlayEntry initLoading(BuildContext context, Size windowSize) {
-  Offset offs = Offset((windowSize.width / 2) - 25, windowSize.height - 150);
+  Offset offs = Offset((windowSize.width / 2) - 25, windowSize.height - windowSize.height*0.15);
   final loading = OverlayEntry(
       builder: (BuildContext context) => Positioned(
             left: offs.dx,
@@ -993,7 +993,7 @@ void showSnackbar(BuildContext context, String message) {
 
 void showNotification(BuildContext context, String message) {
   final snackBar = new SnackBar(content: new Text(message, style: TextStyle(color: Colors.white)),
-      backgroundColor: Colors.deepOrangeAccent);
+      backgroundColor: Colors.green);
 
   // Find the Scaffold in the Widget tree and use it to show a SnackBar!
   ScaffoldMessenger.of(context).showSnackBar(snackBar);
