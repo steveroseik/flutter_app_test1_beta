@@ -151,6 +151,22 @@ class RouteGenerator {
         return _errorRoute();
     }
   }
+  static Route<dynamic> generateRoute_explore(RouteSettings settings) {
+    final args = settings.arguments;
+
+    switch (settings.name) {
+      case '/':
+        return MaterialPageRoute(builder: (_) => MapsPage());
+      case '/create_meet':
+        return MaterialPageRoute(builder: (_) => CreateMeet());
+      case '/location_review':
+        return MaterialPageRoute(builder: (_) => LocationReview());
+
+      default:
+      // if an unmatched route is called, return error route
+        return _errorRoute();
+    }
+  }
 
   // This is the User routesGenerator
   static Route<dynamic> generateRoute_explore(RouteSettings settings) {
