@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:custom_info_window/custom_info_window.dart';
 import 'package:flutter/cupertino.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:intl/intl.dart';
  import 'package:geolocator/geolocator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:multi_select_flutter/multi_select_flutter.dart';
 
 import '../configuration.dart';
 
@@ -20,6 +22,31 @@ class CreateMeet extends StatefulWidget {
   const CreateMeet({Key? key}) : super(key: key);
   @override
   State<CreateMeet> createState() => _CreateMeetState();
+}
+class Breed{
+  int id;
+  String breed;
+  Breed({
+    required this.id,
+     required this.breed,
+  });
+  Map toJson() => {
+    'id': id,
+    'breed': breed,
+  };
+}
+
+class Size{
+  int id;
+  String size;
+  Size({
+    required this.id,
+    required this.size,
+  });
+  Map toJson() => {
+    'id': id,
+    'size': size,
+  };
 }
 class _CreateMeetState extends State<CreateMeet> {
   DateTime dateTime = DateTime.now();
@@ -32,7 +59,28 @@ class _CreateMeetState extends State<CreateMeet> {
   String name = '',
       description = '';
   var isLoading = true;
+  List<Breed?> _selectedBreeds = [];
+  List<Breed?> tempSelectedBreed = [];
+  List<Size?> _selectedSizes = [];
+  List<Size?> tempSelectedSizes = [];
+  static List<Breed> breeds = [
+    Breed(id:0,breed: "All"),
+    Breed(id:1,breed: "Golden"),
+    Breed(id:2,breed: "German"),
 
+  ];
+  static List<Size> sizes = [
+    Size(id:0,size: "All"),
+    Size(id:1,size: "Small"),
+    Size(id:2,size: "Medium"),
+    Size(id:3,size: "Large"),
+  ];
+  final _items = breeds
+      .map((pet) => MultiSelectItem<Breed>(pet, pet.breed))
+      .toList();
+  final size_items = sizes
+      .map((petsize) => MultiSelectItem<Size>(petsize, petsize.size))
+      .toList();
   initUser() async {
     petPods = await fetchPets(-1);
     setState(() {
@@ -46,18 +94,21 @@ class _CreateMeetState extends State<CreateMeet> {
   }
 
   Future insert(double longitude, double latitude, String title, String descr, List<String> petIDs) async {
+     String jsonString = jsonEncode(tempSelectedBreed);
     try {
-      final timestamp = dateTime.toIso8601String();
-      await SupabaseCredentials.supabaseClient.from('meets').insert({
-        'longitude': longitude,
-        'latitude': latitude,
-        'title': title,
-        'description': descr,
-        'date': timestamp,
-        'host_pets': petIDs,
-        'host_id':uid
-      });
-    }
+        final timestamp = dateTime.toIso8601String();
+        await SupabaseCredentials.supabaseClient.from('meets').insert({
+          'longitude': longitude,
+          'latitude': latitude,
+          'title': title,
+          'description': descr,
+          'date': timestamp,
+          'host_pets': petIDs,
+          'host_id': uid,
+          'breed_list': tempSelectedBreed
+        });
+      }
+
     catch (e) {
       print(e);
     }
@@ -91,9 +142,15 @@ class _CreateMeetState extends State<CreateMeet> {
         appBar: init_appBar(rootNav_key), // CHANGE KEY!!!
         body: SingleChildScrollView(child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+              ),
               Text("Create Meet", style: TextStyle(fontSize: 30,
                   color: Colors.black,
                   fontWeight: FontWeight.bold)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+              ),
               Text(
                   "A meet is an event where you get to meet our dog owner community!",
                   style: TextStyle(fontSize: 12, color: Colors.grey)),
@@ -124,6 +181,9 @@ class _CreateMeetState extends State<CreateMeet> {
                         );
                       })
               ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+              ),
               Text("What would you like to call your Meet?",
                   style: TextStyle(fontSize: 20, color: Colors.black)),
               SizedBox(
@@ -139,10 +199,130 @@ class _CreateMeetState extends State<CreateMeet> {
                 ),
 
               ),
-              Text("Would you like to limit your Meet to a specific breed?",
+              Padding(
+                padding: const EdgeInsets.only(bottom:10,top: 20.0),
+
+            child:  Text("Would you like to limit your Meet to a few breeds?",
                   style: TextStyle(fontSize: 20, color: Colors.black)),
-              // dropdown menu
-              Text("Where would you like to Meet?",
+            ),
+              Container(
+                child: Column(
+                  children: <Widget>[
+                    MultiSelectBottomSheetField<Breed?>(
+                      initialChildSize: 0.7,
+                      maxChildSize: 0.95,
+                      listType: MultiSelectListType.CHIP,
+                      checkColor: Colors.grey,
+                      selectedColor: Colors.grey,
+                      selectedItemsTextStyle: TextStyle(
+                        fontSize: 25,
+                        color: Colors.white,
+                      ),
+                      unselectedColor: Colors.greenAccent[200],
+                      buttonIcon: Icon(
+                        Icons.add,
+                        color: Colors.grey,
+                      ),
+                      searchHintStyle: TextStyle(
+                        fontSize: 20,
+                      ),
+                      searchable: true,
+                      buttonText: Text("Dog Breeds"),
+                      title: Text(
+                        "Breeds",
+                        style: TextStyle(
+                          fontSize: 25,
+                          color: Colors.pink,
+                        ),
+                      ),                      items: _items,
+                      onConfirm: (values) {
+                        _selectedBreeds=values;
+                        tempSelectedBreed=_selectedBreeds;
+                        },
+                      chipDisplay: MultiSelectChipDisplay(
+                        onTap: (value) {
+                          setState(() {
+                            _selectedBreeds.remove(value);
+                          });
+},
+                      ),
+                    ),
+                    _selectedBreeds == null || _selectedBreeds.isEmpty
+                        ? Container(
+                        padding: EdgeInsets.all(10),
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "None selected",
+                          style: TextStyle(color: Colors.black54),
+                        ))
+                        : Container(),
+                  ],
+                ),
+              ),Padding(
+                padding: const EdgeInsets.only(bottom:10,top: 20.0),
+
+                child:  Text("What size dogs are allowed?",
+                    style: TextStyle(fontSize: 20, color: Colors.black)),
+              ),
+              Container(
+                child: Column(
+                  children: <Widget>[
+                    MultiSelectBottomSheetField<Size?>(
+                      initialChildSize: 0.7,
+                      maxChildSize: 0.95,
+                      listType: MultiSelectListType.CHIP,
+                      checkColor: Colors.grey,
+                      selectedColor: Colors.grey,
+                      selectedItemsTextStyle: TextStyle(
+                        fontSize: 25,
+                        color: Colors.white,
+                      ),
+                      unselectedColor: Colors.greenAccent[200],
+                      buttonIcon: Icon(
+                        Icons.add,
+                        color: Colors.grey,
+                      ),
+                      searchHintStyle: TextStyle(
+                        fontSize: 20,
+                      ),
+                      searchable: true,
+                      buttonText: Text("Dog Sizes"),
+                      title: Text(
+                        "Sizes",
+                        style: TextStyle(
+                          fontSize: 25,
+                          color: Colors.pink,
+                        ),
+                      ),
+                      items: size_items,
+                      onConfirm: (values) {
+                        _selectedSizes=values;
+                        tempSelectedSizes=_selectedSizes;
+                      },
+                      chipDisplay: MultiSelectChipDisplay(
+                        onTap: (value) {
+                          setState(() {
+                            _selectedSizes.remove(value);
+                          });
+                        },
+                      ),
+                    ),
+                    _selectedSizes == null || _selectedSizes.isEmpty
+                        ? Container(
+                        padding: EdgeInsets.all(10),
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "None selected",
+                          style: TextStyle(color: Colors.black54),
+                        ))
+                        : Container(),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+              ),
+              Text("Where would you like to Meet? Tap the exact location",
                   style: TextStyle(fontSize: 20, color: Colors.black)),
               Center(
                 child: Container(
@@ -178,6 +358,9 @@ class _CreateMeetState extends State<CreateMeet> {
               ),
 
 // option to add in coordinates or select location
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+              ),
               Text("When do you want to Meet?",
                   style: TextStyle(fontSize: 20, color: Colors.black)),
               Column(
@@ -197,6 +380,9 @@ class _CreateMeetState extends State<CreateMeet> {
                 ],
 
               ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+              ),
 
               Text("Tell us more about your Meet",
                   style: TextStyle(fontSize: 20, color: Colors.black)),
@@ -214,7 +400,7 @@ class _CreateMeetState extends State<CreateMeet> {
 
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(30.0, 50.0, 30.0, 50.0),
+                padding: const EdgeInsets.all(30.0),
                 child: new ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
