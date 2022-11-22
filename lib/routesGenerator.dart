@@ -24,6 +24,8 @@ import 'package:flutter_app_test1/pages/signup_completion.dart';
 import 'package:flutter_app_test1/mainApp.dart';
 import 'package:flutter_app_test1/pages/signupWithEmail.dart';
 import 'package:flutter_app_test1/verifyPhone.dart';
+import 'package:flutter_app_test1/pages/meets_selectpets.dart';
+
 
 import 'FETCH_wdgts.dart';
 
@@ -151,6 +153,7 @@ class RouteGenerator {
         return _errorRoute();
     }
   }
+ 
   static Route<dynamic> generateRoute_explore(RouteSettings settings) {
     final args = settings.arguments;
 
@@ -161,20 +164,8 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => CreateMeet());
       case '/location_review':
         return MaterialPageRoute(builder: (_) => LocationReview());
-
-      default:
-      // if an unmatched route is called, return error route
-        return _errorRoute();
-    }
-  }
-
-  // This is the User routesGenerator
-  static Route<dynamic> generateRoute_explore(RouteSettings settings) {
-    final args = settings.arguments;
-
-    switch (settings.name) {
-      case '/':
-        return MaterialPageRoute(builder: (_) => MapsPage());
+      case '/select_pets':
+        return MaterialPageRoute(builder: (_) => SelectPets_Meets());
 
       default:
       // if an unmatched route is called, return error route
