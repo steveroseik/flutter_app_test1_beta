@@ -16,7 +16,6 @@ import 'package:flutter_app_test1/pages/emailVerify.dart';
 import 'package:flutter_app_test1/pages/explore.dart';
 import 'package:flutter_app_test1/pages/forgotPassword.dart';
 import 'package:flutter_app_test1/pages/homeBreedPage.dart';
-import 'package:flutter_app_test1/pages/location_review.dart';
 import 'package:flutter_app_test1/pages/petMatchPage.dart';
 import 'package:flutter_app_test1/pages/settings.dart';
 import 'package:flutter_app_test1/pages/user_profile.dart';
@@ -153,8 +152,7 @@ class RouteGenerator {
         return _errorRoute();
     }
   }
- 
-  static Route<dynamic> generateRoute_explore(RouteSettings settings) {
+ static Route<dynamic> generateRoute_explore(RouteSettings settings) {
     final args = settings.arguments;
 
     switch (settings.name) {
@@ -162,11 +160,9 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => MapsPage());
       case '/create_meet':
         return MaterialPageRoute(builder: (_) => CreateMeet());
-      case '/location_review':
-        return MaterialPageRoute(builder: (_) => LocationReview());
       case '/select_pets':
         if (args is List){
-          return MaterialPageRoute(builder: (_) => SelectPets_Meets(criteria: args));
+          return MaterialPageRoute(builder: (_) => SelectPets_Meets(criteria: args[0],id:args[1]));
         }
         return _errorRoute();
 
@@ -175,7 +171,7 @@ class RouteGenerator {
       // if an unmatched route is called, return error route
         return _errorRoute();
     }
-}
+  }
 
   static Route<dynamic> generateRoute_phone(RouteSettings settings) {
     final args = settings.arguments;
