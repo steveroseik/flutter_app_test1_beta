@@ -264,31 +264,9 @@ class _MapsPageState extends State<MapsPage> {
       print(e);
     }
   }
-/*
-  Future find_criteria() async {
-    List<int> i=[];
-    try {
-      final data = await SupabaseCredentials.supabaseClient
-          .from('meets')
-          .select('*') as List<dynamic>;
-
-      for (var entry in data) {
-        final map = Map.from(entry);
-        breed_list = map['breed_list'];
-      }
-      print('test:$i');
-    }
-    on PostgrestException catch (error) {
-      print(error.message);
-    }
-    catch (e) {
-      print(e);
-    }
-    print('criteria: $breed_list');      print('test:$i');
-
-  }*/
-find_criteria( breed_list, breed_test){
-  var str;
+find_criteria( breed_list, breed_test, criteria){
+    print('breeds: $breed_list');
+    var str;
   for(int i =0;i<breed_list.length;i++){
     str = breed_list[i];
     for(int i=0;i < str.length;i++){
@@ -299,8 +277,8 @@ find_criteria( breed_list, breed_test){
     if(i<breed_list.length-1)
       breed_test=breed_test+',';
   }
-  var criteria =[];
   criteria.add(breed_test);
+  print('criteria: $criteria');
   return criteria;
 }
   Future display_meets() async {
@@ -308,10 +286,10 @@ find_criteria( breed_list, breed_test){
         "assets/images/meetmarker.png", 150);
     var breed_list;
     var breed_test ='';
-
     int ret = -100;
     final  markers = List<Marker>.empty(growable: true);
     try {
+
       final data = await SupabaseCredentials.supabaseClient
           .from('meets')
           .select('*') as List<dynamic>;
@@ -328,8 +306,9 @@ find_criteria( breed_list, breed_test){
        var pet_list = map['host_pets'];
        breed_list = map['breed_list'];
         find_host(host_id);
-        var criteria = find_criteria(breed_list,breed_test);
-
+        List<String> criteria = [];
+         criteria = find_criteria(breed_list,breed_test,criteria);
+        print('returned: $criteria');
         List<String>pet_names = [];
         for(int i =0; i <pet_list.length;i++){
           var pet = pet_list[i];
@@ -425,7 +404,7 @@ find_criteria( breed_list, breed_test){
 
                                      new ElevatedButton(onPressed: (){
                                        explore_key.currentState
-                                           ?.pushNamed('/select_pets');
+                                           ?.pushNamed('/select_pets', arguments: criteria);
                                        setState(() {});
                                         },
                                         child:new Text('Join Meet')
