@@ -165,13 +165,17 @@ class RouteGenerator {
       case '/location_review':
         return MaterialPageRoute(builder: (_) => LocationReview());
       case '/select_pets':
-        return MaterialPageRoute(builder: (_) => SelectPets_Meets());
+        if (args is List){
+          return MaterialPageRoute(builder: (_) => SelectPets_Meets(criteria: args));
+        }
+        return _errorRoute();
+
 
       default:
       // if an unmatched route is called, return error route
         return _errorRoute();
     }
-  }
+}
 
   static Route<dynamic> generateRoute_phone(RouteSettings settings) {
     final args = settings.arguments;
