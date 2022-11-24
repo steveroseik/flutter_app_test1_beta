@@ -125,7 +125,7 @@ class _MapsPageState extends State<MapsPage> {
           ),
           CustomInfoWindow(
             controller: _customInfoWindowController,
-            height: 212,
+            height: 228,
             width: 510,
             offset: 50,
           ),
@@ -265,7 +265,6 @@ class _MapsPageState extends State<MapsPage> {
     }
   }
 find_criteria( breed_list, breed_test, criteria){
-    print('breeds: $breed_list');
     var str;
   for(int i =0;i<breed_list.length;i++){
     str = breed_list[i];
@@ -278,18 +277,34 @@ find_criteria( breed_list, breed_test, criteria){
       breed_test=breed_test+',';
   }
   criteria.add(breed_test);
-  print('criteria: $criteria');
   return criteria;
 }
+Future getpods() async {
+}
+  int isJoined(pet_list, joined_meet, petPods)  {
+    var temp = petPods.length;
+    print('length: $temp');
+    for (int i = 0;i< petPods.length;i++) {
+      var temp = petPods[i].pet.id;
+      print('temp: $temp');
+      for(int j = 0; j < pet_list.length;j++) {
+        var test = pet_list[j];
+        print('test: $test');
+        if (temp == pet_list[j]) {
+          joined_meet = 1;
+          print('aho');
+        }
+      }
+    }
+    return joined_meet;
+  }
   Future display_meets() async {
     final Uint8List customIcon = await getBytesFromAsset(
         "assets/images/meetmarker.png", 150);
     var breed_list;
     var breed_test ='';
-    int ret = -100;
     final  markers = List<Marker>.empty(growable: true);
     try {
-
       final data = await SupabaseCredentials.supabaseClient
           .from('meets')
           .select('*') as List<dynamic>;
@@ -304,16 +319,22 @@ find_criteria( breed_list, breed_test, criteria){
         var datetime = map['date'];
         var host_id = map['host_id'];
        var pet_list = map['host_pets'];
+       var attendees = map['no_of_attending'];
+       var attending_pets = map['attending_pets'];
        breed_list = map['breed_list'];
+        var joined_meet = 0;
+        List<PetPod> petPods = <PetPod>[];
+        petPods = await fetchPets(-1);
+       joined_meet = isJoined(attending_pets, joined_meet,petPods);
         find_host(host_id);
         List<String> criteria = [];
          criteria = find_criteria(breed_list,breed_test,criteria);
-        print('returned: $criteria');
         List<String>pet_names = [];
         for(int i =0; i <pet_list.length;i++){
           var pet = pet_list[i];
           find_host_pets(pet, pet_names);
         }
+        print('joined: $joined_meet');
 
         markers.add(
             Marker(
@@ -380,7 +401,7 @@ find_criteria( breed_list, breed_test, criteria){
                                         )
                                     ),
                                     Text(
-                                        description+'\nBreeds allowed: $criteria',
+                                        description+'\nAttending: $attendees owners \nBreeds allowed: $criteria',
                                       style:
                                       Theme
                                           .of(context)
@@ -401,14 +422,15 @@ find_criteria( breed_list, breed_test, criteria){
                                         color: Colors.black,
                                       ),
                                     ),
-
-                                     new ElevatedButton(onPressed: (){
+                                    joined_meet==0? new ElevatedButton(onPressed: (){
                                        explore_key.currentState
-                                           ?.pushNamed('/select_pets', arguments: criteria);
+                                           ?.pushNamed('/select_pets', arguments: [criteria,id]);
                                        setState(() {});
                                         },
-                                        child:new Text('Join Meet')
-                                    ),
+                                        child:  new Text('Join Meet')
+                                    ):Text("You are attending this Meet", style: TextStyle(fontSize: 15,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               ),
@@ -500,19 +522,7 @@ find_criteria( breed_list, breed_test, criteria){
                                         color: Colors.black,
                                       ),
                                     ),
-                                    Container(
-                                        child:SizedBox(
-                                          height: 30,
 
-                                          child: new ElevatedButton(onPressed: (){
-                                            explore_key.currentState
-                                                ?.pushNamed('/location_review');
-
-                                          },
-                                              child:new Text('Rate and Review')
-
-                                          ),
-                                        )),
                                   ],
                                 ),
                               ),
@@ -601,19 +611,7 @@ find_criteria( breed_list, breed_test, criteria){
                                         color: Colors.black,
                                       ),
                                     ),
-                                    Container(
-                                        child:SizedBox(
-                                          height: 30,
 
-                                          child: new ElevatedButton(onPressed: (){
-                                            explore_key.currentState
-                                                ?.pushNamed('/location_review');
-
-                                          },
-                                              child:new Text('Rate and Review')
-
-                                          ),
-                                        )),
 
                                   ],
                                 ),
@@ -708,19 +706,7 @@ find_criteria( breed_list, breed_test, criteria){
                                         color: Colors.black,
                                       ),
                                     ),
-                                    Container(
-                                        child:SizedBox(
-                                          height: 30,
 
-                                          child: new ElevatedButton(onPressed: (){
-                                            explore_key.currentState
-                                                ?.pushNamed('/location_review');
-
-                                          },
-                                              child:new Text('Rate and Review')
-
-                                          ),
-                                        )),
 
                                   ],
                                 ),
@@ -815,19 +801,7 @@ find_criteria( breed_list, breed_test, criteria){
                                         color: Colors.black,
                                       ),
                                     ),
-                                    Container(
-                                        child:SizedBox(
-                                          height: 30,
 
-                                          child: new ElevatedButton(onPressed: (){
-                                            explore_key.currentState
-                                                ?.pushNamed('/location_review');
-
-                                          },
-                                              child:new Text('Rate and Review')
-
-                                          ),
-                                        )),
 
                                   ],
                                 ),
@@ -922,19 +896,6 @@ find_criteria( breed_list, breed_test, criteria){
                                         color: Colors.black,
                                       ),
                                     ),
-                                    Container(
-                                        child:SizedBox(
-                                          height: 30,
-
-                                          child: new ElevatedButton(onPressed: (){
-                                            explore_key.currentState
-                                                ?.pushNamed('/location_review');
-
-                                          },
-                                              child:new Text('Rate and Review')
-
-                                          ),
-                                        )),
 
                                   ],
                                 ),
