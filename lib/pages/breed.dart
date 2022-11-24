@@ -239,7 +239,8 @@ class _addBreedPageState extends State<addBreedPage> {
                 ),
                 onPressed: () async{
                   if (cam_Btn){
-                    await pickImage(context, ImageSource.gallery);
+
+                    imageFile = await pickImage(context, ImageSource.gallery);
                     // print(cam_Btn);
                     // refresh UI elements
                     setState(() {});
@@ -252,15 +253,18 @@ class _addBreedPageState extends State<addBreedPage> {
                     //disable camera button
                     cam_Btn = false;
                     // wait until image is analyzed
-                    p_stat.value = await analyzeImage(context);
-                    // refresh UI and remove loading widget from screen
-                    if (p_stat.value == -1){
-                      showSnackbar(context, 'Could not find a dog in the photo!');
+                    if (imageFile != null){
+                      p_stat.value = await analyzeImage(context);
+                      // refresh UI and remove loading widget from screen
+                      if (p_stat.value == -1){
+                        showSnackbar(context, 'Could not find a dog in the photo!');
+                      }
                     }
-                    setState(() {});
                     stopLoading();
                     // reenable camera btn
                     cam_Btn = true;
+                    setState(() {});
+
                   }
 
                 },

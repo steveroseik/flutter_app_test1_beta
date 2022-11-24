@@ -9,12 +9,14 @@ import 'dart:io';
 import 'package:flutter_app_test1/pages/breed.dart';
 import 'package:flutter_app_test1/pages/breed_sp.dart';
 import 'package:flutter_app_test1/pages/breed_registration.dart';
+import 'package:flutter_app_test1/pages/create_meet.dart';
 import 'package:flutter_app_test1/pages/editPass.dart';
 import 'package:flutter_app_test1/pages/editPetPage.dart';
 import 'package:flutter_app_test1/pages/emailVerify.dart';
 import 'package:flutter_app_test1/pages/explore.dart';
 import 'package:flutter_app_test1/pages/forgotPassword.dart';
 import 'package:flutter_app_test1/pages/homeBreedPage.dart';
+import 'package:flutter_app_test1/pages/location_review.dart';
 import 'package:flutter_app_test1/pages/petMatchPage.dart';
 import 'package:flutter_app_test1/pages/settings.dart';
 import 'package:flutter_app_test1/pages/user_profile.dart';
@@ -96,7 +98,10 @@ class RouteGenerator {
         }
 
       case '/search_manual':
-        return MaterialPageRoute(builder: (_) => breedSearchPage());
+        if (args is List<PetPod>){
+          return MaterialPageRoute(builder: (_) => breedSearchPage(ownerPets: args,));
+        }
+        return _errorRoute();
       case '/pet_register':
         //this case is for second step of pet verification after taking a picture of the pet
         // if happens to navigate to the page with an unidentified photo will navigate to error route
@@ -113,7 +118,7 @@ class RouteGenerator {
         return _errorRoute();
       case '/pet_adopt':
         return MaterialPageRoute(
-          builder: (_) => breedSearchPage(), // Second Page
+          builder: (_) => breedSearchPage(ownerPets: [],), // Second Page
         );
       default:
         // if an unmatched route is called, return error route
@@ -143,11 +148,6 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => BreedsArticles());
       case '/training_articles':
         return MaterialPageRoute(builder: (_) => TrainingArticles());
-      case '/no_pass':
-        return MaterialPageRoute(
-          builder: (_) => breedSearchPage(), // Second Page
-        );
-
       default:
       // if an unmatched route is called, return error route
         return _errorRoute();

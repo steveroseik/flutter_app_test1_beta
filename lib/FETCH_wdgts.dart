@@ -10,11 +10,14 @@ import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_multi_select_items/flutter_multi_select_items.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:introduction_screen/introduction_screen.dart';
 import 'package:loading_indicator/loading_indicator.dart';
 import 'package:flutter/src/widgets/image.dart' as img;
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
@@ -30,6 +33,105 @@ extension StringExtension on String {
     return "${this[0].toUpperCase()}${this.substring(1).toLowerCase()}";
   }
 }
+class BreedSearchMultiWidget extends StatefulWidget {
+  final GlobalKey<DropdownSearchState<Breed>> formKey;
+  const BreedSearchMultiWidget({Key? key, required this.formKey}) : super(key: key);
+
+  @override
+  State<BreedSearchMultiWidget> createState() => _BreedSearchMultiWidgetState();
+}
+class _BreedSearchMultiWidgetState extends State<BreedSearchMultiWidget> {
+  Breed? _selected;
+  late Future<List<Breed>> bList;
+  var bError = 5;
+  final _openDropDownProgKey = GlobalKey<DropdownSearchState<int>>();
+
+  Breed getSelected(){
+    return _selected!;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    bList = getBreedList(0);
+
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 100,
+      child: FutureBuilder<List<Breed>>(
+        future: bList,
+        builder: (context, snapshot) {
+          if (snapshot.data == null || snapshot.data!.isEmpty) {
+            return DropdownSearch<String>(
+              items: ['...'],
+              dropdownDecoratorProps: DropDownDecoratorProps(
+                  dropdownSearchDecoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                  )
+              ),
+            );
+          }
+          switch (snapshot.connectionState) {
+            case ConnectionState.done:
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20.0),
+                  color: CupertinoColors.extraLightBackgroundGray,
+                ),
+                child: DropdownSearch<Breed>.multiSelection(
+                  key: widget.formKey,
+                  compareFn: (i1, i2) => i1.name == i2.name,
+                  items: snapshot.data!,
+                  itemAsString: (Breed b) => b.name,
+                  dropdownDecoratorProps: DropDownDecoratorProps(
+                      dropdownSearchDecoration: InputDecoration(
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20.0),
+                              borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)
+                          )
+                      )
+                  ),
+                  popupProps: PopupPropsMultiSelection.modalBottomSheet(
+                    showSearchBox: true,
+                    fit: FlexFit.tight,
+                    constraints: BoxConstraints.tightForFinite(height: MediaQuery.of(context).size.height * 0.7),
+                    searchFieldProps: TextFieldProps(
+                      enableSuggestions: true,
+                        decoration: InputDecoration(
+                          hintText: 'Type breed name',
+                        )),
+                    itemBuilder: (ctx, item, isSelected) {
+                      return ListTile(
+                        title: Text(item.name,
+                            textAlign: TextAlign.left,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 13.5, color: Colors.black)),
+                        leading: CircleAvatar(
+                            backgroundImage: NetworkImage(item.photoUrl)),
+                      );
+                    },
+                  ),
+                  filterFn: (breed, filter) => breed.filterBreedItem(filter),
+                ),
+              );
+            default:
+              return CircularProgressIndicator();
+          }
+        },
+      ),
+    );
+  }
+}
 
 class BreedSearchWidget extends StatefulWidget {
   final GlobalKey<DropdownSearchState<Breed>> formKey;
@@ -38,7 +140,6 @@ class BreedSearchWidget extends StatefulWidget {
   @override
   State<BreedSearchWidget> createState() => _BreedSearchWidgetState();
 }
-
 class _BreedSearchWidgetState extends State<BreedSearchWidget> {
   Breed? _selected;
   late Future<List<Breed>> bList;
@@ -237,13 +338,19 @@ class miniCustomRadio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.0),
+        ),
         color: _gender.isSelected ? Colors.black : Colors.white,
         child: Container(
+          width: 40*MediaQuery.of(context).size.width*0.002,
           margin: new EdgeInsets.all(5.0),
-          child: Icon(
-            _gender.icon,
-            color: _gender.isSelected ? Colors.white : Colors.grey,
-            size: 20,
+          child: Center(
+            child: Icon(
+              _gender.icon,
+              color: _gender.isSelected ? Colors.white : Colors.grey,
+              size: 20,
+            ),
           ),
         ));
   }
@@ -284,11 +391,22 @@ class CustomRadio extends StatelessWidget {
   }
 }
 
+class GeoLocation{
+  double lat;
+  double long;
+  GeoLocation(this.lat, this.long);
+}
+
+
 class PetPod {
   PetProfile pet;
   bool isSelected = false;
+  GeoLocation petLocation;
+  PetPod(this.pet, this.isSelected, this.petLocation);
 
-  PetPod(this.pet, this.isSelected);
+  setLocation(GeoLocation){
+    this.petLocation = GeoLocation;
+  }
 }
 
 class CustomPetMatch extends StatelessWidget {
@@ -850,10 +968,9 @@ class _PetRequestCardState extends State<PetRequestCard> {
                     onPressed: () async{
                       final resp = await updateMateRequest(widget.request.request_id, 2);
                       if (resp == 200){
-                        final prefs = await SharedPreferences.getInstance();
-                        prefs.setBool('petReqAction', true);
-                        showNotification(context, 'Request Declined.');
-                        BA_key.currentState?.pop();
+                        BA_key.currentState?.pop(true);
+                      }else{
+                        showSnackbar(context, "Failed to communicate with server, try again.");
                       }
                     },
                     label: Text('DECLINE',
@@ -873,10 +990,9 @@ class _PetRequestCardState extends State<PetRequestCard> {
 
                       final resp = await updateMateRequest(widget.request.request_id, 1);
                       if (resp == 200){
-                        final prefs = await SharedPreferences.getInstance();
-                        prefs.setBool('petReqAction', true);
-                        showNotification(context, 'Request accepted.');
-                        BA_key.currentState?.pop();
+                        BA_key.currentState?.pop(true);
+                      }else{
+                        showSnackbar(context, "Failed to communicate with server, try again.");
                       }
                     },
                     label: Text('ACCEPT',
@@ -903,7 +1019,10 @@ class _PetRequestCardState extends State<PetRequestCard> {
     ],
 
     );
+
+
   }
+
 }
 
 
@@ -1420,8 +1539,248 @@ ShimmerPetRequestBanner(BuildContext context){
   );
 }
 
+class PetView extends StatefulWidget {
+  final PetPod profile;
+  final List<PetPod> ownerPets;
+  const PetView({Key? key, required this.profile, required this.ownerPets}) : super(key: key);
+
+  @override
+  State<PetView> createState() => _PetViewState();
+}
+
+class _PetViewState extends State<PetView> {
 
 
+
+  getDistance() async {
+    final distance;
+    final prefs = await SharedPreferences.getInstance();
+    final sLat = prefs.getDouble('lat');
+    final sLong = prefs.getDouble('long');
+
+    try{
+      final resp = await SupabaseCredentials.supabaseClient.from('users').select('lat,long').eq('id',  widget.profile.pet.ownerId) as List<dynamic>;
+      final lat = resp[0]['lat'].toDouble();
+      final long = resp[0]['long'].toDouble();
+
+      if (sLat != null && sLong != null && lat > 0.0 && long > 0.0){
+        distance = Geolocator.distanceBetween(sLat, sLong, lat, long);
+      }else{
+        distance = -1.0;
+      }
+      print(distance);
+    }catch (e){
+      print(e);
+    }
+
+  }
+  @override
+  void initState() {
+    getDistance();
+    super.initState();
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.of(context).size.height;
+    final width = MediaQuery.of(context).size.width;
+    final petAge = AgeCalculator.dateDifference(fromDate: widget.profile.pet.birthdate, toDate: DateTime.now());
+    final petVaccines = widget.profile.pet.vaccines.length/8;
+    String petText = "";
+    if (petAge.years > 0){
+      petText = petText + petAge.years.toString() + "";
+      if (petAge.months > 0){
+        petText = petText +"."+ petAge.months.toString() + " years";
+      }
+    }else{
+      if (petAge.months > 0){
+        petText = petText + petAge.months.toString() + " months";
+      }
+    }
+    return Container(
+      padding: EdgeInsets.all(5),
+      margin: EdgeInsets.symmetric(horizontal: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(25),
+        color: Colors.blueGrey.shade900,
+      ),
+      child: Column(
+
+        children: [
+          GestureDetector(
+            onTap: (){
+              print('tapped pet');
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+              height: height*0.215,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: CupertinoColors.extraLightBackgroundGray,
+                border: Border.all(width: 2, color:  CupertinoColors.extraLightBackgroundGray),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: <Widget>[
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Center(
+                        child: CircleAvatar(
+                          radius : 10*width*0.007,
+                          backgroundColor: Colors.grey,
+                          backgroundImage: NetworkImage(widget.profile.pet.photoUrl),
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(3),
+                            child: Text(
+                              widget.profile.pet.name,
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontFamily: 'Roboto',
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.blueGrey.shade900),
+                              overflow: TextOverflow.visible,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Icon(Icons.star_rate_rounded, color: CupertinoColors.activeOrange),
+                              Padding(
+                                padding: const EdgeInsets.all(3),
+                                child: Text(
+                                  "4.2",
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontFamily: 'Roboto',
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.blueGrey.shade600),
+                                  overflow: TextOverflow.visible,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(3*Checkbox.width*0.05),
+                            child: Text(petText, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.blueGrey.shade700,
+                                fontSize: 11*width*0.0027)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 3*height*0.005,),
+                  FittedBox(
+                    child: Text(
+                      widget.profile.pet.breed,
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey),
+                      overflow: TextOverflow.visible,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  SizedBox(height: height*0.008,),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                          width: 60,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: Colors.blueGrey.shade900,
+                          ),
+                          child:  Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                                children: [
+                                  ImageIcon(AssetImage("assets/vaccineIcon.png"), color: Colors.white, size: 18),
+                                  SizedBox(width: 5),
+                                  CircularPercentIndicator(
+                                    radius: 10,
+                                    lineWidth: 3,
+                                    percent: petVaccines,
+                                    backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                                    progressColor: Colors.teal,
+                                  )
+                                ]),
+                          )
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20)
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(5.0),
+                          child: Icon(widget.profile.pet.isMale ? Icons.male_rounded : Icons.female_rounded,
+                              color: widget.profile.pet.isMale ? Colors.blue : Colors.pink),
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: Colors.blueGrey.shade900),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10*Checkbox.width*0.05),
+                          child: Text("1.2 km", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white,
+                              fontSize: 11*width*0.0027)),
+                        ),
+                      )
+                    ],
+                  ),
+                  Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(width: 20, height: 20,
+                            child: Image(image: AssetImage("assets/verifiedOwner.png"), fit: BoxFit.fill,)),
+                        SizedBox(width: 10*Checkbox.width*0.05,),
+                        Container(width: 20, height: 20,
+                            child: Image(image: AssetImage("assets/verifiedDocuments.png"), fit: BoxFit.fill,)),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            ),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                foregroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50.0))),
+            onPressed: () async{
+
+            },
+            icon: Icon(CupertinoIcons.heart_fill, color: Colors.black, size: 9*width*0.003,),
+            label: Text('Send Request', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 8*width*0.003),),
+          ),
+        ],
+      ),
+    );;
+  }
+}
+
+
+// OCR Result Parser
 IdResponse idResponseFromJson(String str) => IdResponse.fromJson(json.decode(str));
 
 String idResponseToJson(IdResponse data) => json.encode(data.toJson());
@@ -1591,6 +1950,4 @@ Future scanID() async {
     imagePath = '';
     return imagePath;
   }
-
-
 }

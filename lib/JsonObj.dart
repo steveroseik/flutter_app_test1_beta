@@ -8,27 +8,31 @@ class Breed {
   Breed({
     required this.id,
     required this.name,
+    required this.weight,
+    required this.height,
     required this.photoUrl,
-    required this.breedGroup,
   });
 
   int id;
   String name;
+  int weight;
+  int height;
   String photoUrl;
-  String breedGroup;
 
   factory Breed.fromJson(Map<String, dynamic> json) => Breed(
     id: json["id"],
     name: json["name"],
+    weight: json["weight"],
+    height: json["height"],
     photoUrl: json["photoUrl"],
-    breedGroup: json["breed_group"],
   );
 
   Map<String, dynamic> toJson() => {
     "id": id,
     "name": name,
+    "weight": weight,
+    "height": height,
     "photoUrl": photoUrl,
-    "breed_group": breedGroup,
   };
 
   ///this method will prevent the override of toString
@@ -42,6 +46,7 @@ class Breed {
     return name == m.name;
   }
 }
+
 
 // end of breed list obj
 
@@ -474,6 +479,8 @@ class PetProfile {
     required this.ready,
     required this.createdAt,
     required this.vaccines,
+    required this.rateSum,
+    required this.rateCount,
   });
 
   String id;
@@ -486,6 +493,8 @@ class PetProfile {
   bool ready;
   DateTime createdAt;
   List<String> vaccines;
+  int rateSum;
+  int rateCount;
 
   factory PetProfile.fromJson(Map<String, dynamic> json) => PetProfile(
     id: json["id"],
@@ -498,6 +507,8 @@ class PetProfile {
     ready: json["ready"],
     createdAt: DateTime.parse(json["created_at"]),
     vaccines: List<String>.from(json["vaccines"].map((x) => x)),
+    rateSum: json["rateSum"],
+    rateCount: json["rateCount"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -511,8 +522,11 @@ class PetProfile {
     "ready": ready,
     "created_at": createdAt.toIso8601String(),
     "vaccines": List<dynamic>.from(vaccines.map((x) => x)),
+    "rateSum": rateSum,
+    "rateCount": rateCount,
   };
 }
+
 
 SinglePetProfile singlePetProfileFromJson(String str) => SinglePetProfile.fromJson(json.decode(str));
 

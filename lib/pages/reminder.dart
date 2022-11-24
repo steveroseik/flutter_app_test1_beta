@@ -60,17 +60,16 @@ class _ReminderPageState extends State<ReminderPage> {
                               }
                             });
                             await parseID();
-                            setState(() {
                               isPressed = false;
                               if (loading.mounted) {
                                 loading.remove();
                               }
-                            });
                             if (validTitle && validCode){
-                              setState(() {
-                                showNext = true;
-                              });
+                              showNext = true;
+                            }else{
+                              showSnackbar(context, "Please Take a more clear photo.");
                             }
+                            setState(() {});
                           },
                           child: Text('Open Camera'))
                     ],

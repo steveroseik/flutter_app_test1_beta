@@ -5,12 +5,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/configuration.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_app_test1/JsonObj.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'FETCH_wdgts.dart';
@@ -32,11 +34,9 @@ Future<T> retry<T>(int retries, FutureGenerator aFuture) async {
 
 // Function returns breeds of dogs with image url
 Future<List<Breed>> getBreedList(int counter) async {
-  int ret = -100;
   try {
     final resp = await SupabaseCredentials.supabaseClient.from('breed').select('name,photoUrl') as List<dynamic>;
     final List<Breed> bList = breedFromJson(jsonEncode(resp));
-    ret = 200;
     return bList;
 
   } catch (e) {
@@ -107,8 +107,8 @@ Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
     request.files.add(multipartFile);
     request.fields['sub_id'] = 'betaTest_FETCH';
 
-    var _res = await request.send();
-    var response = await http.Response.fromStream(_res);
+    var res = await request.send();
+    var response = await http.Response.fromStream(res);
 
     if (response.body != null) {
       pRes = photoResponseFromJson(response.body);
@@ -362,6 +362,20 @@ Future<bool> fetchUserPets() async{
   }
 }
 
+Future fetchBreedNameList() async{
+
+  try{
+    final response = await SupabaseCredentials.supabaseClient.from('breed').select('name') as List<dynamic>;
+    final petList = List<String>.generate(response.length, (index) {
+      return response[index]['name'].toString();
+    });
+    return petList;
+
+  }on PlatformException catch (e){
+    return <String>[];
+  }
+}
+
 Future<List<PetPod>>fetchPets(int petIndex) async{
   try{
     final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -370,15 +384,46 @@ Future<List<PetPod>>fetchPets(int petIndex) async{
     var ret = List<PetPod>.generate(pets.length, (index){
       if (petIndex == index) {
 
-        return PetPod(pets[index], true);
+        return PetPod(pets[index], true, GeoLocation(0.0, 0.0));
       }
-        return PetPod(pets[index], false);
+        return PetPod(pets[index], false, GeoLocation(0.0, 0.0));
     });
     return ret;
   }catch (e){
     print(e);
     return List<PetPod>.empty();
   }
+}
+
+Future fetchResultedPets() async{
+
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+  try{
+    final petList = await SupabaseCredentials.supabaseClient.from('pets').select('*').neq('owner_id', uid) as List<dynamic>;
+    final pets = petProfileFromJson(jsonEncode(petList));
+    // final petOwners = List<String>.generate(pets.length, (index) {
+    //   return pets[index].ownerId;
+    // });
+    // final userLocationList = await SupabaseCredentials.supabaseClient.from("users")
+    //     .select('id,lat,long')
+    //     .in_('id', petOwners) as List<dynamic>;
+    final pods = List<PetPod>.generate(pets.length, (index){
+      // double lat = 0.0, long = 0.0;
+      // for (Map entry in userLocationList){
+      //   if (entry['id'] == pets[index].ownerId){
+      //     lat = entry['lat'].toDouble();
+      //     long = entry['long'].toDouble();
+      //     break;
+      //   }
+      // }
+      return PetPod(pets[index], false, GeoLocation(0.0, 0.0));
+    });
+    return pods;
+  }on PlatformException catch (e){
+    print(e);
+    return <PetProfile>[];
+  }
+
 }
 
 Future<List<PetProfile>> getPetMatch() async{
@@ -466,19 +511,24 @@ Future fetchUserData(String uid) async{
 
 Future pickImage(BuildContext context, ImageSource src) async {
   var imageFile;
-  try {
-    final image = await ImagePicker().pickImage(source: src);
-    if (image == null) {
-      showSnackbar(context, 'no image');
+  final stat = await Permission.location.request();
+  print(stat);
+  if (stat == PermissionStatus.granted){
+    try {
+      final image = await ImagePicker().pickImage(source: src);
+      if (image == null) {
+        showSnackbar(context, 'no image');
+        // img_src.value = 0;
+      }
+      imageFile = io.File(image!.path);
+      return imageFile;
+    } on PlatformException catch (e) {
+      // showSnackbar(context, e.toString());
       // img_src.value = 0;
+      return null;
     }
-    imageFile = io.File(image!.path);
-    return imageFile;
-  } on PlatformException catch (e) {
-    showSnackbar(context, e.toString());
-    // img_src.value = 0;
-    return '';
   }
+
 }
 
 Future compareFacial(io.File rawImage1, io.File rawImage2) async {
@@ -499,10 +549,42 @@ Future compareFacial(io.File rawImage1, io.File rawImage2) async {
       'SubscriptionKey': 'AVj9iM1dHULqhfxIXE-KGLhU8YBxb1121',
       io.HttpHeaders.contentTypeHeader: 'application/json'};
     final response = await http.post(uri, headers: headers, body: body);
+    print(response.body);
     final res = jsonDecode(response.body)['matchedFaces'][0]['confidence'];
     return res;
   } catch (e) {
+    print('failed here');
    print(e);
    return 0;
   }
+}
+void filterPetSearch() async{
+  try{
+    final resp = await SupabaseCredentials.supabaseClient.from('pets')
+        .select('name')
+        .or("and(birthdate.gte.2020-01-01,birthdate.lte.2023-01-01)").in_('breed', ['Yorkshire Terrier']).eq('isMale', false) as List<dynamic>;
+    print(resp);
+  }catch (e){
+    print(e);
+  }
+}
+
+Future<Position> getUserCurrentLocation() async {
+  await Geolocator.requestPermission().then((value){
+  }).onError((error, stackTrace) async {
+    await Geolocator.requestPermission();
+    print("ERROR"+error.toString());
+  });
+  final loc = await Geolocator.getCurrentPosition();
+  final prefs = await SharedPreferences.getInstance();
+  prefs.setDouble("long", loc.longitude);
+  prefs.setDouble("lat", loc.latitude);
+  
+  try{
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    await SupabaseCredentials.supabaseClient.from('users').update({"long": loc.longitude, "lat": loc.latitude}).eq('id', uid);
+  }catch (e){
+    print(e);
+  }
+  return loc;
 }

@@ -439,13 +439,13 @@ class _EditPetPageState extends State<EditPetPage> {
 
                                       String petBDate = petBirthDate.year.toString() + '-' + petBirthDate.month.toString() + '-' + petBirthDate.day.toString();
 
+                                      var vList = _controller.getSelectedItems().toSet().toList();
                                       int value = await editPet(nameField.text.capitalize(), isMale,
                                           petBDate,
-                                          _controller.getSelectedItems(), FirebaseAuth.instance.currentUser!.uid, widget.pod.id);
+                                          vList, FirebaseAuth.instance.currentUser!.uid, widget.pod.id);
 
                                       if (value == 200){
-                                        await fetchUserPets();
-                                        BA_key.currentState?.pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
+                                        BA_key.currentState?.pop(true);
                                       }else{
                                         showSnackbar(context, "Error updating pet info.");
                                       }

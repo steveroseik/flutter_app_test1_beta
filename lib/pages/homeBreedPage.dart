@@ -31,7 +31,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     with TickerProviderStateMixin {
   final emptyPet = PetPod(PetProfile(id: '', name: '', vaccines: [],
     ownerId: '', birthdate: DateTime.now(), breed: '',
-    isMale: false, photoUrl: '', ready: false, createdAt: DateTime.now(),), true);
+    isMale: false, photoUrl: '', ready: false, createdAt: DateTime.now(), rateSum: 0, rateCount: 0,), true, GeoLocation(0.0, 0.0));
   late BuildContext scaffoldContext;
   bool tapped = false;
   bool petDataLoading = false;
@@ -51,7 +51,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   List<MateItem> petRequests = <MateItem>[];
 
   final petIndex = ValueNotifier<int>(-1);
-  late PetPod selectedPet;
+  PetPod? selectedPet;
   final vaccineList = List<selectItem>.empty(growable: true);
   late var items = List<MultiSelectItem>.empty(growable: true);
 
@@ -76,7 +76,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
       }
     }
     await updatePets(petIndex.value);
-    await getRequests();
+    await getRequests(true);
     setState(() {
       isLoading = false;
     });
@@ -86,8 +86,8 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     petPods = await fetchPets(index);
   }
 
-  getRequests() async {
-   requestsLoading = true;
+  getRequests(bool r) async {
+   requestsLoading = r;
    setState(() {});
     final uid = await FirebaseAuth.instance.currentUser!.uid;
     petRequests = await fetchPetRequests(uid).whenComplete(() {
@@ -98,19 +98,10 @@ class _HomeBreedPageState extends State<HomeBreedPage>
 
 
   }
-
-  getSelectedPet() {
-    try {
-      return selectedPet;
-    } catch (e) {
-      showSnackbar(context, 'Select a pet first');
-      return null;
-    }
-  }
   createPetVaccines(){
     vaccineList.clear();
     for ( MapEntry entry in vaccineFList.entries){
-      vaccineList.add(selectItem(entry.value, selectedPet.pet.vaccines.contains(entry.key) ? true : false));
+      vaccineList.add(selectItem(entry.value, selectedPet!.pet.vaccines.contains(entry.key) ? true : false));
     }
     items = vaccineList
         .map((vac) => MultiSelectItem<selectItem>(vac, vac.name))
@@ -120,6 +111,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
 
   @override
   void initState() {
+    getUserCurrentLocation();
     usrHasPets();
     super.initState();
     _controller = AnimationController(
@@ -199,9 +191,13 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                               return InkWell(
                                 onTap: tapped ? null
                                     : () async {
-                                  if (selectedPet == petPods[index]){
-                                    petPods[index].isSelected = false;
-                                    selectedPet = emptyPet;
+                                  if (selectedPet != null && selectedPet == petPods[index]){
+                                      _controller.reverse().then((value) {
+                                        petPods[index].isSelected = false;
+                                        selectedPet = emptyPet;
+                                        petIndex.value = -1;
+                                        setState(() {});
+                                      });
                                   }else{
                                     tapped = true;
                                     for (var item in petPods) {
@@ -210,23 +206,20 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                     petPods[index].isSelected = true;
                                     if (petIndex.value == -1 && index != -1) {
                                       selectedPet = petPods[index];
+                                      _controller.forward();
                                       petIndex.value = index;
-                                      _controller.forward().then((value) {});
                                       createPetVaccines();
                                       setState(() {});
                                     } else {
                                       if (index != -1) {
                                         if (selectedPet != petPods[index]) {
-                                          _controller.reverse().then((value) {
-                                            selectedPet = petPods[index];
-                                            createPetVaccines();
-                                            setState(() {
-                                              viewVaccines.value = 0;
-                                              petIndex.value = index;
-
-                                            });
-
-                                            _controller.forward();
+                                          selectedPet = petPods[index];
+                                          createPetVaccines();
+                                          setState(() {
+                                            viewVaccines.value = 0;
+                                            petIndex.value = index;
+                                          _controller.reset();
+                                          _controller.forward();
                                           });
                                         }
                                       }
@@ -283,7 +276,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                                 color: CupertinoColors.extraLightBackgroundGray,
                                                               ),child: Padding(
                                                             padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
-                                                            child: Text("${AgeCalculator.dateDifference(fromDate: selectedPet.pet.birthdate, toDate: DateTime.now()).years}",
+                                                            child: Text("${AgeCalculator.dateDifference(fromDate: selectedPet!.pet.birthdate, toDate: DateTime.now()).years}",
                                                               style: TextStyle(
                                                                 color: Colors.grey,
                                                                 fontWeight: FontWeight.w800,
@@ -307,7 +300,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                                 color: CupertinoColors.extraLightBackgroundGray,
                                                               ),child: Padding(
                                                             padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
-                                                            child: Text((selectedPet.pet.isMale ? 'Male' : 'Female'),
+                                                            child: Text((selectedPet!.pet.isMale ? 'Male' : 'Female'),
                                                               style: TextStyle(
                                                                 color: Colors.grey,
                                                                 fontWeight: FontWeight.w600,
@@ -387,11 +380,11 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                                 SizedBox(height: 10),
                                                                 LinearPercentIndicator(
                                                                   lineHeight: 5.0,
-                                                                  percent: selectedPet
+                                                                  percent: (selectedPet!
                                                                       .pet
                                                                       .vaccines
                                                                       .length /
-                                                                      8,
+                                                                      8),
                                                                   barRadius:
                                                                   Radius.circular(
                                                                       20),
@@ -400,7 +393,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                                   progressColor:
                                                                   Colors.blueGrey,
                                                                   trailing: Text(
-                                                                    '${(selectedPet.pet.vaccines.length / 8 * 100).toInt()}%',
+                                                                    '${(selectedPet!.pet.vaccines.length / 8 * 100).toInt()}%',
                                                                     style: TextStyle(
                                                                         fontWeight:
                                                                         FontWeight
@@ -479,13 +472,14 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                               ),
                             )
                                 : Container(
-                              padding: EdgeInsets.symmetric(horizontal: 30),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
+                              height: 100,
+                              padding: EdgeInsets.symmetric(horizontal: 10),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                 children: [
                                   GestureDetector(
                                     onTap: () async {
-                                      if (getSelectedPet() != null) {
+                                      if (petIndex.value != -1) {
                                         setState(() {});
                                         if (!loading.mounted) {
                                           OverlayState? overlay =
@@ -500,20 +494,18 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                         BA_key.currentState?.pushNamed(
                                             '/petMatch',
                                             arguments: [selectedPet, pets]);
+                                      }else{
+                                        showSnackbar(context, 'Select a pet first');
                                       }
                                     },
                                     child: Container(
                                       padding: EdgeInsets.all(15),
                                       decoration: BoxDecoration(
-                                        color: Colors.blueGrey.shade700,
-                                        border: Border.all(
-                                            color: CupertinoColors
-                                                .extraLightBackgroundGray,
-                                            width: 1),
+                                        color: Colors.blueGrey.shade900,
                                         borderRadius: BorderRadius.circular(25),
                                       ),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           CircleAvatar(
                                               backgroundColor:
@@ -523,7 +515,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                   AssetImage(
                                                       'assets/mateIcon.png'),
                                                   color: Colors.white, size: 20)),
-                                          SizedBox(width: 10),
+                                          Spacer(),
                                           Text(
                                             'Find Mate',
                                             style: TextStyle(
@@ -536,23 +528,19 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                       ),
                                     ),
                                   ),
-                                  SizedBox(height: 5),
                                   GestureDetector(
                                     onTap: (){
-                                      BA_key.currentState?.pushNamed('/search_manual');
+                                      BA_key.currentState?.pushNamed('/search_manual', arguments: petPods);
                                     },
                                     child: Container(
+                                      width: MediaQuery.of(context).size.width/3.5,
                                       padding: EdgeInsets.all(15),
                                       decoration: BoxDecoration(
-                                        color: Colors.blueGrey.shade800,
-                                        border: Border.all(
-                                            color: CupertinoColors
-                                                .extraLightBackgroundGray,
-                                            width: 1),
+                                        color: Colors.blueGrey.shade900,
                                         borderRadius: BorderRadius.circular(25),
                                       ),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           CircleAvatar(
                                               backgroundColor:
@@ -563,19 +551,20 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                                       'assets/searchIcon.png'),
                                                   size: 20,
                                                   color: Colors.white)),
-                                          SizedBox(width: 10),
-                                          Text(
-                                            'Search Manually',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontFamily: 'Roboto',
-                                                fontWeight: FontWeight.w800),
+                                          Spacer(),
+                                          FittedBox(
+                                            child: Text(
+                                              'Search\nManually',
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontFamily: 'Roboto',
+                                                  fontWeight: FontWeight.w700),
+                                            ),
                                           ),
                                         ],
                                       ),
                                     ),
                                   ),
-                                  SizedBox(height: 5),
                                   GestureDetector(
                                     onTap: (){
                                       BA_key.currentState?.pushNamed('/search_manual');
@@ -584,22 +573,18 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                       padding: EdgeInsets.all(15),
                                       decoration: BoxDecoration(
                                         color: Colors.blueGrey.shade900,
-                                        border: Border.all(
-                                            color: CupertinoColors
-                                                .extraLightBackgroundGray,
-                                            width: 1),
                                         borderRadius: BorderRadius.circular(25),
                                       ),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           CircleAvatar(
-                                              backgroundColor:
-                                              Colors.redAccent,
-                                              radius: 15,
-                                              child: Icon(Icons.circle_outlined, color: Colors.white),
+                                            backgroundColor:
+                                            Colors.redAccent,
+                                            radius: 15,
+                                            child: Icon(Icons.circle_outlined, color: Colors.white),
                                           ),
-                                          SizedBox(width: 10),
+                                          Spacer(),
                                           Text(
                                             'Pet Circle',
                                             style: TextStyle(
@@ -612,6 +597,49 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 40),
+                              child: GestureDetector(
+                                onTap: ()async{
+                                  // BA_key.currentState?.pushNamed('/search_manual');
+                                  // filterPetSearch();
+                                  // final resp = await SupabaseCredentials.supabaseClient.from("breed").select('*').limit(2) as List<dynamic>;
+                                  // print(jsonEncode(resp));
+                                },
+                                child: Container(
+                                  height: 80,
+                                  width: MediaQuery.of(context).size.width/2,
+                                  padding: EdgeInsets.all(15),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blueGrey.shade900,
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Adopt',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontFamily: 'Roboto',
+                                              fontWeight: FontWeight.w700,
+                                          fontSize: 20),
+                                        ),
+                                        ImageIcon(
+                                            AssetImage(
+                                                'assets/adoptIcon.png'),
+                                            size: 40,
+                                            color: Colors.white),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                             SizedBox(
@@ -632,7 +660,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                       )),
                                   Spacer(),
                                   IconButton(onPressed: (){
-                                    getRequests();
+                                    getRequests(true);
                                   },
                                       icon: Icon(Icons.refresh_rounded),
                                       style: ElevatedButton.styleFrom(
@@ -666,26 +694,14 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                   ),
                 ],
               ),
-            )
+            ),
+            floatingActionButton: FloatingActionButton(
+              onPressed: () {  },
+              backgroundColor: Colors.blueGrey.shade900,
+              child: Icon(Icons.notifications),
+            ),
             //
             );
-  }
-
-  void _showMultiSelect(BuildContext context, Widget widget) async {
-    await showModalBottomSheet(
-      isScrollControlled: true, // required for min/max child size
-      context: context,
-      builder: (ctx) {
-        return  MultiSelectBottomSheet(
-          items: items,
-          onConfirm: (values) {
-            // print(values as List<dynamic>);
-          },
-          maxChildSize: 0.8, initialValue: [items],
-        );
-      },
-
-    );
   }
 
   void _modalBottomSheetMenu(MateItem request){
@@ -703,10 +719,8 @@ class _HomeBreedPageState extends State<HomeBreedPage>
           );
         }
     ).then((value) async{
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool('petReqAction') == true){
-        getRequests();
-        prefs.setBool('petReqAction', false);
+      if (value!= null && value){
+        getRequests(false);
       }
     });
   }
@@ -718,14 +732,25 @@ class _HomeBreedPageState extends State<HomeBreedPage>
         context: context,
         builder: (builder){
           return Container(height: MediaQuery.of(context).size.height * 0.8,
-              child: EditPetPage(pod: selectedPet.pet));
+              child: EditPetPage(pod: selectedPet!.pet));
         }
     ).then((value) async{
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool('petReqAction') == true){
-        getRequests();
-        prefs.setBool('petReqAction', false);
+      if (value != null && value){
+        await updatePets(-1);
+        petIndex.value = -1;
+        petPods.forEach((element) {
+          element.isSelected = false;
+        });
+        selectedPet = emptyPet;
+        setState(() {
+
+        });
       }
+      // final prefs = await SharedPreferences.getInstance();
+      // if (prefs.getBool('petReqAction') == true){
+      //   getRequests();
+      //   prefs.setBool('petReqAction', false);
+      // }
     });
   }
 }

@@ -67,6 +67,8 @@ dependencies:
   flutter_native_image: ^0.0.6+1
   edge_detection: ^1.0.9
   introduction_screen: ^3.0.2
+  flutter_switch: ^0.3.2
+  permission_handler: ^10.2.0
 
 
 dev_dependencies:

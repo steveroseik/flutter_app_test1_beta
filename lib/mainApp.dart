@@ -58,6 +58,18 @@ class _mainAppState extends State<mainApp> {
         showUnselectedLabels: false,
         onTap: (value) {
           setState((){
+            if (value == _selectedIndex){
+              switch(value){
+                case 0: UserNav_key.currentState?.popUntil((Route<dynamic> predicate) => predicate.isFirst);
+                break;
+                case 2: BA_key.currentState?.popUntil((Route<dynamic> predicate) => predicate.isFirst);
+                break;
+                case 3: explore_key.currentState?.popUntil((Route<dynamic> predicate) => predicate.isFirst);
+                break;
+                case 4: settingsNav_key.currentState?.popUntil((Route<dynamic> predicate) => predicate.isFirst);
+                break;
+              }
+            }
             _selectedIndex = value;
           });
 
