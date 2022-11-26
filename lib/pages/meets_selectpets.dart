@@ -19,7 +19,8 @@ import '../configuration.dart';
 
 class SelectPets_Meets extends StatefulWidget {
   final List<dynamic> criteria;
-  const SelectPets_Meets({Key? key, required this.criteria}) : super(key: key);
+  final int id;
+  const SelectPets_Meets({Key? key, required this.criteria, required this.id}) : super(key: key);
   @override
   State<SelectPets_Meets> createState() => SelectPets_MeetsState();
 }
@@ -30,24 +31,49 @@ class SelectPets_MeetsState extends State<SelectPets_Meets> {
   var isLoading = true;
   List<int> fitsCrit=[];
   var str ='';
+  var attendees = 0;
+  Future from_meet() async {
+    try {
+        final data = await SupabaseCredentials.supabaseClient
+            .from('meets')
+            .select('*').eq('id', widget.id) as List<dynamic>;
 
-  Future add_to_meet(var petIDs) async {
-    /*try {
-      await SupabaseCredentials.supabaseClient.from('meets').insert({
-        'attending_pets': petIDs,
-        'attending_users': ,
-      });
+        for (var entry in data) {
+          final map = Map.from(entry);
+          attendees = map['no_of_attending'];
+        }
+      }
+      on PostgrestException catch (error) {
+        print(error.message);
+      }
+      catch (e) {
+        print(e);
+      }
+  }
+
+  Future add_to_meets(petIDs) async {
+    print('da5alt');
+
+    attendees++;
+    try {    print('da5alt gowa');
+
+    await SupabaseCredentials.supabaseClient.from('meets').update({
+        'no_of_attending': attendees,
+        'attending_pets': petIDs
+      }).eq('id',widget.id);
     }
-
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
     catch (e) {
       print(e);
-    }*/
+    }
   }
-int validate_pets(var x){
+
+  int validate_pets(var x){
   for (int i = 0;i < widget.criteria.length; i++){
     var z = widget.criteria[i];
     for (int j = 0; j < z.length; j++) {
-      print(z[j]);
       if (z[j] != ',') {
         str = str + z[j];
       }
@@ -78,6 +104,7 @@ int validate_pets(var x){
     setState(() {
       isLoading = false;
     });
+    from_meet();
   }
   @override
     initState() {
@@ -155,10 +182,17 @@ int validate_pets(var x){
                     petIDs.add(entry.pet.id);
                   }
                 }
+
                 if(petPods.length > 0) {
-                  add_to_meet(petIDs);
+                  if (!petIDs.isEmpty) {
+                    add_to_meets(petIDs);
+                  }
+                  else {
+                    showSnackbar(context, 'Please select at least one pet');
+                  }
                 }
-                explore_key.currentState
+
+    explore_key.currentState
                     ?.pushNamed('/');
                 setState(() {});
 
