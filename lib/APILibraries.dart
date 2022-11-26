@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' as io;
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/configuration.dart';
@@ -145,11 +146,10 @@ Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
 
 // add pet
 
-Future addPet(String name, dogBreed, bool isMale, String petBirthDate, String photoUrl, String uid, List<dynamic> vaccines) async{
+Future addPet(String name, dogBreed, bool isMale, String petBirthDate, String photoUrl, String uid, List<dynamic> vaccines, String pdfUrl) async{
   int ret = -100;
   try{
-
-    final resp = await SupabaseCredentials.supabaseClient.from('pets').insert({
+    await SupabaseCredentials.supabaseClient.from('pets').insert({
       'name': name,
       'breed': dogBreed,
       'isMale': isMale ? true : false,
@@ -158,7 +158,10 @@ Future addPet(String name, dogBreed, bool isMale, String petBirthDate, String ph
       'owner_id': uid,
       'ready': false,
       'created_at': DateTime.now().toIso8601String(),
-      'vaccines': vaccines
+      'vaccines': vaccines,
+      'passport': pdfUrl,
+      'rateSum': 0,
+      'rateCount': 0
     }).select('id').single() as Map;
     ret = 200;
   } on PostgrestException catch (error) {
@@ -511,22 +514,19 @@ Future fetchUserData(String uid) async{
 
 Future pickImage(BuildContext context, ImageSource src) async {
   var imageFile;
-  final stat = await Permission.location.request();
-  print(stat);
-  if (stat == PermissionStatus.granted){
-    try {
-      final image = await ImagePicker().pickImage(source: src);
-      if (image == null) {
-        showSnackbar(context, 'no image');
-        // img_src.value = 0;
-      }
-      imageFile = io.File(image!.path);
-      return imageFile;
-    } on PlatformException catch (e) {
-      // showSnackbar(context, e.toString());
-      // img_src.value = 0;
+  try {
+    final image = await ImagePicker().pickImage(source: src);
+    if (image == null) {
+      showSnackbar(context, 'Cancelled.');
       return null;
+    }else{
+      imageFile = io.File(image.path);
+      return imageFile;
     }
+  } on PlatformException catch (e) {
+    // showSnackbar(context, e.toString());
+    // img_src.value = 0;
+    return null;
   }
 
 }
@@ -577,6 +577,7 @@ Future<Position> getUserCurrentLocation() async {
   });
   final loc = await Geolocator.getCurrentPosition();
   final prefs = await SharedPreferences.getInstance();
+  print(loc.latitude.toString() + " " + loc.longitude.toString());
   prefs.setDouble("long", loc.longitude);
   prefs.setDouble("lat", loc.latitude);
   
@@ -587,4 +588,20 @@ Future<Position> getUserCurrentLocation() async {
     print(e);
   }
   return loc;
+}
+
+Future<String> uploadAndStorePDF(io.File pdfFile) async {
+  try {
+    Reference ref =
+    FirebaseStorage.instance.ref().child('pdfs/${DateTime.now().millisecondsSinceEpoch}');
+    UploadTask uploadTask = ref.putFile(pdfFile, SettableMetadata(contentType: 'file/pdf'));
+
+    TaskSnapshot snapshot = await uploadTask;
+
+    String url = await snapshot.ref.getDownloadURL();
+    return url;
+  } catch (e) {
+    print(e);
+    return "";
+  }
 }

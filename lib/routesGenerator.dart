@@ -17,7 +17,9 @@ import 'package:flutter_app_test1/pages/explore.dart';
 import 'package:flutter_app_test1/pages/forgotPassword.dart';
 import 'package:flutter_app_test1/pages/homeBreedPage.dart';
 import 'package:flutter_app_test1/pages/location_review.dart';
+import 'package:flutter_app_test1/pages/petDocumentUpload.dart';
 import 'package:flutter_app_test1/pages/petMatchPage.dart';
+import 'package:flutter_app_test1/pages/petProfilePage.dart';
 import 'package:flutter_app_test1/pages/settings.dart';
 import 'package:flutter_app_test1/pages/user_profile.dart';
 import 'package:flutter_app_test1/pages/home.dart';
@@ -105,9 +107,9 @@ class RouteGenerator {
       case '/pet_register':
         //this case is for second step of pet verification after taking a picture of the pet
         // if happens to navigate to the page with an unidentified photo will navigate to error route
-        if (args is File) {
+        if (args is List) {
           return MaterialPageRoute(
-            builder: (_) => petRegPage(recFile: args), // Second Page
+            builder: (_) => petRegPage(recFile: args[0], breedSelected: args[1],), // Second Page
           );
         }
         return _errorRoute();
@@ -120,6 +122,18 @@ class RouteGenerator {
         return MaterialPageRoute(
           builder: (_) => breedSearchPage(ownerPets: [],), // Second Page
         );
+      case '/petDocument':
+        if (args is List){
+          return MaterialPageRoute(
+              builder: (_) => PetDocumentUpload(arguments: args,));
+        }
+        return _errorRoute();
+      case '/petProfile':
+        if (args is PetPod){
+          return MaterialPageRoute(
+              builder: (_) => PetProfilePage(pod: args));
+        }
+        return _errorRoute();
       default:
         // if an unmatched route is called, return error route
         return _errorRoute();

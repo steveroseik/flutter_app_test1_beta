@@ -15,8 +15,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class petRegPage extends StatefulWidget {
   final File recFile;
-
-  const petRegPage({Key? key, required this.recFile}) : super(key: key);
+  final String breedSelected;
+  const petRegPage({Key? key, required this.recFile, required this.breedSelected}) : super(key: key);
 
   @override
   State<petRegPage> createState() => _petRegPageState();
@@ -77,7 +77,7 @@ class _petRegPageState extends State<petRegPage> {
                   Flexible(
                     flex: 2,
                     child: CupertinoDatePicker(
-                      mode: CupertinoDatePickerMode.dateAndTime,
+                      mode: CupertinoDatePickerMode.date,
                       onDateTimeChanged: (value) {
                         setState(() {
                           if (value != null && value != petBirthDate) {
@@ -215,47 +215,39 @@ class _petRegPageState extends State<petRegPage> {
                       ],
                     ),
                     SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2.5),
-                      child: Row(
-                        children: [
-                          Expanded(
-                              child: TextFormField(
-                                controller: ageFieldController,
-                                enabled: false,
-                                decoration: InputDecoration(
-                                  border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(20)),
-                                  enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                      borderSide: BorderSide(
-                                          color: CupertinoColors
-                                              .extraLightBackgroundGray)),
-                                  focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                          color: Colors.grey),
-                                      borderRadius: BorderRadius.circular(20)),
-                                  filled: true,
-                                  fillColor: CupertinoColors
-                                      .extraLightBackgroundGray,
-                                  labelStyle: TextStyle(color: Colors.grey),
-                                ),
-                                validator: (value) {
-                                  if (value!.length == 0) {
-                                    return "Select birthdate";
-                                  }
-                                  return null;
-                                },
-                              )
+                    GestureDetector(
+                      onTap: (){
+                        showDatePicker();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2.5),
+                        child: TextFormField(
+                          controller: ageFieldController,
+                          enabled: false,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20)),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide(
+                                    color: CupertinoColors
+                                        .extraLightBackgroundGray)),
+                            focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Colors.grey),
+                                borderRadius: BorderRadius.circular(20)),
+                            filled: true,
+                            fillColor: CupertinoColors
+                                .extraLightBackgroundGray,
+                            labelStyle: TextStyle(color: Colors.grey),
                           ),
-                          IconButton(
-                              color: Colors.teal.shade100,
-                              onPressed: () {
-                                showDatePicker();
-                              },
-                              icon: Icon(Icons.calendar_month,
-                                  color: Colors.grey.shade900)),
-                        ],
+                          validator: (value) {
+                            if (value!.length == 0) {
+                              return "Select birthdate";
+                            }
+                            return null;
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -281,7 +273,7 @@ class _petRegPageState extends State<petRegPage> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: BreedSearchWidget(formKey: breedKey),
+                            child: BreedSearchWidget(formKey: breedKey, breedSelected: widget.breedSelected),
                           ),
                         ],
                       ),
@@ -420,11 +412,11 @@ class _petRegPageState extends State<petRegPage> {
                             style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.blueGrey,
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10.0))),
+                                    borderRadius: BorderRadius.circular(20.0))),
                             child: Padding(
                               padding: const EdgeInsets.all(10),
                               child: Text(
-                                'FINISH',
+                                'Next',
                                 style: TextStyle(color: Colors.white)),
                             ),
                             onPressed: btn_clicked ? null : () async{
@@ -454,17 +446,11 @@ class _petRegPageState extends State<petRegPage> {
                                 photoUrl = await uploadPhoto(widget.recFile);
                                 if (photoUrl != '-100'){
 
-                                  int value = await addPet(nameField.text.capitalize(),
-                                      dogBreed, isMale,
-                                      petBDate,
-                                      photoUrl, FirebaseAuth.instance.currentUser!.uid, _controller.getSelectedItems());
+                                  BA_key.currentState?.pushNamed('/petDocument', arguments: [nameField.text.capitalize(),
+                                                dogBreed, isMale,
+                                                petBDate,
+                                                photoUrl, FirebaseAuth.instance.currentUser!.uid, _controller.getSelectedItems()]);
 
-                                  if (value == 200){
-                                    await fetchUserPets();
-                                    BA_key.currentState?.pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
-                                  }else{
-                                    showSnackbar(context, "Error signing up pet.");
-                                  }
                                 }else{
                                   showSnackbar(context, 'Photo upload issue, Try again.');
                                 }

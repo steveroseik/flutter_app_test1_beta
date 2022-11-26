@@ -232,8 +232,9 @@ class _SettingsPageState extends State<SettingsPage> {
                             borderRadius:
                             BorderRadius.all(Radius.circular(3))),
                       ),
-                      onPressed: ()  {
-
+                      onPressed: ()  async {
+                        final prefs = await SharedPreferences.getInstance();
+                        prefs.clear();
                         FirebaseAuth.instance.signOut();
                       },
                       child: const Text('Logout',

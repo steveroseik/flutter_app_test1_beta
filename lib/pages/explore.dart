@@ -55,15 +55,6 @@ class _MapsPageState extends State<MapsPage> {
     final uid = await FirebaseAuth.instance.currentUser!.uid;
     setState(() {});
   }
-  Future<Position> getUserCurrentLocation() async {
-    await Geolocator.requestPermission().then((value){
-    }).onError((error, stackTrace) async {
-      await Geolocator.requestPermission();
-      print("ERROR"+error.toString());
-    });
-    return await Geolocator.getCurrentPosition();
-  }
-
   @override
   void initState() {
     initUser();

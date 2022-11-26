@@ -31,7 +31,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     with TickerProviderStateMixin {
   final emptyPet = PetPod(PetProfile(id: '', name: '', vaccines: [],
     ownerId: '', birthdate: DateTime.now(), breed: '',
-    isMale: false, photoUrl: '', ready: false, createdAt: DateTime.now(), rateSum: 0, rateCount: 0,), true, GeoLocation(0.0, 0.0));
+    isMale: false, photoUrl: '', ready: false, createdAt: DateTime.now(), rateSum: 0, rateCount: 0, passport: ""), true, GeoLocation(0.0, 0.0));
   late BuildContext scaffoldContext;
   bool tapped = false;
   bool petDataLoading = false;
@@ -567,7 +567,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                   ),
                                   GestureDetector(
                                     onTap: (){
-                                      BA_key.currentState?.pushNamed('/search_manual');
+                                      showNotification(context, "Coming soon.");
                                     },
                                     child: Container(
                                       padding: EdgeInsets.all(15),
@@ -600,48 +600,48 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                               ),
                             ),
                             SizedBox(height: 10),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 40),
-                              child: GestureDetector(
-                                onTap: ()async{
-                                  // BA_key.currentState?.pushNamed('/search_manual');
-                                  // filterPetSearch();
-                                  // final resp = await SupabaseCredentials.supabaseClient.from("breed").select('*').limit(2) as List<dynamic>;
-                                  // print(jsonEncode(resp));
-                                },
-                                child: Container(
-                                  height: 80,
-                                  width: MediaQuery.of(context).size.width/2,
-                                  padding: EdgeInsets.all(15),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blueGrey.shade900,
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          'Adopt',
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontFamily: 'Roboto',
-                                              fontWeight: FontWeight.w700,
-                                          fontSize: 20),
-                                        ),
-                                        ImageIcon(
-                                            AssetImage(
-                                                'assets/adoptIcon.png'),
-                                            size: 40,
-                                            color: Colors.white),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                            // Padding(
+                            //   padding: const EdgeInsets.symmetric(horizontal: 40),
+                            //   child: GestureDetector(
+                            //     onTap: ()async{
+                            //       // BA_key.currentState?.pushNamed('/search_manual');
+                            //       // filterPetSearch();
+                            //       // final resp = await SupabaseCredentials.supabaseClient.from("breed").select('*').limit(2) as List<dynamic>;
+                            //       // print(jsonEncode(resp));
+                            //     },
+                            //     child: Container(
+                            //       height: 80,
+                            //       width: MediaQuery.of(context).size.width/2,
+                            //       padding: EdgeInsets.all(15),
+                            //       decoration: BoxDecoration(
+                            //         color: Colors.blueGrey.shade900,
+                            //         borderRadius: BorderRadius.circular(30),
+                            //       ),
+                            //       child: Padding(
+                            //         padding: const EdgeInsets.symmetric(horizontal: 10),
+                            //         child: Row(
+                            //           crossAxisAlignment: CrossAxisAlignment.center,
+                            //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            //           children: [
+                            //             Text(
+                            //               'Adopt',
+                            //               style: TextStyle(
+                            //                   color: Colors.white,
+                            //                   fontFamily: 'Roboto',
+                            //                   fontWeight: FontWeight.w700,
+                            //               fontSize: 20),
+                            //             ),
+                            //             ImageIcon(
+                            //                 AssetImage(
+                            //                     'assets/adoptIcon.png'),
+                            //                 size: 40,
+                            //                 color: Colors.white),
+                            //           ],
+                            //         ),
+                            //       ),
+                            //     ),
+                            //   ),
+                            // ),
                             SizedBox(
                               height: 20,
                             ),

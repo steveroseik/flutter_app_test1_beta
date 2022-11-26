@@ -481,6 +481,7 @@ class PetProfile {
     required this.vaccines,
     required this.rateSum,
     required this.rateCount,
+    required this.passport,
   });
 
   String id;
@@ -495,6 +496,7 @@ class PetProfile {
   List<String> vaccines;
   int rateSum;
   int rateCount;
+  String passport;
 
   factory PetProfile.fromJson(Map<String, dynamic> json) => PetProfile(
     id: json["id"],
@@ -509,6 +511,7 @@ class PetProfile {
     vaccines: List<String>.from(json["vaccines"].map((x) => x)),
     rateSum: json["rateSum"],
     rateCount: json["rateCount"],
+    passport: json["passport"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -524,8 +527,10 @@ class PetProfile {
     "vaccines": List<dynamic>.from(vaccines.map((x) => x)),
     "rateSum": rateSum,
     "rateCount": rateCount,
+    "passport": passport,
   };
 }
+
 
 
 SinglePetProfile singlePetProfileFromJson(String str) => SinglePetProfile.fromJson(json.decode(str));

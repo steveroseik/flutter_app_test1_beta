@@ -135,7 +135,8 @@ class _BreedSearchMultiWidgetState extends State<BreedSearchMultiWidget> {
 
 class BreedSearchWidget extends StatefulWidget {
   final GlobalKey<DropdownSearchState<Breed>> formKey;
-  const BreedSearchWidget({Key? key, required this.formKey}) : super(key: key);
+  final String breedSelected;
+  const BreedSearchWidget({Key? key, required this.formKey, required this.breedSelected}) : super(key: key);
 
   @override
   State<BreedSearchWidget> createState() => _BreedSearchWidgetState();
@@ -150,11 +151,11 @@ class _BreedSearchWidgetState extends State<BreedSearchWidget> {
     return _selected!;
   }
 
+
   @override
   void initState() {
     super.initState();
     bList = getBreedList(0);
-
   }
 
   @override
@@ -178,6 +179,12 @@ class _BreedSearchWidgetState extends State<BreedSearchWidget> {
           }
           switch (snapshot.connectionState) {
             case ConnectionState.done:
+              for(Breed element in snapshot.data!){
+                if (element.name == widget.breedSelected) {
+                  _selected = element;
+                  break;
+                }
+              }
               return Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20.0),
@@ -395,6 +402,13 @@ class GeoLocation{
   double lat;
   double long;
   GeoLocation(this.lat, this.long);
+
+  Lat(){
+    return lat;
+  }
+  Long(){
+    return long;
+  }
 }
 
 
@@ -406,6 +420,9 @@ class PetPod {
 
   setLocation(GeoLocation){
     this.petLocation = GeoLocation;
+  }
+  getLocation(){
+    return petLocation;
   }
 }
 
@@ -1549,11 +1566,11 @@ class PetView extends StatefulWidget {
 }
 
 class _PetViewState extends State<PetView> {
-
-
+  double distance = 0.0;
+  String distanceText = "km";
 
   getDistance() async {
-    final distance;
+
     final prefs = await SharedPreferences.getInstance();
     final sLat = prefs.getDouble('lat');
     final sLong = prefs.getDouble('long');
@@ -1563,12 +1580,21 @@ class _PetViewState extends State<PetView> {
       final lat = resp[0]['lat'].toDouble();
       final long = resp[0]['long'].toDouble();
 
+      if (lat != 0.0 && long != 0.0){
+        widget.profile.setLocation(GeoLocation(lat, long));
+      }
+
       if (sLat != null && sLong != null && lat > 0.0 && long > 0.0){
         distance = Geolocator.distanceBetween(sLat, sLong, lat, long);
       }else{
         distance = -1.0;
       }
-      print(distance);
+      if (distance >= 1000){
+        distanceText = (distance/1000).toInt().toString() + " km";
+      }else{
+        distanceText = distance.toInt().toString() + " m";
+      }
+      setState(() {});
     }catch (e){
       print(e);
     }
@@ -1610,7 +1636,7 @@ class _PetViewState extends State<PetView> {
         children: [
           GestureDetector(
             onTap: (){
-              print('tapped pet');
+              BA_key.currentState?.pushNamed('/petProfile', arguments: widget.profile);
             },
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
@@ -1695,7 +1721,7 @@ class _PetViewState extends State<PetView> {
                   ),
                   SizedBox(height: height*0.008,),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
@@ -1705,17 +1731,18 @@ class _PetViewState extends State<PetView> {
                             color: Colors.blueGrey.shade900,
                           ),
                           child:  Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.all(5.0),
                             child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
                                 children: [
                                   ImageIcon(AssetImage("assets/vaccineIcon.png"), color: Colors.white, size: 18),
                                   SizedBox(width: 5),
                                   CircularPercentIndicator(
-                                    radius: 10,
-                                    lineWidth: 3,
+                                    radius: 9,
+                                    lineWidth: 2,
                                     percent: petVaccines,
-                                    backgroundColor: CupertinoColors.extraLightBackgroundGray,
-                                    progressColor: Colors.teal,
+                                    backgroundColor: Colors.blueGrey.shade900,
+                                    progressColor: Colors.white,
                                   )
                                 ]),
                           )
@@ -1730,25 +1757,22 @@ class _PetViewState extends State<PetView> {
                               color: widget.profile.pet.isMale ? Colors.blue : Colors.pink),
                         ),
                       ),
-                      Container(
-                        decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            color: Colors.blueGrey.shade900),
-                        child: Padding(
-                          padding: const EdgeInsets.all(10*Checkbox.width*0.05),
-                          child: Text("1.2 km", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white,
-                              fontSize: 11*width*0.0027)),
-                        ),
-                      )
                     ],
                   ),
                   Spacer(),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 15.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+
+                        Padding(
+                          padding: const EdgeInsets.all(8*Checkbox.width*0.05),
+                          child: Text(distanceText, style: TextStyle( fontFamily: "Poppins", fontWeight: FontWeight.w900, color: Colors.blueGrey.shade900,
+                              fontSize: 11*width*0.0027)),
+                        ),
+                        Spacer(),
                         Container(width: 20, height: 20,
                             child: Image(image: AssetImage("assets/verifiedOwner.png"), fit: BoxFit.fill,)),
                         SizedBox(width: 10*Checkbox.width*0.05,),
