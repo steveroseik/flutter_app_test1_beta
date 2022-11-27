@@ -50,6 +50,7 @@ class Size{
 }
 class _CreateMeetState extends State<CreateMeet> {
   DateTime dateTime = DateTime.now();
+  final markers = List<Marker>.empty(growable: true);
   List<PetPod> petPods = <PetPod>[];
   final uid = FirebaseAuth.instance.currentUser!.uid; // user id
   TimeOfDay _timeOfDay = TimeOfDay(hour: 12, minute: 00);
@@ -64,16 +65,16 @@ class _CreateMeetState extends State<CreateMeet> {
   List<Size?> _selectedSizes = [];
   List<Size?> tempSelectedSizes = [];
   static List<Breed> breeds = [
-    Breed(id:0,breed: "All"),
     Breed(id:1,breed: "Golden"),
     Breed(id:2,breed: "German"),
-
+    Breed(id:3,breed: "American Bully"),
+    Breed(id:4,breed: "Yorkshire Terrier"),
+    Breed(id:5,breed: "American Water Spaniel"),
   ];
   static List<Size> sizes = [
-    Size(id:0,size: "All"),
-    Size(id:1,size: "Small"),
-    Size(id:2,size: "Medium"),
-    Size(id:3,size: "Large"),
+    Size(id:0,size: "Small"),
+    Size(id:1,size: "Medium"),
+    Size(id:2,size: "Large"),
   ];
   final _items = breeds
       .map((pet) => MultiSelectItem<Breed>(pet, pet.breed))
@@ -95,7 +96,9 @@ class _CreateMeetState extends State<CreateMeet> {
 
   Future insert(double longitude, double latitude, String title, String descr, List<String> petIDs) async {
      String jsonString = jsonEncode(tempSelectedBreed);
-    try {
+     String jsonSize = jsonEncode(tempSelectedSizes);
+
+     try {
         final timestamp = dateTime.toIso8601String();
         await SupabaseCredentials.supabaseClient.from('meets').insert({
           'longitude': longitude,
@@ -105,6 +108,7 @@ class _CreateMeetState extends State<CreateMeet> {
           'date': timestamp,
           'host_pets': petIDs,
           'host_id': uid,
+          'no_of_attending':0,
           'breed_list': tempSelectedBreed
         });
       }
@@ -117,8 +121,21 @@ class _CreateMeetState extends State<CreateMeet> {
   @override
   initState() {
     initUser();
+    initMarkers();
   }
 
+  initMarkers() async{
+    // BitmapDescriptor.fromAssetImage(ImageConfiguration(size: Size(5, 5)),
+    //     'assets/icon_male.png')
+    //     .then((d) {
+    //   customIcon = d;
+    // });
+
+    markers.clear();
+    final data = await initializeMarkers();
+    markers.addAll(data);
+    setState(() {});
+  }
   Future<Position> getUserCurrentLocation() async {
     await Geolocator.requestPermission().then((value) {}).onError((error,
         stackTrace) async {
@@ -128,6 +145,52 @@ class _CreateMeetState extends State<CreateMeet> {
     return await Geolocator.getCurrentPosition();
   }
 
+  Future getdata() async{
+    try {
+      final data = await SupabaseCredentials.supabaseClient
+          .from('locations')
+          .select('*') as List<dynamic>;
+      return data;
+    }
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
+    catch (e){
+      print(e);
+    }
+  }
+  Future initializeMarkers() async {
+    int ret = -100;
+    final  markers = List<Marker>.empty(growable: true);
+    try {
+      final data = await SupabaseCredentials.supabaseClient
+          .from('locations')
+          .select('*') as List<dynamic>;
+
+      for (var entry in data){
+        final map = Map.from(entry);
+        var x = map['longitude'];
+        var y =map['latitude'];
+        var id = map['id'];
+        markers.add(
+            Marker(
+                markerId: MarkerId(id.toString()),
+                position: LatLng(y, x),
+                onTap: () {
+
+                }
+            ));
+      }
+      return markers;
+    }
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
+    catch (e){
+      print(e);
+    }
+    return List<Marker>.empty();
+  }
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery
@@ -202,7 +265,7 @@ class _CreateMeetState extends State<CreateMeet> {
               Padding(
                 padding: const EdgeInsets.only(bottom:10,top: 20.0),
 
-            child:  Text("Would you like to limit your Meet to a few breeds?",
+            child:  Text("Breeds allowed (optional)",
                   style: TextStyle(fontSize: 20, color: Colors.black)),
             ),
               Container(
@@ -261,7 +324,7 @@ class _CreateMeetState extends State<CreateMeet> {
               ),Padding(
                 padding: const EdgeInsets.only(bottom:10,top: 20.0),
 
-                child:  Text("What size dogs are allowed?",
+                child:  Text("Dog sizes allowed (optional)",
                     style: TextStyle(fontSize: 20, color: Colors.black)),
               ),
               Container(
@@ -324,7 +387,29 @@ class _CreateMeetState extends State<CreateMeet> {
               ),
               Text("Where would you like to Meet? Tap the exact location",
                   style: TextStyle(fontSize: 20, color: Colors.black)),
+              Column(
+                children:[
+                  IconButton(
+                    onPressed: () async {
+                      final alldata = await getdata();
+
+                      // method to show the search bar
+                      GeoLocation selectedLocation = await showSearch(
+                          context: context,
+                          // delegate to customize the search bar
+                          delegate: CustomSearchDelegate(alldata: alldata)
+
+                      );
+
+                      final GoogleMapController controller = await _controller.future;
+                      controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
+                          zoom: 15, target: LatLng(selectedLocation.Lat(), selectedLocation.Long()))));
+
+                    },
+                    icon: const Icon(Icons.search, color:Colors.black),
+                  ),
               Center(
+
                 child: Container(
                   height: 150,
                   width: MediaQuery
@@ -338,13 +423,14 @@ class _CreateMeetState extends State<CreateMeet> {
                     borderRadius: const BorderRadius.all(
                       Radius.circular(30),
                     ),
-
                     child: GoogleMap(
-                        myLocationButtonEnabled: false,
+                        myLocationButtonEnabled: true,
                         myLocationEnabled: true,
                         initialCameraPosition: CameraPosition(
                             target: LatLng(31.233334, 30.033333),
                             zoom: 13.4746),
+                        markers: Set<Marker>.of(markers),
+
                         onMapCreated: (GoogleMapController controller) {
                           _controller.complete(controller);
                         },
@@ -355,7 +441,8 @@ class _CreateMeetState extends State<CreateMeet> {
                     ),
                   ),
                 ),
-              ),
+                    ),
+              ]),
 
 // option to add in coordinates or select location
               Padding(
@@ -488,6 +575,159 @@ class _CreateMeetState extends State<CreateMeet> {
             ),
           );
         });
+  }
+
+}
+
+class CustomSearchDelegate extends SearchDelegate {
+  CustomSearchDelegate({
+    required this.alldata,
+  });
+
+  final alldata;
+  final  lat = List<double>.empty(growable: true);
+  final  long = List<double>.empty(growable: true);
+  double longit = 0.0, latit = 0.0;
+
+  Set<Marker> markersList = {};
+
+  final  placenames = List<String>.empty(growable: true);
+  initState(){
+    initUser();
+
+  }
+
+  initUser()async{
+    lat.clear();
+    long.clear();
+    placenames.clear();
+    final data = await getLocations();
+    placenames.addAll(data);
+
+  }
+
+  Future getLocations() async {
+    final  placenames = List<String>.empty(growable: true);
+    try {
+      final data = await SupabaseCredentials.supabaseClient
+          .from('locations')
+          .select('*') as List<dynamic>;
+
+      for (var entry in data) {
+        final map = Map.from(entry);
+        var title = map['title'];
+        placenames.add(title);
+      }
+    }
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
+    catch (e) {
+      print(e);
+    }
+    return placenames;
+  }
+
+// first overwrite to
+// clear the search text
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        onPressed: () {
+          query = '';
+        },
+        icon: Icon(Icons.clear),
+      ),
+    ];
+  }
+
+// second overwrite to pop out of search menu
+  @override
+  Widget? buildLeading(BuildContext context) {
+    initUser();
+    return IconButton(
+      onPressed: () {
+        close(context, null);
+      },
+      icon: Icon(Icons.arrow_back),
+    );
+  }
+
+// third overwrite to show query result
+  @override
+  Widget buildResults(BuildContext context) {
+    List<String> matchQuery = [];
+    for (var fruit in placenames) {
+      if (fruit.toLowerCase().contains(query.toLowerCase())) {
+        matchQuery.add(fruit);
+      }
+    }
+
+    return ListView.builder(
+      itemCount: matchQuery.length,
+      itemBuilder: (context, index) {
+        var result = matchQuery[index];
+        return ListTile(
+          title: Text(result),
+        );
+      },
+    );
+  }
+
+// last overwrite to show the
+// querying process at the runtime
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    List<String> matchQuery = [];
+    for (var fruit in placenames) {
+      if (fruit.toLowerCase().contains(query.toLowerCase())) {
+        matchQuery.add(fruit);
+      }
+    }
+    return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setState) {
+          return ListView.builder(
+            itemCount: matchQuery.length,
+            itemBuilder: (context, index) {
+              var result = matchQuery[index];
+              return ListTile(
+                onTap: () async{
+                  //Here where I would like to go to new screen
+                  int add = 0;
+                  int addlong = 0;
+                  var temp='';
+                  var z;
+                  for(int i = 0; i < placenames.length; i++){
+                    if(placenames[i]==result){
+                      var plc = placenames[i];
+                      print('res: $result');
+                      print('places: $placenames');
+
+                      z = i;
+                      break;
+                    }
+                  }
+                  for(var entry in alldata){
+                    final map = Map.from(entry);
+                    lat.add(map['latitude']);
+                    long.add(map['longitude']);
+                  }
+                  latit = lat[z];
+                  longit = long[z];
+
+                  setState(() {});
+                  close(context, GeoLocation(latit, longit));
+
+
+                }
+
+
+                ,title: Text(result),
+              );
+            },
+          );});
+
   }
 
 }
