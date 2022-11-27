@@ -467,6 +467,10 @@ List<PetProfile> petProfileFromJson(String str) => List<PetProfile>.from(json.de
 
 String petProfileToJson(List<PetProfile> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
 
+PetProfile singlePetProfileFromJson(String str) => PetProfile.fromJson(json.decode(str));
+
+String singlePetProfileToJson(PetProfile data) => json.encode(data.toJson());
+
 class PetProfile {
   PetProfile({
     required this.id,
@@ -530,67 +534,6 @@ class PetProfile {
     "passport": passport,
   };
 }
-
-
-
-SinglePetProfile singlePetProfileFromJson(String str) => SinglePetProfile.fromJson(json.decode(str));
-
-String singlePetProfileToJson(SinglePetProfile data) => json.encode(data.toJson());
-
-class SinglePetProfile {
-  SinglePetProfile({
-   required this.id,
-   required this.name,
-   required this.breed,
-   required this.isMale,
-   required this.birthdate,
-   required this.photoUrl,
-   required this.ownerId,
-   required this.ready,
-   required this.createdAt,
-   required this.vaccines,
-  });
-
-  String id;
-  String name;
-  String breed;
-  bool isMale;
-  DateTime birthdate;
-  String photoUrl;
-  String ownerId;
-  bool ready;
-  DateTime createdAt;
-  List<String> vaccines;
-
-  factory SinglePetProfile.fromJson(Map<String, dynamic> json) => SinglePetProfile(
-    id: json["id"],
-    name: json["name"],
-    breed: json["breed"],
-    isMale: json["isMale"],
-    birthdate: DateTime.parse(json["birthdate"]),
-    photoUrl: json["photo_url"],
-    ownerId: json["owner_id"],
-    ready: json["ready"],
-    createdAt: DateTime.parse(json["created_at"]),
-    vaccines: List<String>.from(json["vaccines"].map((x) => x)),
-  );
-
-  Map<String, dynamic> toJson() => {
-    "id": id,
-    "name": name,
-    "breed": breed,
-    "isMale": isMale,
-    "birthdate": "${birthdate.year.toString().padLeft(4, '0')}-${birthdate.month.toString().padLeft(2, '0')}-${birthdate.day.toString().padLeft(2, '0')}",
-    "photo_url": photoUrl,
-    "owner_id": ownerId,
-    "ready": ready,
-    "created_at": createdAt.toIso8601String(),
-    "vaccines": List<dynamic>.from(vaccines.map((x) => x)),
-  };
-}
-
-
-
 // To parse this JSON data, do
 //
 

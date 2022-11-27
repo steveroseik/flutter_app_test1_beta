@@ -16,6 +16,7 @@ import 'package:flutter_app_test1/pages/emailVerify.dart';
 import 'package:flutter_app_test1/pages/explore.dart';
 import 'package:flutter_app_test1/pages/forgotPassword.dart';
 import 'package:flutter_app_test1/pages/homeBreedPage.dart';
+import 'package:flutter_app_test1/pages/notificationsPage.dart';
 import 'package:flutter_app_test1/pages/petDocumentUpload.dart';
 import 'package:flutter_app_test1/pages/petMatchPage.dart';
 import 'package:flutter_app_test1/pages/petProfilePage.dart';
@@ -131,6 +132,11 @@ class RouteGenerator {
         if (args is PetPod){
           return MaterialPageRoute(
               builder: (_) => PetProfilePage(pod: args));
+        }
+        return _errorRoute();
+      case '/notif':
+        if (args is List<MateItem>){
+          return MaterialPageRoute(builder: (_) => NotificationsPage(requests: args));
         }
         return _errorRoute();
       default:

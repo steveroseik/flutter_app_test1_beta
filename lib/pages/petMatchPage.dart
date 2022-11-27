@@ -5,6 +5,7 @@ import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 import '../JsonObj.dart';
@@ -20,19 +21,27 @@ class PetMatchPage extends StatefulWidget {
 
 class _PetMatchPageState extends State<PetMatchPage> {
 
-   late List<Widget> petMatches;
+   List<PetView> petMatches = <PetView>[];
    late List<Widget> petDialogs;
-   final dataReady = ValueNotifier<int>(0);
+   bool petsReady = false;
    int swipeBool = 1;
    final cardController = FlipCardController();
 
 
 
    initPets() async{
-    petMatches = List<Widget>.generate(widget.pets.length, (index){
-      return PetMatchCard(pet: widget.pets[index], sender: widget.senderPet.pet);
+     final prefs = await SharedPreferences.getInstance();
+     final uLat = prefs.getDouble('lat');
+     final uLong = prefs.getDouble('long');
+    for (PetProfile pet in widget.pets){
+      final pod = PetPod(pet, false, GeoLocation(0,0), 0);
+      final petView = PetView(profile: pod, ownerPets: [widget.senderPet]);
+      petMatches.add(petView);
+    }
+    print('done');
+    setState(() {
+      petsReady = true;
     });
-    dataReady.value = 1;
   }
 
   @override
@@ -56,27 +65,18 @@ class _PetMatchPageState extends State<PetMatchPage> {
                     fontSize: 20,
                     fontWeight: FontWeight.w900),
               ),
-              ValueListenableBuilder<int>(
-                valueListenable: dataReady,
-                builder: (context, value, widget){
-                  if (value == 0){
-                    return Text('Loading...');
-                  }else{
-                    return Container(
-                      height: 600,
-                      child: Swiper(
-                        itemBuilder: (BuildContext context, int index) {
-                          return  petMatches[index];
-                        },
-                        itemCount: petMatches.length,
-                        itemWidth: 350,
-                        itemHeight: 400,
-                        layout: SwiperLayout.STACK,
-                      ),
-                    );
-                  }
-                },
-              ),
+              petsReady ? Container(
+                height: 600,
+                child: Swiper(
+                  itemBuilder: (BuildContext context, int index) {
+                    return  petMatches[index];
+                  },
+                  itemCount: petMatches.length,
+                  itemWidth: 200,
+                  itemHeight: 240,
+                  layout: SwiperLayout.STACK,
+                ),
+              ) : Container()
             ],
           ),
         )

@@ -72,6 +72,7 @@ dependencies:
   document_scanner_flutter: ^0.2.7
   firebase_storage: ^11.0.6
   advance_pdf_viewer: ^2.0.1
+  scaled_list: ^2.0.0
 
 
 dev_dependencies:

@@ -298,7 +298,7 @@ class selectItem {
   selectItem(this.name, this.isSelected);
 }
 class MateItem{
-  SinglePetProfile sender_pet;
+  PetPod sender_pet;
   String receiver_id;
   String request_id;
   
@@ -416,7 +416,62 @@ class PetPod {
   PetProfile pet;
   bool isSelected = false;
   GeoLocation petLocation;
-  PetPod(this.pet, this.isSelected, this.petLocation);
+  int distance = 0;
+  PetPod(this.pet, this.isSelected, this.petLocation, int controller);
+
+  fetchLocation() async{
+    try{
+      final resp = await SupabaseCredentials.supabaseClient.from('users')
+          .select('lat,long')
+          .eq('id', pet.ownerId) as List<dynamic>;
+      final lat = resp[0]['lat'];
+      final long = resp[0]['long'];
+      petLocation = GeoLocation(lat,long);
+      return await calculateDistance();
+    }catch (e){
+      print(e);
+      return -1;
+    }
+  }
+
+  getDistance(){
+    return this.distance;
+  }
+
+  calculateDistance() async {
+    try {
+      if (this.petLocation.Lat() != 0.0 && this.petLocation.Long() != 0.0) {
+        final prefs = await SharedPreferences.getInstance();
+        final sLat = prefs.getDouble('lat');
+        final sLong = prefs.getDouble('long');
+
+        final resp = await SupabaseCredentials.supabaseClient.from('users')
+            .select('lat,long')
+            .eq('id', this.pet.ownerId) as List<dynamic>;
+        final lat = resp[0]['lat'].toDouble();
+        final long = resp[0]['long'].toDouble();
+
+        if (lat != 0.0 && long != 0.0) {
+          this.setLocation(GeoLocation(lat, long));
+        }
+
+        if ((sLat != null && sLat != 0.0) && (sLong != null && sLong != 0.0) && lat > 0.0 && long > 0.0) {
+          distance = Geolocator.distanceBetween(sLat, sLong, lat, long).toInt();
+        } else {
+          distance = -1;
+        }
+      } else {
+        print('not needed');
+        distance = -1;
+
+      }
+      return this.distance;
+    } catch (e) {
+      print(e);
+      this.distance = -1;
+      return -1;
+    }
+  }
 
   setLocation(GeoLocation){
     this.petLocation = GeoLocation;
@@ -728,11 +783,11 @@ class _PetRequestBannerState extends State<PetRequestBanner> {
             backgroundColor: Colors.white ,
             child: CircleAvatar(
               radius: width * 0.07 - 2,
-              backgroundImage: NetworkImage(widget.pod.sender_pet.photoUrl),
+              backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl),
             )
         ),
         title: Text(
-              '${widget.pod.sender_pet.name} has requested ${receiverName}to mate.',
+              '${widget.pod.sender_pet.pet.name} has requested ${receiverName}to mate.',
               style: TextStyle(
                   fontWeight:
                   FontWeight.w500,
@@ -759,7 +814,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
   Widget build(BuildContext context) {
 
     final height = MediaQuery.of(context).size.height;
-    final petAge = AgeCalculator.age(widget.request.sender_pet.birthdate);
+    final petAge = AgeCalculator.age(widget.request.sender_pet.pet.birthdate);
     String petText = (petAge == 0 ? '' : petAge.years == 1 ? "${petAge.years} yr\n" : "${petAge.years} yrs\n") +
         (petAge.months == 0 ? '' : petAge.months == 1 ? "${petAge.months} month" : "${petAge.months} months");
 
@@ -767,7 +822,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
     final vaccinesItems = List<MultiSelectCard>.generate(8, (index) {
       final key = vaccineFList.entries.elementAt(index).key;
       final value = vaccineFList.entries.elementAt(index).value;
-      return MultiSelectCard(value: key, label: value, selected: widget.request.sender_pet.vaccines.contains(key) ? true : false);
+      return MultiSelectCard(value: key, label: value, selected: widget.request.sender_pet.pet.vaccines.contains(key) ? true : false);
     });
     return ColumnSuper(innerDistance: -height/2.8 - 50,
       children: [
@@ -822,13 +877,13 @@ class _PetRequestCardState extends State<PetRequestCard> {
                 ],
               )
             ),
-            Text('${widget.request.sender_pet.name}',
+            Text('${widget.request.sender_pet.pet.name}',
                 style: TextStyle(
                     color: Colors.black,
                     fontSize: 17,
                     fontWeight: FontWeight.w900)),
             SizedBox(height: 5),
-            Text('${widget.request.sender_pet.breed}',
+            Text('${widget.request.sender_pet.pet.breed}',
                 style: TextStyle(
                     color: Colors.grey,
                     fontSize: 13,
@@ -862,7 +917,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
                             fontWeight: FontWeight.w600
                         ),),
                         Divider(),
-                        Icon(widget.request.sender_pet.isMale ? Icons.male_rounded : Icons.female_rounded, color: widget.request.sender_pet.isMale ? Colors.blue : Colors.pinkAccent,)
+                        Icon(widget.request.sender_pet.pet.isMale ? Icons.male_rounded : Icons.female_rounded, color: widget.request.sender_pet.pet.isMale ? Colors.blue : Colors.pinkAccent,)
                       ],
                     ),
                   ),
@@ -900,7 +955,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
                           padding: EdgeInsets.symmetric(horizontal: 20),
                           child:   Column(
                             children: [
-                              Text("${widget.request.sender_pet.name}'s Vaccinations List",
+                              Text("${widget.request.sender_pet.pet.name}'s Vaccinations List",
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
 
@@ -957,12 +1012,12 @@ class _PetRequestCardState extends State<PetRequestCard> {
                     Flexible(
                       child: LinearPercentIndicator(
                         lineHeight: 5.0,
-                        percent: widget.request.sender_pet.vaccines.length / 8,
+                        percent: widget.request.sender_pet.pet.vaccines.length / 8,
                         barRadius: Radius.circular(20),
                         backgroundColor: CupertinoColors.extraLightBackgroundGray,
                         progressColor: Colors.black,
                         trailing: Text(
-                          '${(widget.request.sender_pet.vaccines.length / 8 * 100).toInt()}%',
+                          '${(widget.request.sender_pet.pet.vaccines.length / 8 * 100).toInt()}%',
                           style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black),
                         ),
                       ),
@@ -1030,7 +1085,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
           child: CircleAvatar(
             radius: 49,
             backgroundColor: Colors.blue,
-            backgroundImage: NetworkImage(widget.request.sender_pet.photoUrl),
+            backgroundImage: NetworkImage(widget.request.sender_pet.pet.photoUrl),
           ),
         ),
     ],
@@ -1380,8 +1435,10 @@ class _PetMatchCardState extends State<PetMatchCard> {
                           final resp = await sendMateRequest(uid, widget.pet.ownerId, widget.sender.id, widget.pet.id);
                           if (resp == 200){
                             showNotification(context, 'Request Sent Successfully.');
+                          }else if (resp == 0){
+                            showSnackbar(context, 'You have already sent the request.');
                           }else{
-                            showSnackbar(context, 'Failed to send request!');
+                            showSnackbar(context, 'Failed to communicate with server.');
                           }
                         }else{
                           showSnackbar(context, 'Error handling request');
@@ -1566,43 +1623,25 @@ class PetView extends StatefulWidget {
 }
 
 class _PetViewState extends State<PetView> {
-  double distance = 0.0;
+  int distance = 0;
   String distanceText = "km";
 
-  getDistance() async {
-
-    final prefs = await SharedPreferences.getInstance();
-    final sLat = prefs.getDouble('lat');
-    final sLong = prefs.getDouble('long');
-
-    try{
-      final resp = await SupabaseCredentials.supabaseClient.from('users').select('lat,long').eq('id',  widget.profile.pet.ownerId) as List<dynamic>;
-      final lat = resp[0]['lat'].toDouble();
-      final long = resp[0]['long'].toDouble();
-
-      if (lat != 0.0 && long != 0.0){
-        widget.profile.setLocation(GeoLocation(lat, long));
-      }
-
-      if (sLat != null && sLong != null && lat > 0.0 && long > 0.0){
-        distance = Geolocator.distanceBetween(sLat, sLong, lat, long);
-      }else{
-        distance = -1.0;
-      }
-      if (distance >= 1000){
-        distanceText = (distance/1000).toInt().toString() + " km";
-      }else{
-        distanceText = distance.toInt().toString() + " m";
-      }
-      setState(() {});
-    }catch (e){
-      print(e);
+  generateDistance() async{
+    distance = await widget.profile.fetchLocation();
+    if (distance >= 1000){
+      distanceText = (distance/1000).toInt().toString() + " km";
+    }else if (distance != -1){
+      distanceText = distance.toInt().toString() + " m";
+    }else{
+      distanceText = "not available";
     }
+    setState(() {
 
+    });
   }
   @override
   void initState() {
-    getDistance();
+    generateDistance();
     super.initState();
   }
 

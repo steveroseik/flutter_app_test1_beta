@@ -31,7 +31,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     with TickerProviderStateMixin {
   final emptyPet = PetPod(PetProfile(id: '', name: '', vaccines: [],
     ownerId: '', birthdate: DateTime.now(), breed: '',
-    isMale: false, photoUrl: '', ready: false, createdAt: DateTime.now(), rateSum: 0, rateCount: 0, passport: ""), true, GeoLocation(0.0, 0.0));
+    isMale: false, photoUrl: '', ready: false, createdAt: DateTime.now(), rateSum: 0, rateCount: 0, passport: ""), true, GeoLocation(0.0, 0.0), 0);
   late BuildContext scaffoldContext;
   bool tapped = false;
   bool petDataLoading = false;
@@ -39,6 +39,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   bool mateBoxTapped = false;
   final vacEditing = ValueNotifier<int>(0);
   final viewVaccines = ValueNotifier<int>(0);
+  int notifCount = 0;
 
   // final multiController = List<MultiSelectController>.empty(growable: true);
   late AnimationController _controller;
@@ -93,9 +94,11 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     petRequests = await fetchPetRequests(uid).whenComplete(() {
      requestsLoading = false;
     });
-
+    if (petRequests.length > 0){
+      notifCount = petRequests.length;
+    }
    setState(() {});
-
+    _controller2.forward();
 
   }
   createPetVaccines(){
@@ -124,8 +127,6 @@ class _HomeBreedPageState extends State<HomeBreedPage>
       vsync: this,
     );
     _animation2 = CurvedAnimation(parent: _controller2, curve: Curves.easeIn);
-    _controller.stop();
-    _controller2.stop();
   }
 
   @override
@@ -139,7 +140,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
     return Scaffold(
-            appBar: init_appBarBreed(BA_key),
+            appBar: init_appBar(BA_key),
             body: Padding(
               padding: EdgeInsets.all(8.0),
               child: Column(
@@ -695,11 +696,43 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                 ],
               ),
             ),
-            floatingActionButton: FloatingActionButton(
-              onPressed: () {  },
-              backgroundColor: Colors.blueGrey.shade900,
-              child: Icon(Icons.notifications),
-            ),
+            floatingActionButton: Container(
+              child: FittedBox(
+                child: Stack(
+                  alignment: Alignment(1.4, -1.5),
+                  children: [
+                    FloatingActionButton(  // Your actual Fab
+                      onPressed: () {
+                        BA_key.currentState?.pushNamed('/notif', arguments: petRequests);
+                      },
+                      child: Icon(Icons.notifications),
+                      backgroundColor: Colors.blueGrey.shade800,
+                    ),
+                    FadeTransition(
+                      opacity: _controller2,
+                      child: Container(             // This is your Badge
+                        child: Center(
+                          // Here you can put whatever content you want inside your Badge
+                          child: Text('${notifCount}', style: TextStyle(color: Colors.white)),
+                        ),
+                        padding: EdgeInsets.all(3),
+                        constraints: BoxConstraints(minHeight: 32, minWidth: 32),
+                        decoration: BoxDecoration( // This controls the shadow
+                          boxShadow: [
+                            BoxShadow(
+                                spreadRadius: 1,
+                                blurRadius: 5,
+                                color: Colors.black.withAlpha(50))
+                          ],
+                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.redAccent,  // This would be color of the Badge
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
             //
             );
   }

@@ -387,9 +387,9 @@ Future<List<PetPod>>fetchPets(int petIndex) async{
     var ret = List<PetPod>.generate(pets.length, (index){
       if (petIndex == index) {
 
-        return PetPod(pets[index], true, GeoLocation(0.0, 0.0));
+        return PetPod(pets[index], true, GeoLocation(0.0, 0.0), 0);
       }
-        return PetPod(pets[index], false, GeoLocation(0.0, 0.0));
+        return PetPod(pets[index], false, GeoLocation(0.0, 0.0), 0);
     });
     return ret;
   }catch (e){
@@ -419,7 +419,7 @@ Future fetchResultedPets() async{
       //     break;
       //   }
       // }
-      return PetPod(pets[index], false, GeoLocation(0.0, 0.0));
+      return PetPod(pets[index], false, GeoLocation(0.0, 0.0), 1);
     });
     return pods;
   }on PlatformException catch (e){
@@ -456,15 +456,23 @@ Future updateVaccine(String petId, List<dynamic> data) async{
 Future sendMateRequest(String sid, String rid, String spid, String rpid) async{
   int i = -100;
   try{
-    final data = await SupabaseCredentials.supabaseClient.from('mate_requests')
-        .insert({
-      "sender_id": sid,
-      "receiver_id": rid,
-      "sender_pet": spid,
-      "receiver_pet": rpid,
-      "status": 0
-    }).single();
-    i = 200;
+    final resp = await SupabaseCredentials.supabaseClient.from('mate_requests')
+        .select('id')
+        .eq('sender_pet', spid).eq('receiver_pet', rpid) as List<dynamic>;
+    if (resp.isEmpty){
+      final data = await SupabaseCredentials.supabaseClient.from('mate_requests')
+          .insert({
+        "sender_id": sid,
+        "receiver_id": rid,
+        "sender_pet": spid,
+        "receiver_pet": rpid,
+        "status": 0
+      }).single();
+      i = 200;
+    }else{
+      i = 0;
+    }
+
   }catch (e){
     print(e);
   }
@@ -479,7 +487,7 @@ Future<List<MateItem>> fetchPetRequests(String uid) async{
     for (dynamic p in data){
       Map map = Map.from(p);
       final pet = singlePetProfileFromJson(jsonEncode(await SupabaseCredentials.supabaseClient.from('pets').select('*').eq('id', map['sender_pet']).single()));
-      final item = MateItem(pet, map['receiver_pet'], map['id']);
+      final item = MateItem(PetPod(pet, false, GeoLocation(0,0), 1), map['receiver_pet'], map['id']);
       pets.add(item);
     }
     return pets;
