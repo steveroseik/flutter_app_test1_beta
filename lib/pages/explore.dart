@@ -36,6 +36,9 @@ class _MapsPageState extends State<MapsPage> {
   String firstname='', lastname='';
   //var pet_list = List<String>;
   List<PetPod> petPods = <PetPod>[];
+  Icon customIcon = const Icon(Icons.search);
+  Widget customSearchBar = const Text('Search');
+
   initMarkers() async{
     // BitmapDescriptor.fromAssetImage(ImageConfiguration(size: Size(5, 5)),
     //     'assets/icon_male.png')
@@ -55,6 +58,15 @@ class _MapsPageState extends State<MapsPage> {
     final uid = await FirebaseAuth.instance.currentUser!.uid;
     setState(() {});
   }
+  Future<Position> getUserCurrentLocation() async {
+    await Geolocator.requestPermission().then((value){
+    }).onError((error, stackTrace) async {
+      await Geolocator.requestPermission();
+      print("ERROR"+error.toString());
+    });
+    return await Geolocator.getCurrentPosition();
+  }
+
   @override
   void initState() {
     initUser();
@@ -64,6 +76,7 @@ class _MapsPageState extends State<MapsPage> {
   void initUser() async{
     final location = await getUserCurrentLocation();
     final GoogleMapController controller = await _controller.future;
+
     controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
         zoom: 15, target: LatLng(location.latitude, location.longitude))));
     setState(() {});
@@ -87,7 +100,36 @@ class _MapsPageState extends State<MapsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: init_appBar(rootNav_key),// CHANGE KEY!!!
+      appBar: AppBar(
+        title: const Text(
+          "FETCH",
+          style: TextStyle(
+              color: Colors.black,fontSize: 30,fontWeight: FontWeight.bold),        ),
+        actions: [
+          IconButton(
+            onPressed: () async {
+              final alldata = await getdata();
+
+              // method to show the search bar
+              GeoLocation selectedLocation = await showSearch(
+                  context: context,
+                  // delegate to customize the search bar
+                  delegate: CustomSearchDelegate(alldata: alldata)
+
+              );
+
+              final GoogleMapController controller = await _controller.future;
+              controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
+                  zoom: 15, target: LatLng(selectedLocation.Lat(), selectedLocation.Long()))));
+
+            },
+            icon: const Icon(Icons.search, color:Colors.black),
+          )
+        ],
+        backgroundColor: Color(0xFFEEEEEE),
+
+      ),
+
       body: Stack(
         children:
         [
@@ -120,18 +162,9 @@ class _MapsPageState extends State<MapsPage> {
             width: 510,
             offset: 50,
           ),
-          TextFormField (
-            controller: _searchController,
-            onChanged: (value){
-              print(value);
-            },
-            decoration: InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'Search',
-            ),),
 
           Padding(
-            padding: const EdgeInsets.fromLTRB(30.0,50.0,30.0,50.0),
+            padding: const EdgeInsets.fromLTRB(30.0,0.0,30.0,50.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: <Widget>[
@@ -445,7 +478,20 @@ Future getpods() async {
     }
     return List<Marker>.empty();
   }
-
+Future getdata() async{
+  try {
+    final data = await SupabaseCredentials.supabaseClient
+        .from('locations')
+        .select('*') as List<dynamic>;
+return data;
+  }
+  on PostgrestException catch (error) {
+    print(error.message);
+  }
+  catch (e){
+    print(e);
+  }
+}
   Future initializeMarkers() async {
     int ret = -100;
     final  markers = List<Marker>.empty(growable: true);
@@ -911,6 +957,201 @@ Future getpods() async {
     return List<Marker>.empty();
   }
 }
+class CustomSearchDelegate extends SearchDelegate {
+  CustomSearchDelegate({
+    required this.alldata,
+  });
+
+  final alldata;
+  final  lat = List<double>.empty(growable: true);
+  final  long = List<double>.empty(growable: true);
+  double longit = 0.0, latit = 0.0;
+
+  Set<Marker> markersList = {};
+
+  final  placenames = List<String>.empty(growable: true);
+  initState(){
+    initUser();
+  }
+  initUser()async{
+    lat.clear();
+    long.clear();
+    placenames.clear();
+    final data = await getLocations();
+    placenames.addAll(data);
+    /*final latdata = await getlat();
+    lat.addAll(latdata);
+    final longdata = await getlong();
+    long.addAll(longdata);*/
+  }
+  /*Future getlat() async {
+    final  lati = List<double>.empty(growable: true);
+    try {
+      final data = await SupabaseCredentials.supabaseClient
+          .from('locations')
+          .select('*') as List<dynamic>;
+      for (var entry in data) {
+        final map = Map.from(entry);
+        lati.add(map['latitude']);
+      }
+      return lati;
+
+    }
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
+    catch (e) {
+      print(e);
+    }
+  }
+  Future getlong() async {
+    final  longi = List<double>.empty(growable: true);
+    try {
+      final data = await SupabaseCredentials.supabaseClient
+          .from('locations')
+          .select('*') as List<dynamic>;
+      for (var entry in data) {
+        final map = Map.from(entry);
+        longi.add(map['longitude']);
+      }
+      return longi;
+
+    }
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
+    catch (e) {
+      print(e);
+    }
+  }*/
+  Future getLocations() async {
+    final  placenames = List<String>.empty(growable: true);
+    try {
+      final data = await SupabaseCredentials.supabaseClient
+          .from('locations')
+          .select('*') as List<dynamic>;
+
+      for (var entry in data) {
+        final map = Map.from(entry);
+        var title = map['title'];
+        placenames.add(title);
+      }
+    }
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
+    catch (e) {
+      print(e);
+    }
+    return placenames;
+  }
+
+// first overwrite to
+// clear the search text
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        onPressed: () {
+          query = '';
+        },
+        icon: Icon(Icons.clear),
+      ),
+    ];
+  }
+
+// second overwrite to pop out of search menu
+  @override
+  Widget? buildLeading(BuildContext context) {
+    initUser();
+    return IconButton(
+      onPressed: () {
+        close(context, null);
+      },
+      icon: Icon(Icons.arrow_back),
+    );
+  }
+
+// third overwrite to show query result
+  @override
+  Widget buildResults(BuildContext context) {
+    List<String> matchQuery = [];
+    for (var fruit in placenames) {
+      if (fruit.toLowerCase().contains(query.toLowerCase())) {
+        matchQuery.add(fruit);
+      }
+    }
+
+    return ListView.builder(
+      itemCount: matchQuery.length,
+      itemBuilder: (context, index) {
+        var result = matchQuery[index];
+        return ListTile(
+          title: Text(result),
+        );
+      },
+    );
+  }
+
+// last overwrite to show the
+// querying process at the runtime
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    List<String> matchQuery = [];
+    for (var fruit in placenames) {
+      if (fruit.toLowerCase().contains(query.toLowerCase())) {
+        matchQuery.add(fruit);
+      }
+    }
+    return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setState) {
+      return ListView.builder(
+          itemCount: matchQuery.length,
+          itemBuilder: (context, index) {
+            var result = matchQuery[index];
+            return ListTile(
+              onTap: () async{
+                //Here where I would like to go to new screen
+                int add = 0;
+                int addlong = 0;
+                var temp='';
+                var z;
+                for(int i = 0; i < placenames.length; i++){
+                  if(placenames[i]==result){
+                    var plc = placenames[i];
+                    print('res: $result');
+                    print('places: $placenames');
+
+                    z = i;
+                    break;
+                  }
+                }
+                for(var entry in alldata){
+                  final map = Map.from(entry);
+                  lat.add(map['latitude']);
+                  long.add(map['longitude']);
+                }
+                latit = lat[z];
+                longit = long[z];
+
+                setState(() {});
+                close(context, GeoLocation(latit, longit));
+
+
+              }
+
+
+                ,title: Text(result),
+                );
+                },
+            );});
+
+    }
+
+}
+
+
+
 
 
 
