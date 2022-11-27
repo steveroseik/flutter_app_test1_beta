@@ -1,3 +1,4 @@
+import 'package:appinio_swiper/appinio_swiper.dart';
 import 'package:card_swiper/card_swiper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
@@ -25,7 +26,7 @@ class _PetMatchPageState extends State<PetMatchPage> {
    late List<Widget> petDialogs;
    bool petsReady = false;
    int swipeBool = 1;
-   final cardController = FlipCardController();
+   final AppinioSwiperController controller = AppinioSwiperController();
 
 
 
@@ -67,19 +68,35 @@ class _PetMatchPageState extends State<PetMatchPage> {
               ),
               petsReady ? Container(
                 height: 600,
-                child: Swiper(
-                  itemBuilder: (BuildContext context, int index) {
-                    return  petMatches[index];
-                  },
-                  itemCount: petMatches.length,
-                  itemWidth: 200,
-                  itemHeight: 240,
-                  layout: SwiperLayout.STACK,
+                child: AppinioSwiper(
+                  unlimitedUnswipe: true,
+                  controller: controller,
+                  unswipe: _unswipe,
+                  cards: petMatches,
+                  onSwipe: _swipe,
+                  padding: const EdgeInsets.only(
+                    left: 25,
+                    right: 25,
+                    top: 50,
+                    bottom: 40,
+                  ),
                 ),
               ) : Container()
             ],
           ),
         )
     );
+
   }
+   void _swipe(int index, AppinioSwiperDirection direction) {
+     print("the card was swiped to the: " + direction.name);
+   }
+
+   void _unswipe(bool unswiped) {
+     if (unswiped) {
+       print("SUCCESS: card was unswiped");
+     } else {
+       print("FAIL: no card left to unswipe");
+     }
+   }
 }

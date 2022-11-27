@@ -72,8 +72,8 @@ dependencies:
   document_scanner_flutter: ^0.2.7
   firebase_storage: ^11.0.6
   advance_pdf_viewer: ^2.0.1
-  scaled_list: ^2.0.0
-
+  line_awesome_flutter: ^2.0.0
+  appinio_swiper: ^1.1.1
 
 dev_dependencies:
   flutter_test:

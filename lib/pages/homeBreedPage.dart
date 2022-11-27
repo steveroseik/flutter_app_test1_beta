@@ -96,9 +96,10 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     });
     if (petRequests.length > 0){
       notifCount = petRequests.length;
+      setState(() {});
+      _controller2.forward();
     }
-   setState(() {});
-    _controller2.forward();
+
 
   }
   createPetVaccines(){

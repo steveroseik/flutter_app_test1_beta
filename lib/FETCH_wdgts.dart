@@ -22,6 +22,7 @@ import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:line_awesome_flutter/line_awesome_flutter.dart';
 
 import 'JsonObj.dart';
 
@@ -1624,7 +1625,8 @@ class PetView extends StatefulWidget {
 
 class _PetViewState extends State<PetView> {
   int distance = 0;
-  String distanceText = "km";
+  String distanceText = "";
+  bool distanceLoading = true;
 
   generateDistance() async{
     distance = await widget.profile.fetchLocation();
@@ -1635,9 +1637,12 @@ class _PetViewState extends State<PetView> {
     }else{
       distanceText = "not available";
     }
-    setState(() {
+    if (this.mounted){
+      setState(() {
+        distanceLoading = false;
+      });
+    }
 
-    });
   }
   @override
   void initState() {
@@ -1806,7 +1811,10 @@ class _PetViewState extends State<PetView> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
 
-                        Padding(
+                        distanceLoading ? Padding(
+                          padding: const EdgeInsets.all(8*Checkbox.width*0.05),
+                          child: SizedBox(height: 10, width: 10, child: CircularProgressIndicator()),
+                        ) : Padding(
                           padding: const EdgeInsets.all(8*Checkbox.width*0.05),
                           child: Text(distanceText, style: TextStyle( fontFamily: "Poppins", fontWeight: FontWeight.w900, color: Colors.blueGrey.shade900,
                               fontSize: 11*width*0.0027)),
@@ -2012,5 +2020,60 @@ Future scanID() async {
     print(e);
     imagePath = '';
     return imagePath;
+  }
+}
+
+final kTitleTextStyle = TextStyle(
+  fontSize: 20,
+  fontWeight: FontWeight.w600,
+);
+
+class ProfileListItem extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final bool hasNavigation;
+
+  const ProfileListItem({
+    required this.icon,
+    required this.text,
+    this.hasNavigation = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(7.0),
+      child: Container(
+        padding: EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          color: Colors.grey.shade200,
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              this.icon,
+              size: 25,
+              color: Color.alphaBlend(Colors.black, Colors.black),
+            ),
+            SizedBox(width: 15),
+            Text(
+              this.text,
+              style: kTitleTextStyle.copyWith(
+                  fontWeight: FontWeight.w500,
+                  fontFamily: "Poppins",
+                  color: Colors.black),
+            ),
+            Spacer(),
+            if (this.hasNavigation)
+              Icon(
+                LineAwesomeIcons.angle_right,
+                size: 25,
+                color: Color.alphaBlend(Colors.black, Colors.black),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

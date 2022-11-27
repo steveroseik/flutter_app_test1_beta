@@ -1,14 +1,38 @@
 import 'dart:async';
-
+import 'package:flutter/material.dart';
+import 'package:line_awesome_flutter/line_awesome_flutter.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../APILibraries.dart';
 import '../routesGenerator.dart';
+
+Color kAppPrimaryColor = Colors.white;
+Color kWhite = Colors.black.withOpacity(0.05);
+Color kLightBlack = Colors.black.withOpacity(0.05);
+Color fCL = Colors.grey.shade600;
+
+final kTitleTextStyle = TextStyle(
+  fontSize: 20,
+  fontWeight: FontWeight.w600,
+);
+
+BoxDecoration avatarDecoration =
+BoxDecoration(shape: BoxShape.circle, color: kAppPrimaryColor, boxShadow: [
+  BoxShadow(
+    color: kWhite,
+    offset: Offset(10, 10),
+    blurRadius: 10,
+  ),
+  BoxShadow(
+    color: kWhite,
+    offset: Offset(-10, -10),
+    blurRadius: 10,
+  ),
+]);
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -25,17 +49,19 @@ class _SettingsPageState extends State<SettingsPage> {
   initUser() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     userData = await fetchUserData(uid);
-    final prefs = await SharedPreferences.getInstance();
-    double? long = prefs.getDouble('long');
-    double? lat = prefs.getDouble('lat');
-    if (long != null && lat != null){
-      final GoogleMapController controller = await _controller.future;
-      controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
-          zoom: 15,target: LatLng(lat, long))));
-      setState(() {});
-    }
-
+    setState(() {});
   }
+
+  Future<Position> getUserCurrentLocation() async {
+    await Geolocator.requestPermission()
+        .then((value) {})
+        .onError((error, stackTrace) async {
+      await Geolocator.requestPermission();
+      print("ERROR" + error.toString());
+    });
+    return await Geolocator.getCurrentPosition();
+  }
+
   @override
   void initState() {
     initUser();
@@ -61,190 +87,126 @@ class _SettingsPageState extends State<SettingsPage> {
             leadingWidth: 0,
             backgroundColor: Colors.white70,
             actions: const []),
-        body: Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
-          ),
-          child: Column(
-            //mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: MediaQuery.of(context).size.height * .3,
-                child: Stack(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 40.0),
-                      child: Container(
-                        height: MediaQuery.of(context).size.height,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.only(
-                            bottomLeft: Radius.elliptical(
-                                MediaQuery.of(context).size.width * 0.5, 100.0),
-                            bottomRight: Radius.elliptical(
-                                MediaQuery.of(context).size.width * 0.5, 100.0),
-                          ),
-                          color: Colors.blue[200],
-                        ),
-                      ),
+        backgroundColor: kAppPrimaryColor,
+        body: Column(
+          children: <Widget>[
+            Padding(
+              padding: EdgeInsets.all(15),
+              child: Column(
+                children: <Widget>[
+                  Container(
+                    width: 170,
+                    height: 170,
+                    // padding: EdgeInsets.all(5),
+                    decoration: avatarDecoration,
+                    child: Container(
+                      decoration: avatarDecoration,
+                      padding: EdgeInsets.all(3),
+                      // child: Container(
+                      //   decoration: BoxDecoration(
+                      //     shape: BoxShape.circle,
+                      //     image: DecorationImage(
+                      //       image: NetworkImage(userData == ''
+                      //           ? ''
+                      //           : '${userData['photoUrl']}'),
+                      //     ),
+                      //   ),
+                      // ),
                     ),
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: Stack(
-                        children: [],
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: const [
-                          CircleAvatar(
-                            radius: 70,
-                            backgroundImage:
-                            AssetImage('assets/images/Avatar.png'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 0, top: 15),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: Text(
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
                     userData == ''
                         ? ''
                         : '${userData['firstName']} ${userData['lastName']}',
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.bold,
-                      fontSize: 25,
-                    ),
+                    style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: "Poppins"),
                   ),
-                ),
-              ),
-              Container(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[400],
-                          shape: const BeveledRectangleBorder(
-                              borderRadius:
-                              BorderRadius.all(Radius.circular(3))),
-                        ),
-                        onPressed: () async {
-                          settingsNav_key.currentState
-                              ?.pushNamed('/editProfile', arguments: userData);
+                  SizedBox(height: 15),
+                  NumbersWidget(),
+                  SizedBox(height: 20),
+                  Column(
+                    children: <Widget>[
+                      InkWell(
+                        onTap: () async {
+                          settingsNav_key.currentState?.pushNamed(
+                              '/editProfile',
+                              arguments: userData);
                         },
-                        child: const Text(
-                          'Edit Profile',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                          ),
+                        child: ProfileListItem(
+                          icon: LineAwesomeIcons.pen,
+                          text: 'Edit Profile',
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              Center(
-                child: Container(
-                  height: 150,
-                  width: MediaQuery.of(context).size.width - 100,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.all(
-                      Radius.circular(30),
-                    ),
-                    child: GoogleMap(
-                      myLocationButtonEnabled: false,
-                      myLocationEnabled: true,
-                      markers: Set<Marker>.of(this.markers),
-                      initialCameraPosition: CameraPosition(
-                          target:LatLng(31.233334,30.033333),zoom: 13.4746),
-                      onMapCreated: (GoogleMapController controller){
-                        _controller.complete(controller);
-                      },
-                    ),
-                  ),
-                ),
-              ),
-              Container(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Align(
-                        alignment: Alignment.bottomRight,
-                        child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey[400],
-                              shape: const BeveledRectangleBorder(
-                                  borderRadius:
-                                  BorderRadius.all(Radius.circular(3))),
-                            ),
-                            onPressed: () async {
-                              settingsNav_key.currentState?.pushNamed(
-                                  '/editPass',
-                                  arguments: userData);
-                            },
-                            child: const Text('Change Email',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                )))),
-                    Align(
-                        alignment: Alignment.bottomRight,
-                        child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey[400],
-                              shape: const BeveledRectangleBorder(
-                                  borderRadius:
-                                  BorderRadius.all(Radius.circular(3))),
-                            ),
-                            onPressed: ()  {
-
-                            },
-                            child: const Text('Change Password',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                ))))
-                  ],
-                ),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              Align(
-                  alignment: Alignment.center,
-                  child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[400],
-                        shape: const BeveledRectangleBorder(
-                            borderRadius:
-                            BorderRadius.all(Radius.circular(3))),
+                      InkWell(
+                        onTap: () async {},
+                        child: ProfileListItem(
+                          icon: LineAwesomeIcons.cog,
+                          text: 'Settings',
+                        ),
                       ),
-                      onPressed: ()  async {
-                        final prefs = await SharedPreferences.getInstance();
-                        prefs.clear();
-                        FirebaseAuth.instance.signOut();
-                      },
-                      child: const Text('Logout',
-                          style: TextStyle(
-                            fontSize: 15,
-                          ))))
-            ],
-          ),
-        ),
-      ),
+                      InkWell(
+                        onTap: () {
+                          FirebaseAuth.instance.signOut();
+                        },
+                        child: ProfileListItem(
+                          icon: LineAwesomeIcons.alternate_sign_out,
+                          text: 'Logout',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            )
+          ],
+        ),),
     );
   }
+}
+
+class NumbersWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: <Widget>[
+      buildButton(context, '4.8', 'Ranking'),
+      buildDivider(),
+      buildButton(context, '3', 'Dogs'),
+      buildDivider(),
+      buildButton(context, '12', 'Friends'),
+    ],
+  );
+
+  Widget buildDivider() => Container(
+    height: 24,
+    child: VerticalDivider(
+      color: Colors.grey[500],
+      thickness: 1,
+    ),
+  );
+
+  Widget buildButton(BuildContext context, String value, String text) =>
+      MaterialButton(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        onPressed: () {},
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              value,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+            ),
+            SizedBox(height: 2),
+            Text(
+              text,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+      );
 }
