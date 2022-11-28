@@ -44,7 +44,6 @@ class Size{
 }
 class _CreateMeetState extends State<CreateMeet> {
   DateTime dateTime = DateTime.now();
-  var _items;
   final markers = List<Marker>.empty(growable: true);
   List<PetPod> petPods = <PetPod>[];
   final uid = FirebaseAuth.instance.currentUser!.uid; // user id
@@ -59,14 +58,17 @@ class _CreateMeetState extends State<CreateMeet> {
   List<Breed?> tempSelectedBreed = [];
   List<Size?> _selectedSizes = [];
   List<Size?> tempSelectedSizes = [];
-  List<Breed> breeds = [
-    Breed(breed:'N/A')
+  static List<Breed> breeds = [
   ];
   static List<Size> sizes = [
     Size(size: "Small"),
     Size(size: "Medium"),
     Size(size: "Large"),
   ];
+
+  final _items = breeds
+      .map((pet) => MultiSelectItem<Breed>(pet, pet.breed))
+      .toList();
   final size_items = sizes
       .map((petsize) => MultiSelectItem<Size>(petsize, petsize.size))
       .toList();
@@ -75,9 +77,9 @@ class _CreateMeetState extends State<CreateMeet> {
     setState(() {
       isLoading = false;
     });
-    final breedlist =  await breed_select();
-    breeds = dynamicbreeds(breedlist);
-    _items = breeds
+     breeds =  await breed_select();
+
+    final _items = breeds
         .map((pet) => MultiSelectItem<Breed>(pet, pet.breed))
         .toList();
 
@@ -136,10 +138,7 @@ Future getsizes(sizelist) async {
   return breednames;
 }
 dynamicbreeds(breedlist){
-    for(int i =0; i < breedlist.length; i++){
-      var z = breedlist[i];
-      breeds.add(Breed(breed:z));
-    }
+
     return breeds;
 }
 
@@ -160,7 +159,11 @@ dynamicbreeds(breedlist){
     catch (e) {
       print(e);
     }
-    return breedlist;
+    for(int i =0; i < breedlist.length; i++){
+      var z = breedlist[i];
+      breeds.add(Breed(breed:z));
+    }
+    return breeds;
 
   }
 
@@ -623,7 +626,7 @@ dynamicbreeds(breedlist){
     if (name != '') {
       if (description != '') {
 
-        if (!petIDs.isEmpty) {
+       // if (!petIDs.isEmpty) {
 
           if (dateTime != DateTime.now()) {
             if (long != 0 || lat != 0) {
@@ -642,10 +645,10 @@ dynamicbreeds(breedlist){
           else {
             showSnackbar(context, "Meet date cannot be today's date");
           }
-        }
-        else {
-          showSnackbar(context, 'Please select at least one pet');
-        }
+       // }
+       // else {
+         // showSnackbar(context, 'Please select at least one pet');
+        //}
 
       }
       else {
