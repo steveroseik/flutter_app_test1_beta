@@ -11,7 +11,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:intl/intl.dart';
- import 'package:geolocator/geolocator.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 
@@ -24,32 +24,27 @@ class CreateMeet extends StatefulWidget {
   State<CreateMeet> createState() => _CreateMeetState();
 }
 class Breed{
-  int id;
   String breed;
   Breed({
-    required this.id,
-     required this.breed,
+    required this.breed,
   });
   Map toJson() => {
-    'id': id,
     'breed': breed,
   };
 }
 
 class Size{
-  int id;
   String size;
   Size({
-    required this.id,
     required this.size,
   });
   Map toJson() => {
-    'id': id,
-    'size': size,
+    '&': size,
   };
 }
 class _CreateMeetState extends State<CreateMeet> {
   DateTime dateTime = DateTime.now();
+  var _items;
   final markers = List<Marker>.empty(growable: true);
   List<PetPod> petPods = <PetPod>[];
   final uid = FirebaseAuth.instance.currentUser!.uid; // user id
@@ -64,21 +59,14 @@ class _CreateMeetState extends State<CreateMeet> {
   List<Breed?> tempSelectedBreed = [];
   List<Size?> _selectedSizes = [];
   List<Size?> tempSelectedSizes = [];
-  static List<Breed> breeds = [
-    Breed(id:1,breed: "Golden"),
-    Breed(id:2,breed: "German"),
-    Breed(id:3,breed: "American Bully"),
-    Breed(id:4,breed: "Yorkshire Terrier"),
-    Breed(id:5,breed: "American Water Spaniel"),
+  List<Breed> breeds = [
+    Breed(breed:'N/A')
   ];
   static List<Size> sizes = [
-    Size(id:0,size: "Small"),
-    Size(id:1,size: "Medium"),
-    Size(id:2,size: "Large"),
+    Size(size: "Small"),
+    Size(size: "Medium"),
+    Size(size: "Large"),
   ];
-  final _items = breeds
-      .map((pet) => MultiSelectItem<Breed>(pet, pet.breed))
-      .toList();
   final size_items = sizes
       .map((petsize) => MultiSelectItem<Size>(petsize, petsize.size))
       .toList();
@@ -87,31 +75,134 @@ class _CreateMeetState extends State<CreateMeet> {
     setState(() {
       isLoading = false;
     });
+    final breedlist =  await breed_select();
+    breeds = dynamicbreeds(breedlist);
+    _items = breeds
+        .map((pet) => MultiSelectItem<Breed>(pet, pet.breed))
+        .toList();
+
     final location = await getUserCurrentLocation();
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
         zoom: 15, target: LatLng(location.latitude, location.longitude))));
     setState(() {});
   }
-
-  Future insert(double longitude, double latitude, String title, String descr, List<String> petIDs) async {
-     String jsonString = jsonEncode(tempSelectedBreed);
-     String jsonSize = jsonEncode(tempSelectedSizes);
-
-     try {
-        final timestamp = dateTime.toIso8601String();
-        await SupabaseCredentials.supabaseClient.from('meets').insert({
-          'longitude': longitude,
-          'latitude': latitude,
-          'title': title,
-          'description': descr,
-          'date': timestamp,
-          'host_pets': petIDs,
-          'host_id': uid,
-          'no_of_attending':0,
-          'breed_list': tempSelectedBreed
-        });
+Future getsizes(sizelist) async {
+  final  breednames = List<String>.empty(growable: true);
+  print('sizes: $sizelist');
+  if(sizelist.contains('Medium')) print('yes');
+  var x = sizelist[0];
+  print(x);
+  label: try {
+    if(sizelist.length==3) {
+      breednames.add('All breeds welcome');
+        break label;
+    }
+    if(sizelist.contains('Small')){
+      final data = await SupabaseCredentials.supabaseClient
+              .from('breed')
+              .select('*').lte('height', 34) as List<dynamic>;
+          for (var entry in data) {
+            final map = Map.from(entry);
+            breednames.add(map['name']);
+          }
+        }
+    if(sizelist.contains('Medium')){
+      final data = await SupabaseCredentials.supabaseClient
+            .from('breed')
+            .select('*').lte('height', 49).gte('height', 35) as List<dynamic>;
+        for (var entry in data) {
+          final map = Map.from(entry);
+          breednames.add(map['name']);
+        }
       }
+
+    if(sizelist.contains('Large')) {
+          final data = await SupabaseCredentials.supabaseClient
+              .from('breed')
+              .select('*').gte('height', 50) as List<dynamic>;
+          for (var entry in data) {
+            final map = Map.from(entry);
+            breednames.add(map['name']);
+          }
+        }
+    }
+  on PostgrestException catch (error) {
+    print(error.message);
+  }
+  catch (e) {
+    print(e);
+  }
+  return breednames;
+}
+dynamicbreeds(breedlist){
+    for(int i =0; i < breedlist.length; i++){
+      var z = breedlist[i];
+      breeds.add(Breed(breed:z));
+    }
+    return breeds;
+}
+
+  breed_select() async {
+    List<String> breedlist =[];
+    try {
+      final data = await SupabaseCredentials.supabaseClient
+          .from('breed')
+          .select('*')as List<dynamic>;
+      for (var entry in data) {
+        final map = Map.from(entry);
+       breedlist.add(map['name']);
+      }
+    }
+    on PostgrestException catch (error) {
+      print(error.message);
+    }
+    catch (e) {
+      print(e);
+    }
+    return breedlist;
+
+  }
+
+  Future insert_breeds(double longitude, double latitude, String title, String descr, List<String> petIDs) async {
+    String jsonString = jsonEncode(tempSelectedBreed);
+   // String jsonSize = jsonEncode(tempSelectedSizes);
+
+    try {
+      final timestamp = dateTime.toIso8601String();
+      await SupabaseCredentials.supabaseClient.from('meets').insert({
+        'longitude': longitude,
+        'latitude': latitude,
+        'title': title,
+        'description': descr,
+        'date': timestamp,
+        'host_pets': petIDs,
+        'host_id': uid,
+        'no_of_attending':0,
+        'breed_list': tempSelectedBreed
+      });
+    }
+
+    catch (e) {
+      print(e);
+    }
+  }
+
+  Future insert_sizes(double longitude, double latitude, String title, String descr, List<String> petIDs, breednames) async {
+    try {
+      final timestamp = dateTime.toIso8601String();
+      await SupabaseCredentials.supabaseClient.from('meets').insert({
+        'longitude': longitude,
+        'latitude': latitude,
+        'title': title,
+        'description': descr,
+        'date': timestamp,
+        'host_pets': petIDs,
+        'host_id': uid,
+        'no_of_attending':0,
+        'breed_list': breednames
+      });
+    }
 
     catch (e) {
       print(e);
@@ -265,9 +356,12 @@ class _CreateMeetState extends State<CreateMeet> {
               Padding(
                 padding: const EdgeInsets.only(bottom:10,top: 20.0),
 
-            child:  Text("Breeds allowed (optional)",
-                  style: TextStyle(fontSize: 20, color: Colors.black)),
-            ),
+                child:  Text("Breeds allowed (optional)",
+                    style: TextStyle(fontSize: 20, color: Colors.black)),
+
+
+              ),
+
               Container(
                 child: Column(
                   children: <Widget>[
@@ -301,13 +395,13 @@ class _CreateMeetState extends State<CreateMeet> {
                       onConfirm: (values) {
                         _selectedBreeds=values;
                         tempSelectedBreed=_selectedBreeds;
-                        },
+                      },
                       chipDisplay: MultiSelectChipDisplay(
                         onTap: (value) {
                           setState(() {
                             _selectedBreeds.remove(value);
                           });
-},
+                        },
                       ),
                     ),
                     _selectedBreeds == null || _selectedBreeds.isEmpty
@@ -321,7 +415,8 @@ class _CreateMeetState extends State<CreateMeet> {
                         : Container(),
                   ],
                 ),
-              ),Padding(
+              ),
+              Padding(
                 padding: const EdgeInsets.only(bottom:10,top: 20.0),
 
                 child:  Text("Dog sizes allowed (optional)",
@@ -361,6 +456,7 @@ class _CreateMeetState extends State<CreateMeet> {
                       onConfirm: (values) {
                         _selectedSizes=values;
                         tempSelectedSizes=_selectedSizes;
+
                       },
                       chipDisplay: MultiSelectChipDisplay(
                         onTap: (value) {
@@ -388,61 +484,61 @@ class _CreateMeetState extends State<CreateMeet> {
               Text("Where would you like to Meet? Tap the exact location",
                   style: TextStyle(fontSize: 20, color: Colors.black)),
               Column(
-                children:[
-                  IconButton(
-                    onPressed: () async {
-                      final alldata = await getdata();
+                  children:[
+                    IconButton(
+                      onPressed: () async {
+                        final alldata = await getdata();
 
-                      // method to show the search bar
-                      GeoLocation selectedLocation = await showSearch(
-                          context: context,
-                          // delegate to customize the search bar
-                          delegate: CustomSearchDelegate(alldata: alldata)
+                        // method to show the search bar
+                        GeoLocation selectedLocation = await showSearch(
+                            context: context,
+                            // delegate to customize the search bar
+                            delegate: CustomSearchDelegate(alldata: alldata)
 
-                      );
+                        );
 
-                      final GoogleMapController controller = await _controller.future;
-                      controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
-                          zoom: 15, target: LatLng(selectedLocation.Lat(), selectedLocation.Long()))));
+                        final GoogleMapController controller = await _controller.future;
+                        controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
+                            zoom: 15, target: LatLng(selectedLocation.Lat(), selectedLocation.Long()))));
 
-                    },
-                    icon: const Icon(Icons.search, color:Colors.black),
-                  ),
-              Center(
-
-                child: Container(
-                  height: 150,
-                  width: MediaQuery
-                      .of(context)
-                      .size
-                      .width - 100,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.all(
-                      Radius.circular(30),
+                      },
+                      icon: const Icon(Icons.search, color:Colors.black),
                     ),
-                    child: GoogleMap(
-                        myLocationButtonEnabled: true,
-                        myLocationEnabled: true,
-                        initialCameraPosition: CameraPosition(
-                            target: LatLng(31.233334, 30.033333),
-                            zoom: 13.4746),
-                        markers: Set<Marker>.of(markers),
+                    Center(
 
-                        onMapCreated: (GoogleMapController controller) {
-                          _controller.complete(controller);
-                        },
-                        onTap: (LatLng latLng) {
-                          lat = latLng.latitude;
-                          long = latLng.longitude;
-                        }
+                      child: Container(
+                        height: 150,
+                        width: MediaQuery
+                            .of(context)
+                            .size
+                            .width - 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(30),
+                          ),
+                          child: GoogleMap(
+                              myLocationButtonEnabled: true,
+                              myLocationEnabled: true,
+                              initialCameraPosition: CameraPosition(
+                                  target: LatLng(31.233334, 30.033333),
+                                  zoom: 13.4746),
+                              markers: Set<Marker>.of(markers),
+
+                              onMapCreated: (GoogleMapController controller) {
+                                _controller.complete(controller);
+                              },
+                              onTap: (LatLng latLng) {
+                                lat = latLng.latitude;
+                                long = latLng.longitude;
+                              }
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                    ),
-              ]),
+                  ]),
 
 // option to add in coordinates or select location
               Padding(
@@ -513,13 +609,28 @@ class _CreateMeetState extends State<CreateMeet> {
         ));
   }
 
-  void validate(List<String> petIDs) {
+   validate(List<String> petIDs) async {
+     String tempstring = jsonEncode(tempSelectedSizes);
+     String stringsize = '';
+     for (int i =0; i< tempstring.length;i++){
+       if(tempstring[i]!='"' && tempstring[i]!="["&& tempstring[i]!="}"&& tempstring[i]!="&"&& tempstring[i]!=":"&& tempstring[i]!="]"&& tempstring[i]!="{"){
+         stringsize = stringsize + tempstring[i];
+       }
+     }
+     List<String> listsize = stringsize.split(',');
+     final breednames = await getsizes(listsize);
+
     if (name != '') {
       if (description != '') {
+
         if (!petIDs.isEmpty) {
+
           if (dateTime != DateTime.now()) {
             if (long != 0 || lat != 0) {
-              insert(long, lat, name, description, petIDs);
+              if(tempSelectedBreed.length>0)
+                insert_breeds(long, lat, name, description, petIDs);
+              else
+                insert_sizes(long, lat, name, description, petIDs, breednames);
               explore_key.currentState
                   ?.pushNamed('/');
               setState(() {});
@@ -535,6 +646,7 @@ class _CreateMeetState extends State<CreateMeet> {
         else {
           showSnackbar(context, 'Please select at least one pet');
         }
+
       }
       else {
         showSnackbar(context, 'Please add a description to your Meet');
@@ -544,6 +656,7 @@ class _CreateMeetState extends State<CreateMeet> {
       showSnackbar(context, 'Please name your Meet');
     }
   }
+
 
   //DatePicker Widget
   void showDatePicker() {
@@ -731,3 +844,4 @@ class CustomSearchDelegate extends SearchDelegate {
   }
 
 }
+
