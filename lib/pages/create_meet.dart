@@ -68,7 +68,6 @@ class _CreateMeetState extends State<CreateMeet> {
 
 
     breeds = await getBreedList(0);
-    print('breeds: $breeds');
     _items = breeds
         .map((pet) => MultiSelectItem<Breed>(pet, pet.name))
         .toList();
@@ -88,10 +87,8 @@ class _CreateMeetState extends State<CreateMeet> {
   }
   Future getsizes(sizelist) async {
     final  breednames = List<String>.empty(growable: true);
-    print('sizes: $sizelist');
     if(sizelist.contains('Medium')) print('yes');
     var x = sizelist[0];
-    print(x);
     label: try {
       if(sizelist.length==3) {
         breednames.add('All breeds welcome');
@@ -130,7 +127,6 @@ class _CreateMeetState extends State<CreateMeet> {
       print(error.message);
     }
     catch (e) {
-      print(e);
     }
     return breednames;
   }

@@ -55,7 +55,7 @@ class _MapsPageState extends State<MapsPage> {
     markers.clear();
     final data = await display_meets();
     markers.addAll(data);
-    final uid = await FirebaseAuth.instance.currentUser!.uid;
+    final uid = FirebaseAuth.instance.currentUser!.uid;
     setState(() {});
   }
   Future<Position> getUserCurrentLocation() async {
@@ -159,7 +159,7 @@ class _MapsPageState extends State<MapsPage> {
           CustomInfoWindow(
             controller: _customInfoWindowController,
             height: 228,
-            width: 510,
+            width: 200,
             offset: 50,
           ),
 
@@ -349,10 +349,9 @@ Future getpods() async {
         var joined_meet = 0;
         List<PetPod> petPods = <PetPod>[];
         petPods = await fetchPets(-1);
-       joined_meet = isJoined(attending_pets, joined_meet,petPods);
+       joined_meet = isJoined(pet_list, joined_meet,petPods);
         find_host(host_id);
         List<String> criteria = [];
-         criteria = find_criteria(breed_list,breed_test,criteria);
         List<String>pet_names = [];
         for(int i =0; i <pet_list.length;i++){
           var pet = pet_list[i];
@@ -369,6 +368,8 @@ Future getpods() async {
                 onTap: () {
                   _customInfoWindowController.addInfoWindow!(
                       Container(
+                        height: 100,
+                        width: 100,
                         decoration:BoxDecoration(
                           color:Colors.white,
                           borderRadius: BorderRadius.circular(4),

@@ -9,8 +9,10 @@ import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_multi_select_items/flutter_multi_select_items.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:glassmorphism_ui/glassmorphism_ui.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:whatsapp_share2/whatsapp_share2.dart';
 
 import '../APILibraries.dart';
 import '../FETCH_wdgts.dart';
@@ -491,7 +493,11 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
     );
   }
 
-  void _ownerInfo(){
+  void _ownerInfo() async{
+    final prefs = await SharedPreferences.getInstance();
+    double? uLat = prefs.getDouble('lat');
+    double? uLong = prefs.getDouble('long');
+    int distance = -1;
     showModalBottomSheet(
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
@@ -506,10 +512,18 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
               .size
               .width;
           final ownerData = ownerPod!;
-          return Container(height: height * 0.5,
+          if (uLat != null && uLong != null){
+            if (uLat > 0.0 && uLong > 0 && ownerData.lat > 0 && ownerData.long > 0 ){
+              distance = Geolocator.distanceBetween(uLat, uLong, ownerData.lat, ownerData.long).toInt();
+            }
+          }
+          
+          return Container(
+              height: height * 0.5,
               child: Column(
                 children: [
                   Container(
+                    width: width*0.8,
                     padding: EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(25),
@@ -521,25 +535,95 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                         Row(
                           children: [
                             CircleAvatar(
+                              radius: width*0.05,
                               backgroundColor: CupertinoColors.extraLightBackgroundGray,
                               child: CircleAvatar(
+                                radius: width*0.5,
                                 backgroundColor: CupertinoColors.extraLightBackgroundGray,
-                                child:  ownerData.photoUrl == "" ? Icon(Icons.account_circle_rounded) : null,
                                 backgroundImage: ownerData.photoUrl == "" ? null : NetworkImage(ownerData.photoUrl),
+                                child:  ownerData.photoUrl == "" ? LayoutBuilder(builder: (context, constraint) {
+                                  return Icon(Icons.account_circle_rounded, size: constraint.biggest.height);
+                                }) : null,
                               ),
                             ),
-                            Text("${ownerData.firstName} ${ownerData.lastName}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: width*0.04,
-                                  color: Colors.blueGrey.shade100,
-                                )),
+                            SizedBox(width: width*0.02,),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("${ownerData.firstName.capitalize()} ${ownerData.lastName.capitalize()}",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: width*0.04,
+                                      color: Colors.blueGrey.shade50,
+                                    )),
+                                Text("${ownerData.city.capitalize()}, ${ownerData.country.capitalize()}",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: width*0.035,
+                                      color: Colors.blueGrey.shade100,
+                                    )),
+                              ],
+                            ),
+                            Spacer(),
+                            ownerData.type == 1 ? Icon(CupertinoIcons.shield_fill, color: Colors.green,) : Icon(CupertinoIcons.exclamationmark_shield_fill, color: Colors.orange,),
                           ],
                         ),
+
                         SizedBox(height: height*0.02,),
-                        Container(
-                          height: height*0.15,
-                          alignment: Alignment.center,
+                       Row(
+                         mainAxisAlignment: MainAxisAlignment.end,
+                         crossAxisAlignment: CrossAxisAlignment.center,
+                         children: [
+                           Text(distanceText, style: TextStyle(
+                               color: Colors.white70,
+                               fontWeight: FontWeight.w600
+                           ),),
+                           SizedBox(width: width*0.03,),
+                           Icon(CupertinoIcons.map_pin_ellipse, color: Colors.white70,),
+                         ],
+                       )
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: width*0.8,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: ()async {
+                          },
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18.0)
+                              )
+                          ),
+                          icon:  Icon(CupertinoIcons.location_fill, color: Colors.blueGrey.shade800, size: width*0.040,),
+                          label: Text('Request Location', style: TextStyle(
+                              color: Colors.blueGrey.shade800,
+                              fontSize: width*0.03
+                          ),),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () async{
+                            await WhatsappShare.share(
+                              text: 'Whatsapp share text',
+                              linkUrl: 'https://flutter.dev/',
+                              phone: '+20${ownerData.phone}',
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade400,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18.0)
+                              )
+                          ),
+                          icon:  Icon(CupertinoIcons.phone_solid, color: Colors.white, size: width*0.040,),
+                          label: Text('Text on Whatsapp', style: TextStyle(
+                              color: Colors.white,
+                              fontSize: width*0.03
+                          ),),
                         ),
                       ],
                     ),
