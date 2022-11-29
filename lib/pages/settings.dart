@@ -97,12 +97,22 @@ class _SettingsPageState extends State<SettingsPage> {
                   Container(
                     width: 170,
                     height: 170,
-                    // padding: EdgeInsets.all(5),
+                     padding: EdgeInsets.all(5),
                     decoration: avatarDecoration,
-                    child: Container(
-                      decoration: avatarDecoration,
-                      padding: EdgeInsets.all(3),
-                    ),
+                    // child: Container(
+                    //   decoration: avatarDecoration,
+                    //   padding: EdgeInsets.all(3),
+                    //   child: Container(
+                    //     decoration: BoxDecoration(
+                    //       shape: BoxShape.circle,
+                    //       image: DecorationImage(
+                    //         image:
+                    //         userData['photoUrl'] == '' ? ImageIcon(AssetImage: 'assets/images/Avatar.png') :
+                    //         NetworkImage(userData['photoUrl']),
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
                   ),
                   const SizedBox(height: 5),
                   Text(
@@ -128,13 +138,19 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: ProfileListItem(
                           icon: LineAwesomeIcons.pen,
                           text: 'Edit Profile',
+                          icon2: LineAwesomeIcons.angle_right,
                         ),
                       ),
                       InkWell(
-                        onTap: () async {},
+                        onTap: () async {
+                          settingsNav_key.currentState?.pushNamed(
+                              '/setting');
+                        },
                         child: ProfileListItem(
                           icon: LineAwesomeIcons.cog,
                           text: 'Settings',
+                          icon2: LineAwesomeIcons.angle_right,
+
                         ),
                       ),
                       InkWell(
@@ -144,6 +160,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: ProfileListItem(
                           icon: LineAwesomeIcons.alternate_sign_out,
                           text: 'Logout',
+                          icon2: LineAwesomeIcons.angle_right,
+
                         ),
                       ),
                     ],

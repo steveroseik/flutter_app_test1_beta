@@ -11,9 +11,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:glassmorphism_ui/glassmorphism_ui.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:whatsapp_share2/whatsapp_share2.dart';
-
+import 'package:whatsapp_unilink/whatsapp_unilink.dart';
 import '../APILibraries.dart';
 import '../FETCH_wdgts.dart';
 import '../JsonObj.dart';
@@ -527,7 +527,7 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                     padding: EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(25),
-                      color: Colors.black
+                      color: Colors.black.withOpacity(0.8)
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -607,11 +607,13 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                         ),
                         ElevatedButton.icon(
                           onPressed: () async{
-                            await WhatsappShare.share(
-                              text: 'Whatsapp share text',
-                              linkUrl: 'https://flutter.dev/',
-                              phone: '+20${ownerData.phone}',
+                            final link = WhatsAppUnilink(
+                              phoneNumber: '+20 ${ownerData.phone}',
+                              text: "",
                             );
+                            // Convert the WhatsAppUnilink instance to a Uri.
+                            // The "launch" method is part of "url_launcher".
+                            await launchUrl(link.asUri());
                           },
                           style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green.shade400,
@@ -620,7 +622,7 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                               )
                           ),
                           icon:  Icon(CupertinoIcons.phone_solid, color: Colors.white, size: width*0.040,),
-                          label: Text('Text on Whatsapp', style: TextStyle(
+                          label: Text('Phone Number', style: TextStyle(
                               color: Colors.white,
                               fontSize: width*0.03
                           ),),

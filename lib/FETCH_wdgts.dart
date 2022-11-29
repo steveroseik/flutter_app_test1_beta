@@ -2165,12 +2165,14 @@ final kTitleTextStyle = TextStyle(
 
 class ProfileListItem extends StatelessWidget {
   final IconData icon;
+  final IconData icon2;
   final String text;
   final bool hasNavigation;
 
   const ProfileListItem({
     required this.icon,
     required this.text,
+    required this.icon2,
     this.hasNavigation = true,
   });
 
@@ -2202,7 +2204,7 @@ class ProfileListItem extends StatelessWidget {
             Spacer(),
             if (this.hasNavigation)
               Icon(
-                LineAwesomeIcons.angle_right,
+                this.icon2,
                 size: 25,
                 color: Color.alphaBlend(Colors.black, Colors.black),
               ),

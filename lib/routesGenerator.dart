@@ -13,6 +13,7 @@ import 'package:flutter_app_test1/pages/breed_registration.dart';
 import 'package:flutter_app_test1/pages/create_meet.dart';
 import 'package:flutter_app_test1/pages/editPass.dart';
 import 'package:flutter_app_test1/pages/editPetPage.dart';
+import 'package:flutter_app_test1/pages/editSettings.dart';
 import 'package:flutter_app_test1/pages/emailVerify.dart';
 import 'package:flutter_app_test1/pages/explore.dart';
 import 'package:flutter_app_test1/pages/forgotPassword.dart';
@@ -222,6 +223,8 @@ class RouteGenerator {
         if (args is Map)
           return MaterialPageRoute(builder: (_) => editPass(userData: args));
         return _errorRoute();
+      case '/setting':
+        return MaterialPageRoute(builder: (_) => editSettings());
       default:
       // if an unmatched route is called, return error route
         return _errorRoute();
