@@ -15,6 +15,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 
+import '../JsonObj.dart';
 import '../configuration.dart';
 
 class CreateMeet extends StatefulWidget {
@@ -23,16 +24,6 @@ class CreateMeet extends StatefulWidget {
   @override
   State<CreateMeet> createState() => _CreateMeetState();
 }
-class Breed{
-  String breed;
-  Breed({
-    required this.breed,
-  });
-  Map toJson() => {
-    'breed': breed,
-  };
-}
-
 class Size{
   String size;
   Size({
@@ -54,63 +45,69 @@ class _CreateMeetState extends State<CreateMeet> {
   String name = '',
       description = '';
   var isLoading = true;
+  bool breedsLoading = true;
   List<Breed?> _selectedBreeds = [];
   List<Breed?> tempSelectedBreed = [];
   List<Size?> _selectedSizes = [];
   List<Size?> tempSelectedSizes = [];
-  static List<Breed> breeds = [
-  ];
+  List<Breed> breeds = <Breed>[];
   static List<Size> sizes = [
     Size(size: "Small"),
     Size(size: "Medium"),
     Size(size: "Large"),
   ];
 
-  final _items = breeds
-      .map((pet) => MultiSelectItem<Breed>(pet, pet.breed))
+  late var _items = breeds
+      .map((pet) => MultiSelectItem<Breed>(pet, pet.name))
       .toList();
   final size_items = sizes
       .map((petsize) => MultiSelectItem<Size>(petsize, petsize.size))
       .toList();
   initUser() async {
     petPods = await fetchPets(-1);
+
+
+    breeds = await getBreedList(0);
+    print('breeds: $breeds');
+    _items = breeds
+        .map((pet) => MultiSelectItem<Breed>(pet, pet.name))
+        .toList();
     setState(() {
       isLoading = false;
     });
-     breeds =  await breed_select();
+    setState(() {
+      breedsLoading = false;
+    });
 
-    final _items = breeds
-        .map((pet) => MultiSelectItem<Breed>(pet, pet.breed))
-        .toList();
 
     final location = await getUserCurrentLocation();
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
-        zoom: 15, target: LatLng(location.latitude, location.longitude))));
+        zoom: 15, target: LatLng(location.longitude, location.latitude))));
     setState(() {});
   }
-Future getsizes(sizelist) async {
-  final  breednames = List<String>.empty(growable: true);
-  print('sizes: $sizelist');
-  if(sizelist.contains('Medium')) print('yes');
-  var x = sizelist[0];
-  print(x);
-  label: try {
-    if(sizelist.length==3) {
-      breednames.add('All breeds welcome');
+  Future getsizes(sizelist) async {
+    final  breednames = List<String>.empty(growable: true);
+    print('sizes: $sizelist');
+    if(sizelist.contains('Medium')) print('yes');
+    var x = sizelist[0];
+    print(x);
+    label: try {
+      if(sizelist.length==3) {
+        breednames.add('All breeds welcome');
         break label;
-    }
-    if(sizelist.contains('Small')){
-      final data = await SupabaseCredentials.supabaseClient
-              .from('breed')
-              .select('*').lte('height', 34) as List<dynamic>;
-          for (var entry in data) {
-            final map = Map.from(entry);
-            breednames.add(map['name']);
-          }
+      }
+      if(sizelist.contains('Small')){
+        final data = await SupabaseCredentials.supabaseClient
+            .from('breed')
+            .select('*').lte('height', 34) as List<dynamic>;
+        for (var entry in data) {
+          final map = Map.from(entry);
+          breednames.add(map['name']);
         }
-    if(sizelist.contains('Medium')){
-      final data = await SupabaseCredentials.supabaseClient
+      }
+      if(sizelist.contains('Medium')){
+        final data = await SupabaseCredentials.supabaseClient
             .from('breed')
             .select('*').lte('height', 49).gte('height', 35) as List<dynamic>;
         for (var entry in data) {
@@ -119,38 +116,14 @@ Future getsizes(sizelist) async {
         }
       }
 
-    if(sizelist.contains('Large')) {
-          final data = await SupabaseCredentials.supabaseClient
-              .from('breed')
-              .select('*').gte('height', 50) as List<dynamic>;
-          for (var entry in data) {
-            final map = Map.from(entry);
-            breednames.add(map['name']);
-          }
+      if(sizelist.contains('Large')) {
+        final data = await SupabaseCredentials.supabaseClient
+            .from('breed')
+            .select('*').gte('height', 50) as List<dynamic>;
+        for (var entry in data) {
+          final map = Map.from(entry);
+          breednames.add(map['name']);
         }
-    }
-  on PostgrestException catch (error) {
-    print(error.message);
-  }
-  catch (e) {
-    print(e);
-  }
-  return breednames;
-}
-dynamicbreeds(breedlist){
-
-    return breeds;
-}
-
-  breed_select() async {
-    List<String> breedlist =[];
-    try {
-      final data = await SupabaseCredentials.supabaseClient
-          .from('breed')
-          .select('*')as List<dynamic>;
-      for (var entry in data) {
-        final map = Map.from(entry);
-       breedlist.add(map['name']);
       }
     }
     on PostgrestException catch (error) {
@@ -159,17 +132,17 @@ dynamicbreeds(breedlist){
     catch (e) {
       print(e);
     }
-    for(int i =0; i < breedlist.length; i++){
-      var z = breedlist[i];
-      breeds.add(Breed(breed:z));
-    }
-    return breeds;
-
+    return breednames;
   }
+  dynamicbreeds(breedlist){
+
+    return breeds;
+  }
+
 
   Future insert_breeds(double longitude, double latitude, String title, String descr, List<String> petIDs) async {
     String jsonString = jsonEncode(tempSelectedBreed);
-   // String jsonSize = jsonEncode(tempSelectedSizes);
+    // String jsonSize = jsonEncode(tempSelectedSizes);
 
     try {
       final timestamp = dateTime.toIso8601String();
@@ -365,7 +338,7 @@ dynamicbreeds(breedlist){
 
               ),
 
-              Container(
+              breedsLoading? Container() : Container(
                 child: Column(
                   children: <Widget>[
                     MultiSelectBottomSheetField<Breed?>(
@@ -612,42 +585,42 @@ dynamicbreeds(breedlist){
         ));
   }
 
-   validate(List<String> petIDs) async {
-     String tempstring = jsonEncode(tempSelectedSizes);
-     String stringsize = '';
-     for (int i =0; i< tempstring.length;i++){
-       if(tempstring[i]!='"' && tempstring[i]!="["&& tempstring[i]!="}"&& tempstring[i]!="&"&& tempstring[i]!=":"&& tempstring[i]!="]"&& tempstring[i]!="{"){
-         stringsize = stringsize + tempstring[i];
-       }
-     }
-     List<String> listsize = stringsize.split(',');
-     final breednames = await getsizes(listsize);
+  validate(List<String> petIDs) async {
+    String tempstring = jsonEncode(tempSelectedSizes);
+    String stringsize = '';
+    for (int i =0; i< tempstring.length;i++){
+      if(tempstring[i]!='"' && tempstring[i]!="["&& tempstring[i]!="}"&& tempstring[i]!="&"&& tempstring[i]!=":"&& tempstring[i]!="]"&& tempstring[i]!="{"){
+        stringsize = stringsize + tempstring[i];
+      }
+    }
+    List<String> listsize = stringsize.split(',');
+    final breednames = await getsizes(listsize);
 
     if (name != '') {
       if (description != '') {
 
-       // if (!petIDs.isEmpty) {
+        // if (!petIDs.isEmpty) {
 
-          if (dateTime != DateTime.now()) {
-            if (long != 0 || lat != 0) {
-              if(tempSelectedBreed.length>0)
-                insert_breeds(long, lat, name, description, petIDs);
-              else
-                insert_sizes(long, lat, name, description, petIDs, breednames);
-              explore_key.currentState
-                  ?.pushNamed('/');
-              setState(() {});
-            }
-            else {
-              showSnackbar(context, 'Please tap the Meet location on the map');
-            }
+        if (dateTime != DateTime.now()) {
+          if (long != 0 || lat != 0) {
+            if(tempSelectedBreed.length>0)
+              insert_breeds(long, lat, name, description, petIDs);
+            else
+              insert_sizes(long, lat, name, description, petIDs, breednames);
+            explore_key.currentState
+                ?.pushNamed('/');
+            setState(() {});
           }
           else {
-            showSnackbar(context, "Meet date cannot be today's date");
+            showSnackbar(context, 'Please tap the Meet location on the map');
           }
-       // }
-       // else {
-         // showSnackbar(context, 'Please select at least one pet');
+        }
+        else {
+          showSnackbar(context, "Meet date cannot be today's date");
+        }
+        // }
+        // else {
+        // showSnackbar(context, 'Please select at least one pet');
         //}
 
       }
