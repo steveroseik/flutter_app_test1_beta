@@ -273,7 +273,7 @@ class _petRegPageState extends State<petRegPage> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: BreedSearchWidget(formKey: breedKey, breedSelected: widget.breedSelected),
+                            child: BreedSearchWidget(formKey: breedKey, breedSelected: widget.breedSelected, bList: [], controller: 0,),
                           ),
                         ],
                       ),

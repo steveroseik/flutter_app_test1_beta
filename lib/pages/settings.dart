@@ -102,16 +102,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Container(
                       decoration: avatarDecoration,
                       padding: EdgeInsets.all(3),
-                      // child: Container(
-                      //   decoration: BoxDecoration(
-                      //     shape: BoxShape.circle,
-                      //     image: DecorationImage(
-                      //       image: NetworkImage(userData == ''
-                      //           ? ''
-                      //           : '${userData['photoUrl']}'),
-                      //     ),
-                      //   ),
-                      // ),
                     ),
                   ),
                   const SizedBox(height: 5),

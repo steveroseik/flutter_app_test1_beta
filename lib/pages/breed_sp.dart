@@ -1,9 +1,14 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:flutter_app_test1/JsonObj.dart';
 import 'package:dropdown_search/dropdown_search.dart';
+import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_switch/flutter_switch.dart';
 import 'package:multi_select_flutter/chip_display/multi_select_chip_display.dart';
@@ -34,9 +39,8 @@ class _breedSearchPageState extends State<breedSearchPage> {
   int gender = 2;
   int ageMin=0;
   int ageMax=20;
-  int distMin=0;
-  int distMax=50;
   bool allPets = false;
+  bool distanceASC = false;
 
   BorderRadiusGeometry radius = const BorderRadius.only(
     topLeft: Radius.circular(24.0),
@@ -46,11 +50,57 @@ class _breedSearchPageState extends State<breedSearchPage> {
   var distance_r = RangeValues(0, 50);
   String _genderValue = 'Male';
 
+  late Timer _sortTimer;
+  int sortTrials = 5;
+
   initPets() async{
 
     pets.addAll(await fetchResultedPets());
     breedList.addAll(await fetchBreedNameList());
     setState(() {});
+  }
+
+  startSorting(List<PetPod> pods){
+    const time = const Duration(seconds: 2);
+    _sortTimer = Timer.periodic(time, (Timer time) {
+      int locAvail = 0;
+      for (PetPod pod in pods){
+        if (pod.getDistance() == -1){
+          locAvail = -1;
+        }
+      }
+      if (sortTrials == 0) {
+        setState(() {
+        time.cancel();
+      });
+      }
+
+      if (locAvail != -1){
+        pods.sort((a,b) => a.distance
+            .compareTo(b.distance));
+        if (distanceASC) {
+          pods = pods.reversed.toList();
+        }
+        setState(() {
+          pets.addAll(pods);
+          time.cancel();
+        });
+      }else{
+          sortTrials--;
+      }
+    });
+  }
+
+  refreshResults(List<dynamic> newList){
+    setState(() {
+      pets.clear();
+    });
+    final encoded = petProfileFromJson(jsonEncode(newList));
+    final pods = List<PetPod>.generate(encoded.length, (index){
+      return PetPod(encoded[index], false, GeoLocation(0.0, 0.0), 1);
+    });
+    sortTrials = 5;
+    startSorting(pods);
   }
 
   @override
@@ -192,61 +242,53 @@ class _breedSearchPageState extends State<breedSearchPage> {
                     ),
                   ),
                 ),
-                SizedBox(height: 10,),
-                Container(
-                  alignment: Alignment.center,
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    'Distance',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 7*width*0.005,
-                      fontWeight: FontWeight.w800,),
-                  ),
-                ),
-                SizedBox(height: 10,),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.white54
+                SizedBox(height: 20,),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      alignment: Alignment.center,
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'Distance',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 7*width*0.005,
+                          fontWeight: FontWeight.w800,),
+                      ),
                     ),
-                    child: Row(
-
-                      children: [
-                        Text('${distMin}',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              color: Colors.blueGrey.shade900
-                          ),),
-                        Expanded(
-                          child: RangeSlider(
-                            values: distance_r,
-                            activeColor: Colors.blueGrey.shade900,
-                            inactiveColor: Colors.blueGrey.shade100,
-                            onChanged: (RangeValues n) {
-                              setState((){
-                                distance_r = n;
-                                distMin = n.start.toInt();
-                                distMax = n.end.toInt();
-
-                              });
-                            },
-                            min: 0,
-                            max: 50,
-                            divisions: 50,
-                            labels:
-                            RangeLabels('${distance_r.start.ceil()} Km', '${distance_r.end.ceil()} Km'),
-                          ),
-                        ),
-                        Text('${distMax}',style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: Colors.blueGrey.shade900
-                        ),),
-                      ],
+                    SizedBox(width: 20,),
+                    Text(
+                      'Nearest',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 5*width*0.005,
+                        fontWeight: FontWeight.w600,),
                     ),
-                  ),
+                    SizedBox(width: 5,),
+                    FlutterSwitch(
+                      width: width * 0.11,
+                      height: height * 0.025,
+                      toggleSize: 15 * width * 0.003,
+                      activeColor: Colors.blueGrey.shade700,
+                      inactiveColor:  Colors.blueGrey.shade700,
+                      onToggle: (v) {
+                        distanceASC = !distanceASC;
+                        setState(() {
+
+                        });
+                        print(allPets);
+                      }, value: distanceASC,
+                    ),
+                    SizedBox(width: 5,),
+                    Text(
+                      'Farthest',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 5*width*0.005,
+                        fontWeight: FontWeight.w600,),
+                    ),
+                  ],
                 ),
                 SizedBox(height: 15,),
                 Text(
@@ -282,17 +324,62 @@ class _breedSearchPageState extends State<breedSearchPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async{
                           if (_pc.isAttached) {
+                            final uid = FirebaseAuth.instance.currentUser!.uid;
+                            final dateMin = DateTime(DateTime.now().year - ageMax, DateTime.now().month, DateTime.now().day);
+                            final dateMax = DateTime(DateTime.now().year - ageMin, DateTime.now().month, DateTime.now().day);
+                            try{
+                              if (allPets){
+                                if (gender == 2){
+                                  final resp = await SupabaseCredentials.supabaseClient.from('pets')
+                                      .select('*').gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid);
+                                  refreshResults(resp);
+                                }else{
+                                  final isMale = gender == 0 ? true : false;
+                                  final resp = await SupabaseCredentials.supabaseClient.from('pets')
+                                      .select('*').eq('isMale', isMale).gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid);
+                                  refreshResults(resp);
+                                }
+                              }else{
+                                final sBreeds = breedKey.currentState!.getSelectedItems;
+
+                                if (sBreeds != null){
+                                  List<String> criteriaList = <String>[];
+                                  if (criteriaList.length > 0){
+                                    criteriaList = List<String>.generate(sBreeds.length, (index) => sBreeds[index].name);
+                                    if (gender == 2){
+                                      final resp = await SupabaseCredentials.supabaseClient.from('pets')
+                                          .select('*').in_('breed', criteriaList).gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid);
+                                      refreshResults(resp);
+                                    }else{
+                                      final isMale = gender == 0 ? true : false;
+                                      final resp = await SupabaseCredentials.supabaseClient.from('pets')
+                                          .select('*').in_('breed', criteriaList).eq('isMale', isMale).gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid);
+                                      refreshResults(resp);
+                                    }
+                                  }else{
+                                    if (gender == 2){
+                                      final resp = await SupabaseCredentials.supabaseClient.from('pets')
+                                          .select('*').gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid).neq('owner_id', uid);
+                                      refreshResults(resp);
+                                    }else{
+                                      final isMale = gender == 0 ? true : false;
+                                      final resp = await SupabaseCredentials.supabaseClient.from('pets')
+                                          .select('*').eq('isMale', isMale).gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid).neq('owner_id', uid);
+                                      refreshResults(resp);
+                                    }
+                                  }
+
+                                }else{
+                                  print('error fetching breed list.');
+                                }
+
+                              }
+                            }catch (e){
+                              print(e);
+                            }
                             // initPets();
-                            MultiSelectChipDisplay(
-                              items: breedList.map((e) => MultiSelectItem(e, e)).toList(),
-                              onTap: (value) {
-                                setState(() {
-                                  breedList.remove(value);
-                                });
-                              },
-                            );
                             _pc.close();
                           } else {}
                         },

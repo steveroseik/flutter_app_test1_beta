@@ -1,5 +1,6 @@
-import 'package:appinio_swiper/appinio_swiper.dart';
+import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
 import 'package:card_swiper/card_swiper.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
@@ -22,12 +23,10 @@ class PetMatchPage extends StatefulWidget {
 
 class _PetMatchPageState extends State<PetMatchPage> {
 
-   List<PetView> petMatches = <PetView>[];
+   List<PetMatchCard> petMatches = <PetMatchCard>[];
    late List<Widget> petDialogs;
    bool petsReady = false;
    int swipeBool = 1;
-   final AppinioSwiperController controller = AppinioSwiperController();
-
 
 
    initPets() async{
@@ -35,14 +34,15 @@ class _PetMatchPageState extends State<PetMatchPage> {
      final uLat = prefs.getDouble('lat');
      final uLong = prefs.getDouble('long');
     for (PetProfile pet in widget.pets){
+
       final pod = PetPod(pet, false, GeoLocation(0,0), 0);
-      final petView = PetView(profile: pod, ownerPets: [widget.senderPet]);
+      await pod.fetchLocation();
+      final petView = PetMatchCard(pod: pod, sender: widget.senderPet);
       petMatches.add(petView);
+      setState(() {
+        petsReady = true;
+      });
     }
-    print('done');
-    setState(() {
-      petsReady = true;
-    });
   }
 
   @override
@@ -57,46 +57,32 @@ class _PetMatchPageState extends State<PetMatchPage> {
         child: Scaffold(
           appBar: init_appBar(BA_key),
           body: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               Text(
                 'Mating Choices For ${widget.senderPet.pet.name}',
                 style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 20,
-                    fontWeight: FontWeight.w900),
+                    fontWeight: FontWeight.w900,color: Colors.blueGrey.shade800),
               ),
               petsReady ? Container(
-                height: 600,
-                child: AppinioSwiper(
-                  unlimitedUnswipe: true,
-                  controller: controller,
-                  unswipe: _unswipe,
-                  cards: petMatches,
-                  onSwipe: _swipe,
-                  padding: const EdgeInsets.only(
-                    left: 25,
-                    right: 25,
-                    top: 50,
-                    bottom: 40,
-                  ),
-                ),
-              ) : Container()
+                width: double.infinity,
+                height: 350,
+                child: Swiper(
+                  itemWidth: 230,
+                  itemHeight: double.infinity,
+                  itemBuilder: (BuildContext context, int index) {
+                    return  petMatches[index];
+                    },
+                  itemCount: petMatches.length,
+                  layout: SwiperLayout.STACK,
+        ),
+              ) : Container(),
             ],
           ),
         )
     );
 
   }
-   void _swipe(int index, AppinioSwiperDirection direction) {
-     print("the card was swiped to the: " + direction.name);
-   }
-
-   void _unswipe(bool unswiped) {
-     if (unswiped) {
-       print("SUCCESS: card was unswiped");
-     } else {
-       print("FAIL: no card left to unswipe");
-     }
-   }
 }

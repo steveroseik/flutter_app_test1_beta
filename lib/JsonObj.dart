@@ -463,6 +463,75 @@ class Success {
   };
 }
 
+UserPod userPodFromJson(String str) => UserPod.fromJson(json.decode(str));
+
+String userPodToJson(UserPod data) => json.encode(data.toJson());
+
+class UserPod {
+  UserPod({
+    required this.id,
+    required this.email,
+    required this.firstName,
+    required this.lastName,
+    required this.birthdate,
+    required this.country,
+    required this.city,
+    required this.long,
+    required this.lat,
+    required this.type,
+    required this.createdAt,
+    required this.phone,
+    required this.photoUrl,
+  });
+
+  String id;
+  String email;
+  String firstName;
+  String lastName;
+  DateTime birthdate;
+  String country;
+  String city;
+  double long;
+  double lat;
+  int type;
+  DateTime createdAt;
+  int phone;
+  dynamic photoUrl;
+
+  factory UserPod.fromJson(Map<String, dynamic> json) => UserPod(
+    id: json["id"],
+    email: json["email"],
+    firstName: json["firstName"],
+    lastName: json["lastName"],
+    birthdate: DateTime.parse(json["birthdate"]),
+    country: json["country"],
+    city: json["city"],
+    long: json["long"].toDouble(),
+    lat: json["lat"].toDouble(),
+    type: json["type"],
+    createdAt: DateTime.parse(json["created_at"]),
+    phone: json["phone"],
+    photoUrl: json["photoUrl"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "email": email,
+    "firstName": firstName,
+    "lastName": lastName,
+    "birthdate": "${birthdate.year.toString().padLeft(4, '0')}-${birthdate.month.toString().padLeft(2, '0')}-${birthdate.day.toString().padLeft(2, '0')}",
+    "country": country,
+    "city": city,
+    "long": long,
+    "lat": lat,
+    "type": type,
+    "created_at": createdAt.toIso8601String(),
+    "phone": phone,
+    "photoUrl": photoUrl,
+  };
+}
+
+
 List<PetProfile> petProfileFromJson(String str) => List<PetProfile>.from(json.decode(str).map((x) => PetProfile.fromJson(x)));
 
 String petProfileToJson(List<PetProfile> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
@@ -480,7 +549,7 @@ class PetProfile {
     required this.birthdate,
     required this.photoUrl,
     required this.ownerId,
-    required this.ready,
+    required this.verified,
     required this.createdAt,
     required this.vaccines,
     required this.rateSum,
@@ -495,7 +564,7 @@ class PetProfile {
   DateTime birthdate;
   String photoUrl;
   String ownerId;
-  bool ready;
+  bool verified;
   DateTime createdAt;
   List<String> vaccines;
   int rateSum;
@@ -510,7 +579,7 @@ class PetProfile {
     birthdate: DateTime.parse(json["birthdate"]),
     photoUrl: json["photo_url"],
     ownerId: json["owner_id"],
-    ready: json["ready"],
+    verified: json["verified"],
     createdAt: DateTime.parse(json["created_at"]),
     vaccines: List<String>.from(json["vaccines"].map((x) => x)),
     rateSum: json["rateSum"],
@@ -526,7 +595,7 @@ class PetProfile {
     "birthdate": "${birthdate.year.toString().padLeft(4, '0')}-${birthdate.month.toString().padLeft(2, '0')}-${birthdate.day.toString().padLeft(2, '0')}",
     "photo_url": photoUrl,
     "owner_id": ownerId,
-    "ready": ready,
+    "verified": verified,
     "created_at": createdAt.toIso8601String(),
     "vaccines": List<dynamic>.from(vaccines.map((x) => x)),
     "rateSum": rateSum,

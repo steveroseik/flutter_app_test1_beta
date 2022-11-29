@@ -31,8 +31,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     with TickerProviderStateMixin {
   final emptyPet = PetPod(PetProfile(id: '', name: '', vaccines: [],
     ownerId: '', birthdate: DateTime.now(), breed: '',
-    isMale: false, photoUrl: '', ready: false, createdAt: DateTime.now(), rateSum: 0, rateCount: 0, passport: ""), true, GeoLocation(0.0, 0.0), 0);
-  late BuildContext scaffoldContext;
+    isMale: false, photoUrl: '', verified: false, createdAt: DateTime.now(), rateSum: 0, rateCount: 0, passport: ""), true, GeoLocation(0.0, 0.0), 0);
   bool tapped = false;
   bool petDataLoading = false;
   var isLoading = true;
@@ -76,10 +75,24 @@ class _HomeBreedPageState extends State<HomeBreedPage>
             '/add_pet', (Route<dynamic> route) => false);
       }
     }
-    await updatePets(petIndex.value);
-    await getRequests(true);
+    if (this.mounted){
+      await updatePets(petIndex.value);
+    }
+
+
     setState(() {
       isLoading = false;
+    });
+
+    getRequests(true);
+  }
+
+  refreshNotificationCount(){
+    notifCount = 0;
+    for(MateItem item in petRequests){
+      if (item.status == 0) notifCount++;
+    }
+    setState(() {
     });
   }
 
@@ -90,18 +103,25 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   getRequests(bool r) async {
    requestsLoading = r;
    setState(() {});
-    final uid = await FirebaseAuth.instance.currentUser!.uid;
+    final uid = FirebaseAuth.instance.currentUser!.uid;
     petRequests = await fetchPetRequests(uid).whenComplete(() {
      requestsLoading = false;
     });
-    if (petRequests.length > 0){
-      notifCount = petRequests.length;
+    if (petRequests.isNotEmpty){
+      for ( MateItem pet in petRequests){
+        if (pet.status == 0) notifCount ++;
+      }
       setState(() {});
       _controller2.forward();
+
+    }else{
+      setState(() {
+
+      });
     }
-
-
   }
+
+
   createPetVaccines(){
     vaccineList.clear();
     for ( MapEntry entry in vaccineFList.entries){
@@ -601,94 +621,6 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                 ],
                               ),
                             ),
-                            SizedBox(height: 10),
-                            // Padding(
-                            //   padding: const EdgeInsets.symmetric(horizontal: 40),
-                            //   child: GestureDetector(
-                            //     onTap: ()async{
-                            //       // BA_key.currentState?.pushNamed('/search_manual');
-                            //       // filterPetSearch();
-                            //       // final resp = await SupabaseCredentials.supabaseClient.from("breed").select('*').limit(2) as List<dynamic>;
-                            //       // print(jsonEncode(resp));
-                            //     },
-                            //     child: Container(
-                            //       height: 80,
-                            //       width: MediaQuery.of(context).size.width/2,
-                            //       padding: EdgeInsets.all(15),
-                            //       decoration: BoxDecoration(
-                            //         color: Colors.blueGrey.shade900,
-                            //         borderRadius: BorderRadius.circular(30),
-                            //       ),
-                            //       child: Padding(
-                            //         padding: const EdgeInsets.symmetric(horizontal: 10),
-                            //         child: Row(
-                            //           crossAxisAlignment: CrossAxisAlignment.center,
-                            //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            //           children: [
-                            //             Text(
-                            //               'Adopt',
-                            //               style: TextStyle(
-                            //                   color: Colors.white,
-                            //                   fontFamily: 'Roboto',
-                            //                   fontWeight: FontWeight.w700,
-                            //               fontSize: 20),
-                            //             ),
-                            //             ImageIcon(
-                            //                 AssetImage(
-                            //                     'assets/adoptIcon.png'),
-                            //                 size: 40,
-                            //                 color: Colors.white),
-                            //           ],
-                            //         ),
-                            //       ),
-                            //     ),
-                            //   ),
-                            // ),
-                            SizedBox(
-                              height: 20,
-                            ),
-
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 10.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: [
-                                  Text('Mate Requests',
-                                      style: TextStyle(
-                                        fontFamily: 'Roboto',
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w900,
-                                      )),
-                                  Spacer(),
-                                  IconButton(onPressed: (){
-                                    getRequests(true);
-                                  },
-                                      icon: Icon(Icons.refresh_rounded),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blueGrey.shade900,
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(30.0))))
-                                ],
-                              ),
-                            ),
-                            Divider(),
-                            Container(
-                              height: 300,
-                              child: requestsLoading ? ShimmerPetRequestBanner(context):
-                              ListView.builder(
-                                  scrollDirection: Axis.vertical,
-                                  itemCount: petRequests.length,
-                                  itemBuilder: (context, index) {
-                                    return InkWell(
-                                      onTap: (){
-                                        _modalBottomSheetMenu(petRequests[index]);
-                                      },
-                                      child: PetRequestBanner(
-                                          pod: petRequests[index]),
-                                    );
-                                  }),
-                            ),
                           ],
                         ),
                       ),
@@ -697,21 +629,23 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                 ],
               ),
             ),
-            floatingActionButton: Container(
-              child: FittedBox(
-                child: Stack(
-                  alignment: Alignment(1.4, -1.5),
-                  children: [
-                    FloatingActionButton(  // Your actual Fab
-                      onPressed: () {
-                        BA_key.currentState?.pushNamed('/notif', arguments: petRequests);
-                      },
-                      child: Icon(Icons.notifications),
-                      backgroundColor: Colors.blueGrey.shade800,
-                    ),
-                    FadeTransition(
-                      opacity: _controller2,
-                      child: Container(             // This is your Badge
+            floatingActionButton: FadeTransition(
+              opacity: _controller2,
+              child: Container(
+                child: FittedBox(
+                  child: Stack(
+                    alignment: Alignment(1.4, -1.5),
+                    children: [
+                      FloatingActionButton(  // Your actual Fab
+                        onPressed: () {
+                          BA_key.currentState?.pushNamed('/notif', arguments: [petRequests, petPods]).then((value){
+                           refreshNotificationCount();
+                          });
+                        },
+                        child: Icon(Icons.notifications),
+                        backgroundColor: Colors.blueGrey.shade800,
+                      ),
+                      notifCount == 0 ? Container() : Container(             // This is your Badge
                         child: Center(
                           // Here you can put whatever content you want inside your Badge
                           child: Text('${notifCount}', style: TextStyle(color: Colors.white)),
@@ -729,8 +663,8 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                           color: Colors.redAccent,  // This would be color of the Badge
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             )
@@ -780,11 +714,6 @@ class _HomeBreedPageState extends State<HomeBreedPage>
 
         });
       }
-      // final prefs = await SharedPreferences.getInstance();
-      // if (prefs.getBool('petReqAction') == true){
-      //   getRequests();
-      //   prefs.setBool('petReqAction', false);
-      // }
     });
   }
 }

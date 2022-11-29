@@ -57,13 +57,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.1"
-  appinio_swiper:
-    dependency: "direct main"
-    description:
-      name: appinio_swiper
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.1.1"
   archive:
     dependency: transitive
     description:
@@ -513,6 +506,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.1.1"
+  glassmorphism_ui:
+    dependency: "direct main"
+    description:
+      name: glassmorphism_ui
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.3.0"
   google_maps_flutter:
     dependency: "direct main"
     description:

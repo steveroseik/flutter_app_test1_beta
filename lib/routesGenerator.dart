@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/JsonObj.dart';
 import 'package:flutter_app_test1/pages/BreedsArticles.dart';
@@ -129,14 +130,14 @@ class RouteGenerator {
         }
         return _errorRoute();
       case '/petProfile':
-        if (args is PetPod){
+        if (args is List){
           return MaterialPageRoute(
-              builder: (_) => PetProfilePage(pod: args));
+              builder: (_) => PetProfilePage(pod: args[0], ownerPets: args[1], senderState: args[2]));
         }
         return _errorRoute();
       case '/notif':
-        if (args is List<MateItem>){
-          return MaterialPageRoute(builder: (_) => NotificationsPage(requests: args));
+        if (args is List){
+          return CupertinoPageRoute(builder: (_) => NotificationsPage(requests: args[0], ownerPets: args[1]));
         }
         return _errorRoute();
       default:

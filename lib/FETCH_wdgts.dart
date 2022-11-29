@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:age_calculator/age_calculator.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_multi_select_items/flutter_multi_select_items.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:glassmorphism_ui/glassmorphism_ui.dart';
 import 'package:introduction_screen/introduction_screen.dart';
 import 'package:loading_indicator/loading_indicator.dart';
 import 'package:flutter/src/widgets/image.dart' as img;
@@ -137,109 +139,109 @@ class _BreedSearchMultiWidgetState extends State<BreedSearchMultiWidget> {
 class BreedSearchWidget extends StatefulWidget {
   final GlobalKey<DropdownSearchState<Breed>> formKey;
   final String breedSelected;
-  const BreedSearchWidget({Key? key, required this.formKey, required this.breedSelected}) : super(key: key);
+  final bList;
+  final int controller;
+  const BreedSearchWidget({Key? key, required this.formKey, required this.breedSelected, required this.bList, required this.controller}) : super(key: key);
 
   @override
   State<BreedSearchWidget> createState() => _BreedSearchWidgetState();
 }
 class _BreedSearchWidgetState extends State<BreedSearchWidget> {
   Breed? _selected;
-  late Future<List<Breed>> bList;
   var bError = 5;
   final _openDropDownProgKey = GlobalKey<DropdownSearchState<int>>();
-
+  List<Breed> finalList = <Breed>[];
+  bool isLoading = true;
   Breed getSelected(){
     return _selected!;
+  }
+
+
+  initWidget(){
+    if (widget.controller == 0){
+      genBreeds();
+    }else{
+      finalList.addAll(widget.bList);
+    }
+    if (this.mounted){
+      setState(() {});
+    }
+
+  }
+  genBreeds() async{
+    final breeds = await getBreedList(0);
+    finalList.addAll(breeds);
   }
 
 
   @override
   void initState() {
     super.initState();
-    bList = getBreedList(0);
+    initWidget();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 100,
-      child: FutureBuilder<List<Breed>>(
-        future: bList,
-        builder: (context, snapshot) {
-          if (snapshot.data == null || snapshot.data!.isEmpty) {
-            return DropdownSearch<String>(
-              items: ['...'],
-              dropdownDecoratorProps: DropDownDecoratorProps(
-                  dropdownSearchDecoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20.0),
-                    ),
-                  )
+      child: isLoading ?  DropdownSearch<String>(
+        items: ['...'],
+        dropdownDecoratorProps: DropDownDecoratorProps(
+            dropdownSearchDecoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20.0),
               ),
-            );
-          }
-          switch (snapshot.connectionState) {
-            case ConnectionState.done:
-              for(Breed element in snapshot.data!){
-                if (element.name == widget.breedSelected) {
-                  _selected = element;
-                  break;
-                }
-              }
-              return Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20.0),
-                  color: CupertinoColors.extraLightBackgroundGray,
-                ),
-                child: DropdownSearch<Breed>(
-                  key: widget.formKey,
-                  selectedItem: _selected,
-                  onChanged: (Breed? b) {
-                    _selected = b;
-                  },
-                  compareFn: (i1, i2) => i1.name == i2.name,
-                  items: snapshot.data!,
-                  itemAsString: (Breed b) => b.name,
-                  dropdownDecoratorProps: DropDownDecoratorProps(
-                    dropdownSearchDecoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20.0),
-                        borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)
-                      )
-                    )
+            )
+        ),
+      ) : Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20.0),
+          color: CupertinoColors.extraLightBackgroundGray,
+        ),
+        child: DropdownSearch<Breed>(
+          key: widget.formKey,
+          selectedItem: _selected,
+          onChanged: (Breed? b) {
+            _selected = b;
+          },
+          compareFn: (i1, i2) => i1.name == i2.name,
+          items: finalList,
+          itemAsString: (Breed b) => b.name,
+          dropdownDecoratorProps: DropDownDecoratorProps(
+              dropdownSearchDecoration: InputDecoration(
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                      borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)
                   ),
-                  popupProps: PopupProps.modalBottomSheet(
-                    showSearchBox: true,
-                    fit: FlexFit.tight,
-                    constraints: BoxConstraints.tightForFinite(height: MediaQuery.of(context).size.height * 0.7),
-                    searchFieldProps: TextFieldProps(
-                        decoration: InputDecoration(
-                          hintText: 'Type breed name',
-                        )),
-                    itemBuilder: (ctx, item, isSelected) {
-                      return ListTile(
-                        title: Text(item.name,
-                            textAlign: TextAlign.left,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 13.5, color: Colors.black)),
-                        leading: CircleAvatar(
-                            backgroundImage: NetworkImage(item.photoUrl)),
-                      );
-                    },
-                  ),
-                  filterFn: (breed, filter) => breed.filterBreedItem(filter),
-                ),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)
+                  )
+              )
+          ),
+          popupProps: PopupProps.modalBottomSheet(
+            showSearchBox: true,
+            fit: FlexFit.tight,
+            constraints: BoxConstraints.tightForFinite(height: MediaQuery.of(context).size.height * 0.7),
+            searchFieldProps: TextFieldProps(
+                decoration: InputDecoration(
+                  hintText: 'Type breed name',
+                )),
+            itemBuilder: (ctx, item, isSelected) {
+              return ListTile(
+                title: Text(item.name,
+                    textAlign: TextAlign.left,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 13.5, color: Colors.black)),
+                leading: CircleAvatar(
+                    backgroundImage: NetworkImage(item.photoUrl)),
               );
-            default:
-              return CircularProgressIndicator();
-          }
-        },
-      ),
+            },
+          ),
+          filterFn: (breed, filter) => breed.filterBreedItem(filter),
+        ),
+      )
     );
   }
 }
@@ -302,8 +304,13 @@ class MateItem{
   PetPod sender_pet;
   String receiver_id;
   String request_id;
+  int status;
   
-  MateItem(this.sender_pet, this.receiver_id, this.request_id);
+  MateItem(this.sender_pet, this.receiver_id, this.request_id, this.status);
+
+  getStat(){
+    return this.status;
+  }
 }
 
 class CustomSelectionItem extends StatelessWidget {
@@ -417,8 +424,12 @@ class PetPod {
   PetProfile pet;
   bool isSelected = false;
   GeoLocation petLocation;
-  int distance = 0;
-  PetPod(this.pet, this.isSelected, this.petLocation, int controller);
+  int distance = -1;
+  PetPod(this.pet, this.isSelected, this.petLocation, int controller){
+    if (controller != 0){
+      fetchLocation();
+    }
+  }
 
   fetchLocation() async{
     try{
@@ -436,7 +447,7 @@ class PetPod {
   }
 
   getDistance(){
-    return this.distance;
+    return distance;
   }
 
   calculateDistance() async {
@@ -475,11 +486,22 @@ class PetPod {
   }
 
   setLocation(GeoLocation){
-    this.petLocation = GeoLocation;
+    petLocation = GeoLocation;
   }
   getLocation(){
     return petLocation;
   }
+
+  // @override
+  // int compareTo(other) {
+  //   if (distance < other.getDistance()) {
+  //     return -1;
+  //   } else if (distance > other.getDistance()) {
+  //     return 1;
+  //   } else {
+  //     return 0;
+  //   }
+  // }
 }
 
 class CustomPetMatch extends StatelessWidget {
@@ -743,7 +765,8 @@ class PetConfirmDialog extends StatelessWidget {
 
 class PetRequestBanner extends StatefulWidget {
   final MateItem pod;
-  const PetRequestBanner({Key? key, required this.pod}) : super(key: key);
+  final PetPod receiverPet;
+  const PetRequestBanner({Key? key, required this.pod, required this.receiverPet}) : super(key: key);
 
   @override
   State<PetRequestBanner> createState() => _PetRequestBannerState();
@@ -751,16 +774,8 @@ class PetRequestBanner extends StatefulWidget {
 
 class _PetRequestBannerState extends State<PetRequestBanner> {
 
-  var receiverName = '';
-
-  fetchPetName() async{
-    final data = await SupabaseCredentials.supabaseClient.from('pets').select('name').eq('id', widget.pod.receiver_id).single() as Map;
-    receiverName = data['name'] + ' ';
-    setState((){});
-  }
   @override
   void initState() {
-    fetchPetName();
     super.initState();
   }
 
@@ -768,33 +783,55 @@ class _PetRequestBannerState extends State<PetRequestBanner> {
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
     final width = MediaQuery.of(context).size.width;
-    return Container(
-      height: height * 0.09,
-      width: width,
-      padding: EdgeInsets.all(10),
-      margin: EdgeInsets.symmetric(vertical: 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        color: Colors.blueGrey.shade900,
-        border: Border.all(width: 1, color:  Colors.blueGrey),
-      ),
-      child: ListTile(
-        leading: CircleAvatar(
-            radius: width * 0.07,
-            backgroundColor: Colors.white ,
-            child: CircleAvatar(
-              radius: width * 0.07 - 2,
-              backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl),
-            )
-        ),
-        title: Text(
-              '${widget.pod.sender_pet.pet.name} has requested ${receiverName}to mate.',
-              style: TextStyle(
-                  fontWeight:
-                  FontWeight.w500,
-                  fontSize: 15,
-                  color: Colors.white),
+    return Padding(
+      padding: const EdgeInsets.all(5.0),
+      child: GlassContainer(
+        height: height * 0.09,
+        width: width,
+        blur: 10,
+        color: Colors.black.withOpacity(0.8),
+        border: Border.fromBorderSide(BorderSide.none),
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.redAccent.withOpacity(0.7), Colors.blueGrey.withOpacity(0.9)]),
+        child: Center(
+          child: ListTile(
+            leading: Stack(
+              children: [
+                CircleAvatar(
+                    radius: width * 0.07,
+                    backgroundColor: CupertinoColors.extraLightBackgroundGray ,
+                    child: CircleAvatar(
+                      radius: width * 0.07 - 2,
+                      backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl),
+                    )
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: CircleAvatar(
+                      radius: width * 0.035,
+                      backgroundColor: CupertinoColors.extraLightBackgroundGray ,
+                      child: CircleAvatar(
+                        radius: width * 0.035 - 2,
+                        backgroundImage: NetworkImage(widget.receiverPet.pet.photoUrl),
+                      )
+                  ),
+                ),
+              ],
             ),
+            title: Text(
+                  '${widget.pod.sender_pet.pet.name} has requested ${widget.receiverPet.pet.name} to mate.',
+                  style: TextStyle(
+                      fontWeight:
+                      FontWeight.w500,
+                      fontSize: 15,
+                      color: Colors.white),
+                ),
+          ),
+        ),
       ),
     );
   }
@@ -1191,283 +1228,7 @@ void showNotification(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(snackBar);
 }
 
-class PetMatchCard extends StatefulWidget {
-  final PetProfile pet;
-  final PetProfile sender;
-  const PetMatchCard({Key? key, required this.pet, required this.sender}) : super(key: key);
 
-  State<PetMatchCard> createState() => _PetMatchCardState();
-}
-
-class _PetMatchCardState extends State<PetMatchCard> {
-
-  final _controller = MultiSelectController();
-
-  @override
-  Widget build(BuildContext context) {
-
-    final height = MediaQuery.of(context).size.height;
-    final petAge = AgeCalculator.age(widget.pet.birthdate);
-    String petText = (petAge == 0 ? '' : petAge.years == 1 ? "${petAge.years} yr\n" : "${petAge.years} yrs\n") +
-        (petAge.months == 0 ? '' : petAge.months == 1 ? "${petAge.months} month" : "${petAge.months} months");
-
-
-    final vaccinesItems = List<MultiSelectCard>.generate(8, (index) {
-      final key = vaccineFList.entries.elementAt(index).key;
-      final value = vaccineFList.entries.elementAt(index).value;
-      return MultiSelectCard(value: key, label: value, selected: widget.pet.vaccines.contains(key) ? true : false);
-    });
-    return ColumnSuper(innerDistance: -height/2.8 - 50,
-      children: [
-        Container(
-          padding: EdgeInsets.fromLTRB(10,10,10,0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: Colors.blueGrey.shade800,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueGrey.shade800,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20.0))),
-                        icon: Icon(Icons.location_pin, size: 15, color: Colors.white,),
-                        onPressed: () {
-                          showSnackbar(context, 'Need to accept request in order to view location');
-                        },
-                        label: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text('1.3 km',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                      Spacer(),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueGrey.shade800,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20.0))),
-                        icon: Icon(Icons.article_rounded, size: 15, color: Colors.white,),
-                        onPressed: () {
-                        },
-                        label: Text('Documents',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600)),
-                      )
-                    ],
-                  )
-              ),
-              Text('${widget.pet.name}',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900)),
-              SizedBox(height: 5),
-              Text('${widget.pet.breed}',
-                  style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800)),
-              Divider(),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 30),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      child: Column(
-                        children: [
-                          Text('Age', style: TextStyle(
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w600
-                          ),),
-                          Divider(),
-                          Text(petText,textAlign: TextAlign.center, style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.w600
-                          ),)
-                        ],
-                      ),
-                    ),
-                    Spacer(),
-                    Container(
-                      child: Column(
-                        children: [
-                          Text('Gender', style: TextStyle(
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w600
-                          ),),
-                          Divider(),
-                          Icon(widget.pet.isMale ? Icons.male_rounded : Icons.female_rounded, color: widget.pet.isMale ? Colors.blue : Colors.pinkAccent,)
-                        ],
-                      ),
-                    ),
-                    Spacer(),
-                    Container(
-                      child: Column(
-                        children: [
-                          Text('Mates', style: TextStyle(
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w600
-                          ),),
-                          Divider(),
-                          Text('0',textAlign: TextAlign.center, style: TextStyle(
-                              color: Colors.white,fontWeight: FontWeight.w600
-                          ),)
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () async{
-                  await showDialog(
-                    context: context,
-                    builder: (ctx) {
-                      return  Dialog(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Container(
-                          padding: EdgeInsets.all(20),
-                          height: 300,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 20),
-                            child:   Column(
-                              children: [
-                                Text("${widget.pet.name}'s Vaccinations List",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-
-                                  ),),
-                                Divider(),
-                                Expanded(
-                                  child: SingleChildScrollView(
-                                    child: Container(
-                                      child: AbsorbPointer(
-                                        absorbing: true,
-                                        child: MultiSelectContainer(
-                                            itemsDecoration: MultiSelectDecorations(
-                                                decoration: BoxDecoration(
-                                                  color: CupertinoColors.extraLightBackgroundGray,
-                                                  borderRadius: BorderRadius.circular(20),
-                                                )
-                                            ),
-                                            prefix: MultiSelectPrefix(
-                                                selectedPrefix: Padding(
-                                                  padding: EdgeInsets.only(right: 5),
-                                                  child: Icon(
-                                                    Icons.check,
-                                                    color: Colors.white,
-                                                    size: 14,
-                                                  ),
-                                                ),
-                                                enabledPrefix: Padding(
-                                                  padding: EdgeInsets.only(right: 5),
-                                                  child: Icon(
-                                                    Icons.close,
-                                                    size: 14,
-                                                  ),
-                                                )),
-                                            items: vaccinesItems,
-                                            onChange: (allSelectedItems, selectedItem) {
-                                            }),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Icon(Icons.vaccines_rounded, color: Colors.white,),
-                      Flexible(
-                        child: LinearPercentIndicator(
-                          lineHeight: 5.0,
-                          percent: widget.pet.vaccines.length / 8,
-                          barRadius: Radius.circular(20),
-                          backgroundColor: Colors.grey,
-                          progressColor: Colors.white,
-                          trailing: Text(
-                            '${(widget.pet.vaccines.length / 8 * 100).toInt()}%',
-                            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.all(10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          foregroundColor: Colors.blue,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(50.0))),
-                      onPressed: () async{
-                        final uid = FirebaseAuth.instance.currentUser!.uid;
-                        if (uid == widget.sender.ownerId){
-                          final resp = await sendMateRequest(uid, widget.pet.ownerId, widget.sender.id, widget.pet.id);
-                          if (resp == 200){
-                            showNotification(context, 'Request Sent Successfully.');
-                          }else if (resp == 0){
-                            showSnackbar(context, 'You have already sent the request.');
-                          }else{
-                            showSnackbar(context, 'Failed to communicate with server.');
-                          }
-                        }else{
-                          showSnackbar(context, 'Error handling request');
-                        }
-
-
-                      },child: Icon(CupertinoIcons.heart_fill, size: 20, color: Colors.white),
-                    )
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        CircleAvatar(
-          radius: 60,
-          backgroundColor: Colors.blueGrey.shade800,
-          child: CircleAvatar(
-            radius: 49,
-            backgroundColor: Colors.blue,
-            backgroundImage: NetworkImage(widget.pet.photoUrl),
-          ),
-        ),
-      ],
-
-    );
-  }
-}
 
 Future<void> _showMyDialog(BuildContext context, petName) async {
   return showDialog<void>(
@@ -1614,6 +1375,220 @@ ShimmerPetRequestBanner(BuildContext context){
   );
 }
 
+class PetMatchCard extends StatefulWidget {
+  final PetPod pod;
+  final PetPod sender;
+  const PetMatchCard({Key? key, required this.pod, required this.sender}) : super(key: key);
+
+  State<PetMatchCard> createState() => _PetMatchCardState();
+}
+
+class _PetMatchCardState extends State<PetMatchCard> {
+  int distance = 0;
+  String distanceText = "";
+  String rating = "n/a";
+  bool distanceLoading = true;
+
+  generateDistance() async{
+    if (widget.pod.petLocation.Lat() == 0.0){
+      distance = await widget.pod.fetchLocation();
+    }else{
+      distance  = widget.pod.getDistance();
+      if (this.mounted){
+        setState(() {
+          distanceLoading = false;
+        });
+      }
+    }
+      if (distance >= 1000){
+        distanceText = (distance/1000).toInt().toString() + " km";
+      }else if (distance != -1){
+        distanceText = distance.toInt().toString() + " m";
+      }else{
+        distanceText = "not available";
+      }
+      if (this.mounted){
+        setState(() {
+          distanceLoading = false;
+        });
+      }
+
+
+
+  }
+  @override
+  void initState() {
+    generateDistance();
+    super.initState();
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.of(context).size.height;
+    final width = MediaQuery.of(context).size.width;
+    final petAge = AgeCalculator.dateDifference(fromDate: widget.pod.pet.birthdate, toDate: DateTime.now());
+    final petVaccines = widget.pod.pet.vaccines.length/8;
+    String petText = "";
+    if (petAge.years > 0){
+      petText = petText + petAge.years.toString() + "";
+      if (petAge.months > 0){
+        petText = petText +" years, "+ petAge.months.toString() + " months";
+      }else{
+        petText = petText +" years";
+      }
+    }else{
+      if (petAge.months > 0){
+        petText = petText + petAge.months.toString() + " months";
+      }
+    }
+    if (widget.pod.pet.rateCount > 0){
+      rating = (widget.pod.pet.rateSum/widget.pod.pet.rateCount).toStringAsFixed(1) + " / 5";
+    }
+    return GestureDetector(
+      onTap: (){
+        final tempItem = MateItem(widget.pod, "0", "0", -1);
+        BA_key.currentState?.pushNamed('/petProfile', arguments: [tempItem, [widget.sender], 0]);
+      },
+      child: GlassContainer(
+        height: 100,
+        width: 100,
+        blur: 10,
+        color: Colors.blueGrey.shade900.withOpacity(0.7),
+        border: Border.fromBorderSide(BorderSide.none),
+        borderRadius: BorderRadius.circular(16),
+        shadowColor: Colors.black.withOpacity(0.2),
+        child: Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: <Widget>[
+                  Center(
+                    child: Container(
+                      height: 130,
+                      width: double.infinity,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image(image: NetworkImage(widget.pod.pet.photoUrl), fit: BoxFit.cover,),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 3*height*0.005,),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+
+                        Padding(
+                          padding: const EdgeInsets.all(3),
+                          child: Text(
+                            widget.pod.pet.name,
+                            style: TextStyle(
+                                fontSize: 15,
+                                fontFamily: 'Roboto',
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white),
+                            overflow: TextOverflow.visible,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        Spacer(),
+                        Icon(Icons.star_rate_rounded, color: CupertinoColors.activeOrange),
+                        Padding(
+                          padding: const EdgeInsets.all(3),
+                          child: Text(
+                            rating,
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontFamily: 'Roboto',
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white),
+                            overflow: TextOverflow.visible,
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: height*0.020,),
+                  Text(
+                    widget.pod.pet.breed,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontFamily: 'Roboto',
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white70),
+                    overflow: TextOverflow.visible,
+                    textAlign: TextAlign.center,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(3*Checkbox.width*0.05),
+                    child: Text(petText, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white54,
+                        fontSize: 11*width*0.0027)),
+                  ),
+                  SizedBox(height: height*0.02,),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        CircularPercentIndicator(
+                          radius: 13,
+                          lineWidth: 2,
+                          percent: petVaccines,
+                          backgroundColor: Colors.blueGrey.shade900,
+                          progressColor: Colors.white,
+                          center: ImageIcon(AssetImage("assets/vaccineIcon.png"), color: Colors.white, size: 15),
+                        ),
+                        SizedBox(width: width*0.03,),
+                        Container(width: 20, height: 20,
+                            child: Image(image: AssetImage("assets/verifiedDocuments.png",),
+                              color: widget.pod.pet.passport == "" ? Colors.redAccent.withOpacity(0.8):
+                              Colors.green.withOpacity(0.8), fit: BoxFit.fill,)),
+                        Spacer(),
+                        Icon(widget.pod.pet.isMale ? Icons.male_rounded : Icons.female_rounded,
+                            color: widget.pod.pet.isMale ? Colors.blue : Colors.pink, size: 30,),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: height*0.01,),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+
+                        Icon(widget.pod.pet.verified ?Icons.verified_user_rounded : Icons.shield_outlined,
+                            color: widget.pod.pet.verified ? Colors.blue.shade300.withOpacity(0.8) : Colors.redAccent.withOpacity(0.8)),
+                        Spacer(),
+                        distanceLoading ? Padding(
+                          padding: const EdgeInsets.all(8*Checkbox.width*0.05),
+                          child: SizedBox(height: 10, width: 10, child: CircularProgressIndicator()),
+                        ) : Padding(
+                          padding: const EdgeInsets.all(8*Checkbox.width*0.05),
+                          child: Text(distanceText, style: TextStyle( fontFamily: "Poppins", fontWeight: FontWeight.w900, color: Colors.white60,
+                              fontSize: 11*width*0.0027)),
+                        ),
+                        Icon(Icons.location_on_rounded, color: Colors.white60,),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );;
+  }
+}
+
 class PetView extends StatefulWidget {
   final PetPod profile;
   final List<PetPod> ownerPets;
@@ -1628,8 +1603,37 @@ class _PetViewState extends State<PetView> {
   String distanceText = "";
   bool distanceLoading = true;
 
+  late Timer _timer;
+  int _start = 5;
+
+  void startTimer() {
+    const time = const Duration(seconds: 2);
+    _timer = Timer.periodic(
+      time, (Timer timer) {
+        if (this.mounted){
+          if (_start <= 0) {
+            setState(() {
+              print('failed');
+              timer.cancel();
+            });
+          } else {
+            distance = widget.profile.getDistance();
+            if ( distance != -1){
+              generateDistance();
+              setState(() {
+                timer.cancel();
+              });
+            }
+            setState(() {
+              _start--;
+            });
+          }
+        }
+      },
+    );
+  }
+
   generateDistance() async{
-    distance = await widget.profile.fetchLocation();
     if (distance >= 1000){
       distanceText = (distance/1000).toInt().toString() + " km";
     }else if (distance != -1){
@@ -1646,7 +1650,7 @@ class _PetViewState extends State<PetView> {
   }
   @override
   void initState() {
-    generateDistance();
+    startTimer();
     super.initState();
   }
 
@@ -1657,6 +1661,13 @@ class _PetViewState extends State<PetView> {
     final width = MediaQuery.of(context).size.width;
     final petAge = AgeCalculator.dateDifference(fromDate: widget.profile.pet.birthdate, toDate: DateTime.now());
     final petVaccines = widget.profile.pet.vaccines.length/8;
+    String ratingText;
+    if (widget.profile.pet.rateCount > 0){
+      ratingText = (widget.profile.pet.rateSum ~/ widget.profile.pet.rateCount).toString();
+    }else{
+      ratingText = 'n/a';
+    }
+
     String petText = "";
     if (petAge.years > 0){
       petText = petText + petAge.years.toString() + "";
@@ -1680,7 +1691,8 @@ class _PetViewState extends State<PetView> {
         children: [
           GestureDetector(
             onTap: (){
-              BA_key.currentState?.pushNamed('/petProfile', arguments: widget.profile);
+              final tempItem = MateItem(widget.profile, "0", "0", -1);
+              BA_key.currentState?.pushNamed('/petProfile', arguments: [tempItem, widget.ownerPets, 0]);
             },
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
@@ -1729,7 +1741,7 @@ class _PetViewState extends State<PetView> {
                               Padding(
                                 padding: const EdgeInsets.all(3),
                                 child: Text(
-                                  "4.2",
+                                  ratingText,
                                   style: TextStyle(
                                       fontSize: 12,
                                       fontFamily: 'Roboto',
@@ -1820,11 +1832,11 @@ class _PetViewState extends State<PetView> {
                               fontSize: 11*width*0.0027)),
                         ),
                         Spacer(),
-                        Container(width: 20, height: 20,
-                            child: Image(image: AssetImage("assets/verifiedOwner.png"), fit: BoxFit.fill,)),
+                        widget.profile.pet.verified ? Icon(Icons.verified_user_sharp, color: Colors.green,) : Icon(CupertinoIcons.xmark_shield_fill, color: Colors.redAccent,),
                         SizedBox(width: 10*Checkbox.width*0.05,),
                         Container(width: 20, height: 20,
-                            child: Image(image: AssetImage("assets/verifiedDocuments.png"), fit: BoxFit.fill,)),
+                            child: Image(image: AssetImage("assets/verifiedDocuments.png"),
+                              fit: BoxFit.fill, color: widget.profile.pet.passport == "" ? Colors.redAccent : Colors.green,)),
                       ],
                     ),
                   )
@@ -1839,14 +1851,137 @@ class _PetViewState extends State<PetView> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50.0))),
             onPressed: () async{
-
+              final petInd = await _customSheet(context);
+              print(petInd);
+              final uid = FirebaseAuth.instance.currentUser!.uid;
+              if (petInd != -1){
+                if (uid == widget.ownerPets[petInd].pet.ownerId){
+                  final stat = await sendMateRequest(widget.ownerPets[petInd].pet.ownerId,
+                      widget.profile.pet.ownerId,
+                      widget.ownerPets[petInd].pet.id,
+                      widget.profile.pet.id);
+                  if (stat == 200){
+                    showNotification(context, 'Request sent successfully');
+                  }else if (stat == 0){
+                    showSnackbar(context, 'You have already sent a request.');
+                  }else{
+                    showSnackbar(context, 'Failed to send request');
+                  }
+                }else{
+                  showSnackbar(context, 'Unexpected behavior!');
+                }
+              }
             },
             icon: Icon(CupertinoIcons.heart_fill, color: Colors.black, size: 9*width*0.003,),
             label: Text('Send Request', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 8*width*0.003),),
           ),
         ],
       ),
-    );;
+    );
+  }
+  Future<int> _customSheet(BuildContext context) async{
+    int resp = -1;
+    await showModalBottomSheet(
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        context: context,
+        builder: (builder){
+          List<PetPod> goodPets = <PetPod>[];
+
+          for (PetPod p in widget.ownerPets) {
+            // if (p.pet.breed == mateItem.sender_pet.pet.breed) {
+            goodPets.add(p);
+            // }
+          }
+          final height = MediaQuery
+              .of(context)
+              .size
+              .height;
+          final width = MediaQuery
+              .of(context)
+              .size
+              .width;
+          return goodPets.length > 0 ? Container(height: height * 0.5,
+                child: Column(
+                  children: [
+                    Text("Choose a pet \nto send the request",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: width*0.04,
+                        color: Colors.white,
+                      ), textAlign: TextAlign.center,),
+                    SizedBox(height: height*0.02,),
+                    Container(
+                      height: height*0.15,
+                      alignment: Alignment.center,
+                      child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: goodPets.length,
+                          scrollDirection: Axis.horizontal,
+                          itemBuilder: (context, index) {
+                            return InkWell(
+                                onTap: (){
+                                  BA_key.currentState?.pop(index);
+                                },
+                                child: CustomPet(pod: goodPets[index]));
+                          }),
+                    ),
+                  ],
+                )) : Container(
+            height: height*0.6,
+              width: double.infinity,
+              child: Column(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(30),
+                    width: 300,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      color: Colors.white.withOpacity(0.9)
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text("Sorry",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: width*0.04,
+                            color: Colors.blueGrey.shade900.withOpacity(0.9),
+                          ), textAlign: TextAlign.center,),
+                        SizedBox(height: 10,),
+                        Text("Your pets don't share same breed",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: width*0.035,
+                            color: Colors.blueGrey.shade900.withOpacity(0.9),
+                          ), textAlign: TextAlign.center,),
+                        SizedBox(height: 20,),
+                        ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade300.withOpacity(0.9),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18.0)
+                                )
+                            ),
+                            onPressed: (){
+                              BA_key.currentState?.pop();
+                            }, child: Text('I understand'))
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            );
+        }
+    ).then((value) async{
+     if (value != null){
+       resp =  value;
+     }else{
+       resp = -1;
+     }
+
+    });
+    return resp;
   }
 }
 
