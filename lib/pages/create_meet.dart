@@ -46,6 +46,7 @@ class _CreateMeetState extends State<CreateMeet> {
       description = '';
   var isLoading = true;
   bool breedsLoading = true;
+  var size = 0;
   List<Breed?> _selectedBreeds = [];
   List<Breed?> tempSelectedBreed = [];
   List<Size?> _selectedSizes = [];
@@ -130,16 +131,12 @@ class _CreateMeetState extends State<CreateMeet> {
     }
     return breednames;
   }
-  dynamicbreeds(breedlist){
-
-    return breeds;
-  }
 
 
   Future insert_breeds(double longitude, double latitude, String title, String descr, List<String> petIDs) async {
     String jsonString = jsonEncode(tempSelectedBreed);
     // String jsonSize = jsonEncode(tempSelectedSizes);
-
+    List<String> attending_pets = [];
     try {
       final timestamp = dateTime.toIso8601String();
       await SupabaseCredentials.supabaseClient.from('meets').insert({
@@ -151,7 +148,9 @@ class _CreateMeetState extends State<CreateMeet> {
         'host_pets': petIDs,
         'host_id': uid,
         'no_of_attending':0,
-        'breed_list': tempSelectedBreed
+        'breed_list': jsonString,
+        'size': size,
+        'attending_pets': attending_pets
       });
     }
 
@@ -161,6 +160,7 @@ class _CreateMeetState extends State<CreateMeet> {
   }
 
   Future insert_sizes(double longitude, double latitude, String title, String descr, List<String> petIDs, breednames) async {
+    if(breednames[0]!='All breeds welcome') size=1;
     try {
       final timestamp = dateTime.toIso8601String();
       await SupabaseCredentials.supabaseClient.from('meets').insert({
@@ -172,6 +172,7 @@ class _CreateMeetState extends State<CreateMeet> {
         'host_pets': petIDs,
         'host_id': uid,
         'no_of_attending':0,
+        'size':size,
         'breed_list': breednames
       });
     }
@@ -663,7 +664,6 @@ class _CreateMeetState extends State<CreateMeet> {
   }
 
 }
-
 class CustomSearchDelegate extends SearchDelegate {
   CustomSearchDelegate({
     required this.alldata,
