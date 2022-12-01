@@ -38,6 +38,7 @@ class _MapsPageState extends State<MapsPage> {
   List<PetPod> petPods = <PetPod>[];
   Icon customIcon = const Icon(Icons.search);
   Widget customSearchBar = const Text('Search');
+  final uid = FirebaseAuth.instance.currentUser!.uid;
 
   initMarkers() async{
     // BitmapDescriptor.fromAssetImage(ImageConfiguration(size: Size(5, 5)),
@@ -55,7 +56,6 @@ class _MapsPageState extends State<MapsPage> {
     markers.clear();
     final data = await display_meets();
     markers.addAll(data);
-    final uid = FirebaseAuth.instance.currentUser!.uid;
     setState(() {});
   }
   Future<Position> getUserCurrentLocation() async {
@@ -82,19 +82,13 @@ class _MapsPageState extends State<MapsPage> {
     setState(() {});
   }
   shortcutMarkers(String type) async{
-    markers.clear();
-    if(type == "Veterinarian"){
-      final data = await display_vets(type);
-      markers.addAll(data);
-    }
-    if(type == "Pet store"){
-      final data = await display_stores(type);
-      markers.addAll(data);
-    }
-    if(type == "Dog park"){
-      final data = await display_parks(type);
-      markers.addAll(data);
-    }
+
+
+      markers.clear();
+    final data = await Display(type);
+
+    markers.addAll(data);
+
     setState(() {});
   }
   @override
@@ -147,7 +141,7 @@ class _MapsPageState extends State<MapsPage> {
                myLocationButtonEnabled: false,
               myLocationEnabled: true,
             initialCameraPosition: CameraPosition(
-                target:LatLng(31.233334,30.033333),zoom: 5.4746
+                target:LatLng(31.233334,30.033333),zoom: 15
 
               //    target:LatLng(80,30),zoom: 10.4746,
 
@@ -158,7 +152,7 @@ class _MapsPageState extends State<MapsPage> {
           ),
           CustomInfoWindow(
             controller: _customInfoWindowController,
-            height: 228,
+            height: 290,
             width: 200,
             offset: 50,
           ),
@@ -288,35 +282,15 @@ class _MapsPageState extends State<MapsPage> {
       print(e);
     }
   }
-find_criteria( breed_list, breed_test, criteria){
-    var str;
-  for(int i =0;i<breed_list.length;i++){
-    str = breed_list[i];
-    for(int i=0;i < str.length;i++){
-      if(i>16 && str[i]!='"' && str[i]!='}'){
-        breed_test = breed_test + str[i];
-      }
-    }
-    if(i<breed_list.length-1)
-      breed_test=breed_test+',';
-  }
-  criteria.add(breed_test);
-  return criteria;
-}
-Future getpods() async {
-}
-  int isJoined(pet_list, joined_meet, petPods)  {
-    var temp = petPods.length;
-    print('length: $temp');
+
+  int isJoined(attending_pets, joined_meet, petPods, host_id)  {
+    if(host_id==uid) return -1;
+    if(attending_pets==null) return 0;
     for (int i = 0;i< petPods.length;i++) {
       var temp = petPods[i].pet.id;
-      print('temp: $temp');
-      for(int j = 0; j < pet_list.length;j++) {
-        var test = pet_list[j];
-        print('test: $test');
-        if (temp == pet_list[j]) {
+      for(int j = 0; j < attending_pets.length;j++) {
+        if (temp == attending_pets[j]) {
           joined_meet = 1;
-          print('aho');
         }
       }
     }
@@ -325,8 +299,6 @@ Future getpods() async {
   Future display_meets() async {
     final Uint8List customIcon = await getBytesFromAsset(
         "assets/images/meetmarker.png", 150);
-    var breed_list;
-    var breed_test ='';
     final  markers = List<Marker>.empty(growable: true);
     try {
       final data = await SupabaseCredentials.supabaseClient
@@ -345,19 +317,18 @@ Future getpods() async {
        var pet_list = map['host_pets'];
        var attendees = map['no_of_attending'];
        var attending_pets = map['attending_pets'];
-       breed_list = map['breed_list'];
+       var criteria = map['breed_list'];
         var joined_meet = 0;
+        var size = map['size'];
         List<PetPod> petPods = <PetPod>[];
         petPods = await fetchPets(-1);
-       joined_meet = isJoined(pet_list, joined_meet,petPods);
+       joined_meet = isJoined(attending_pets, joined_meet,petPods, host_id);
         find_host(host_id);
-        List<String> criteria = [];
         List<String>pet_names = [];
         for(int i =0; i <pet_list.length;i++){
           var pet = pet_list[i];
           find_host_pets(pet, pet_names);
         }
-        print('joined: $joined_meet');
 
         markers.add(
             Marker(
@@ -368,7 +339,7 @@ Future getpods() async {
                 onTap: () {
                   _customInfoWindowController.addInfoWindow!(
                       Container(
-                        height: 100,
+                        height: 150,
                         width: 100,
                         decoration:BoxDecoration(
                           color:Colors.white,
@@ -396,7 +367,19 @@ Future getpods() async {
                                       )
                                       )
                                     ),
-                                    Text(
+                                    Container(
+                                        width: 135.0,
+                                        height: 80.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black26,
+                                          shape: BoxShape.rectangle,
+                                          borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                        ),
+                                    child:Stack(
+                                        children:[
+                                          Container(
+                                              alignment: Alignment.topCenter,
+                                      child:Text(
                                         'Host',
                                         style:(
                                             TextStyle(
@@ -404,9 +387,9 @@ Future getpods() async {
                                               fontSize:18,
                                             )
                                         )
-                                    ),
+                                    )),
                                     Text(
-                                      firstname+' '+lastname+'\nHost pets: $pet_names',
+                                      '\n $firstname'+' '+lastname+'\nHost pets: $pet_names',
                                       style:
                                       Theme
                                           .of(context)
@@ -415,51 +398,179 @@ Future getpods() async {
                                           .copyWith(
                                         color: Colors.black,
                                       ),
+                                    )])),
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 15.0),
                                     ),
-                                    Text(
-                                        'About',
-                                        style:(
-                                            TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize:18,
+                                    Container(
+                                        width: 140.0,
+                                        height: 85.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black26,
+                                          shape: BoxShape.rectangle,
+                                          borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                        ),
+                                        child:Stack(
+                                            children:[
+                                              Column(
+                                                  children:[
+                                                    Container(
+                                                        alignment: Alignment.center,
+
+                                                        child:Text(
+                                                      'About',
+                                                      style:(
+                                                          TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize:18,
+                                                          )
+                                                      )
+                                                  )),
+
+
+                                              Text(
+                                                description+'\nAttending: $attendees owners',
+                                              style:
+                                              Theme
+                                                  .of(context)
+                                                  .textTheme
+                                                  .bodyText1!
+                                                  .copyWith(
+                                                color: Colors.black,
+                                              ),
+                                            ),
+
+                                            Text(
+                                              'Date: $datetime',
+                                              style:
+                                              Theme
+                                                  .of(context)
+                                                  .textTheme
+                                                  .bodyText1!
+                                                  .copyWith(
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                              ])])),
+                                    size==0?Text(
+                                      'Breeds allowed: $criteria',
+                                      style:
+                                      Theme
+                                          .of(context)
+                                          .textTheme
+                                          .bodyText1!
+                                          .copyWith(
+                                        color: Colors.black,
+                                      ),
+                                    ):
+                                    Column(
+                                     children: [
+                                       Padding(
+                                       padding: const EdgeInsets.only(bottom: 13.0),
+                                     ),
+
+                                    Container(
+
+                                      // alignment:Alignment.bottomCenter,
+                                      child:SizedBox(
+                                        height: 30,
+                                        width: 200,
+
+                                        child: TextButton(
+                                            onPressed:(){
+                                              print('criteria: $criteria');
+                                              showModalBottomSheet(
+                                                  backgroundColor: Colors.transparent,
+                                                  isScrollControlled: true,
+                                                  context: context,
+                                                  builder: (builder){
+
+                                                    final height = MediaQuery
+                                                        .of(context)
+                                                        .size
+                                                        .height;
+                                                    final width = MediaQuery
+                                                        .of(context)
+                                                        .size
+                                                        .width;
+
+                                                    return Container(
+                                                        height: height * 0.5,
+                                                        child: Column(
+                                                        children: [
+                                                        Container(
+                                                            width: width*0.8,
+                                                            padding: EdgeInsets.all(20),
+                                                    decoration: BoxDecoration(
+                                                    borderRadius: BorderRadius.circular(25),
+                                                    color: Colors.black.withOpacity(0.8)
+                                                    ),
+                                                            child: Column(
+                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                            children: [
+                                                                Container(
+                                                                height: 250,
+                                                             child:ListView.builder(
+                                                            itemCount: criteria.length,
+                                                              itemBuilder: (context, index) {
+                                                               var result = criteria[index];
+                                                                return ListTile(
+                                                                  title: Text(result,style: TextStyle(fontSize: 13.5, color:Colors.white)),
+                                                                );
+                                                              },
+                                                            ))
+                                                              ]
+                                                        )
+
+                                                        )
+                                                        ]));});
+
+                                            },
+                                            child: Text("Click to see allowed breeds",style: TextStyle(fontSize: 13.5, color:Colors.white)),
+                                            style:ButtonStyle(
+                                              foregroundColor: MaterialStateProperty.all<Color>(Colors.black),
+                                              backgroundColor: MaterialStateProperty.all<Color>(Colors.black),
+                                              shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                                                  RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(18.0),
+                                                      side: BorderSide(color: Colors.white)
+                                                  )
+                                              ),
+
                                             )
-                                        )
-                                    ),
-                                    Text(
-                                        description+'\nAttending: $attendees owners \nBreeds allowed: $criteria',
-                                      style:
-                                      Theme
-                                          .of(context)
-                                          .textTheme
-                                          .bodyText1!
-                                          .copyWith(
-                                        color: Colors.black,
+
+                                        ),
                                       ),
                                     ),
-                                    Text(
-                                      'Date: '+datetime,
-                                      style:
-                                      Theme
-                                          .of(context)
-                                          .textTheme
-                                          .bodyText1!
-                                          .copyWith(
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    joined_meet==0? new ElevatedButton(onPressed: (){
-                                       explore_key.currentState
-                                           ?.pushNamed('/select_pets', arguments: [criteria,id]);
-                                       setState(() {});
-                                        },
-                                        child:  new Text('Join Meet')
-                                    ):Text("You are attending this Meet", style: TextStyle(fontSize: 15,
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.bold)),
                                   ],
                                 ),
-                              ),
-                            ]),
+                                    joined_meet==0? SizedBox( height: 30,
+                                        width: 200,child:ElevatedButton(onPressed: (){
+                                          explore_key.currentState
+                                              ?.pushNamed('/select_pets', arguments: [criteria,id]);
+                                          setState(() {});
+                                        },
+                                            child:  Text("Join Meet",style: TextStyle(fontSize: 13.5, color:Colors.white)),
+                                        style:ButtonStyle(
+                                          foregroundColor: MaterialStateProperty.all<Color>(Colors.black),
+                                          backgroundColor: MaterialStateProperty.all<Color>(Colors.black),
+                                          shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                                              RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(18.0),
+                                                  side: BorderSide(color: Colors.white)
+                                              )
+                                          ),
+
+                                        )
+
+                                    ),):
+                                    joined_meet==1? Text("You are attending this Meet", style: TextStyle(fontSize: 14,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold)):
+                                    Text("You are the owner of this Meet", style: TextStyle(fontSize: 13,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold))]),
+                            )]),
 
 
 
@@ -479,7 +590,7 @@ Future getpods() async {
     }
     return List<Marker>.empty();
   }
-Future getdata() async{
+  Future getdata() async{
   try {
     final data = await SupabaseCredentials.supabaseClient
         .from('locations')
@@ -527,7 +638,17 @@ return data;
                             mainAxisAlignment: MainAxisAlignment.start,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
+                        thumbnail==''?
+                        Text(
+                            '',
+                            style:(
+                                TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize:22,
+                                )
+                            )
+                        )
+                              :Container(
                                 width:510,
                                 height:70,
                                 decoration: BoxDecoration(
@@ -537,11 +658,10 @@ return data;
 
                                       fit:BoxFit.fitWidth,
                                       filterQuality: FilterQuality.high
-                                  ),  ),),
-
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
+                                  ),
+                                  borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                ),) ,
+                    Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
 
@@ -549,21 +669,41 @@ return data;
                                       width: 8.0,
                                     ),
                                     Text(
-                                      title+'\n'+type+'\n'+address
-                                          +'\n'+phone+'\n'+website,
-                                      style:
-                                      Theme
-                                          .of(context)
-                                          .textTheme
-                                          .bodyText1!
-                                          .copyWith(
-                                        color: Colors.black,
-                                      ),
+                                        title,
+                                        style:(
+                                            TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize:22,
+                                            )
+                                        )
                                     ),
+                                    Container(
+                                      width: 135.0,
+                                      height: 130.0,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black26,
+                                        shape: BoxShape.rectangle,
+                                        borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                      ),
+                                      child:Stack(
+                                        children:[
+                                          Container(
+                                              alignment: Alignment.topCenter,
+                                              child:Text(
+
+                                                type+'\n'+address
+                                                    +'\n'+phone+'\n'+website,
+                                                  style:(
+                                                      TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize:18,
+                                                      )
+                                                  )
+                                              ))])),
 
                                   ],
                                 ),
-                              ),
+
                             ]),
 
 
@@ -584,16 +724,17 @@ return data;
     return List<Marker>.empty();
   }
   Future Display(String type) async {
+
         final  markers = List<Marker>.empty(growable: true);
     try {
       final data = await SupabaseCredentials.supabaseClient
           .from('locations')
           .select('*').eq('type', type) as List<dynamic>;
 
-      for (var entry in data){
+      for (var entry in data) {
         final map = Map.from(entry);
         var x = map['longitude'];
-        var y =map['latitude'];
+        var y = map['latitude'];
         var id = map['id'];
         var title = map['title'];
         var address = map['address'];
@@ -601,68 +742,381 @@ return data;
         var phone = map['phone'];
         var thumbnail = map['thumbnail'];
         var type = map['type'];
-        markers.add(
-            Marker(
-                markerId: MarkerId(id.toString()),
-                position: LatLng(y, x),
-                onTap: () {
+        if (type == "Veterinarian"){
+          final Uint8List customIcon = await getBytesFromAsset(
+              "assets/images/vetmarker.png", 150);
+          markers.add(
+          Marker(
+                  markerId: MarkerId(id.toString()),
+                  position: LatLng(y, x),
 
-                  _customInfoWindowController.addInfoWindow!(
-                      Container(
-                        decoration:BoxDecoration(
-                          color:Colors.white,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width:510,
-                                height:70,
-                                decoration: BoxDecoration(
-
-                                  image:DecorationImage(
-                                      image:NetworkImage(thumbnail),
-
-                                      fit:BoxFit.fitWidth,
-                                      filterQuality: FilterQuality.high
-                                  ),  ),),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
+                  icon: BitmapDescriptor.fromBytes(customIcon),
+                  onTap: () {
+                    _customInfoWindowController.addInfoWindow!(
+                        Container(
+                          decoration:BoxDecoration(
+                            color:Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Column(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
+                                    thumbnail==''?
+                                    Text(
+                                        '',
+                                        style:(
+                                            TextStyle(
+                                            )
+                                        )
+                                    )
+                                    : thumbnail[0]!='h'?
+                                    Text(
+                                        '',
+                                        style:(
+                                            TextStyle(
+                                            )
+                                        )
+                                    )
+                                        :Container(
+                                      width:510,
+                                      height:70,
+                                      decoration: BoxDecoration(
 
+                                        image:DecorationImage(
+                                            image:NetworkImage(thumbnail),
+
+                                            fit:BoxFit.fitWidth,
+                                            filterQuality: FilterQuality.high
+                                        ),
+                                        borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                      ),) ,
                                     SizedBox(
                                       width: 8.0,
                                     ),
                                     Text(
-                                      title+'\n'+type+'\n'+address
-                                          +'\n'+phone+'\n'+website+'\n',
-                                      style:
-                                      Theme
-                                          .of(context)
-                                          .textTheme
-                                          .bodyText1!
-                                          .copyWith(
-                                        color: Colors.black,
-                                      ),
+                                        title,
+                                        style:(
+                                            TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize:22,
+                                            )
+                                        )
                                     ),
+                                    Container(
+                                      width: 130.0,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black26,
+                                        shape: BoxShape.rectangle,
+                                        borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                      ),
+                                        child:Stack(
+                                            children:[
+                                              Container(
+                                                  alignment: Alignment.topCenter,
+                                                  child:Text(
 
+                                                      type,
+                                                      style:(
+                                                          TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize:18,
+                                                          )
+                                                      )
+                                                  ))])
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.only(bottom:8.0)),
+                                      Container(
+                                        width: 135.0,
+                                        height: 130.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black26,
+                                          shape: BoxShape.rectangle,
+                                          borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                        ),
+                                        child:Stack(
+                                            children:[
+                                              Container(
+                                                  alignment: Alignment.topCenter,
+                                                  child:Text(
+
+                                                      address
+                                                          +'\n'+phone+'\n'+website,
+                                                      style:(
+                                                          TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize:18,
+                                                          )
+                                                      )
+                                                  ))])),
 
                                   ],
                                 ),
-                              ),
-                            ]),
+
+                              ]),
 
 
 
-                      ), LatLng(y, x)
-                  );
-                }
-            ));
+                        ), LatLng(y, x)
+                    );
+                  }
+
+              ));
       }
+        if (type == "Pet store"){
+    Uint8List customIcon = await getBytesFromAsset(
+    "assets/images/petstoremarker.png", 150);
+          markers.add(
+              Marker(
+                  markerId: MarkerId(id.toString()),
+                  position: LatLng(y, x),
+
+                  icon: BitmapDescriptor.fromBytes(customIcon),
+                  onTap: () {
+                    _customInfoWindowController.addInfoWindow!(
+                        Container(
+                          decoration:BoxDecoration(
+                            color:Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Column(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    thumbnail==''?
+                                    Text(
+                                        '',
+                                        style:(
+                                            TextStyle(
+                                            )
+                                        )
+                                    )
+                                        : thumbnail[0]!='h'?
+                                    Text(
+                                        '',
+                                        style:(
+                                            TextStyle(
+                                            )
+                                        )
+                                    )
+                                        :Container(
+                                      width:510,
+                                      height:70,
+                                      decoration: BoxDecoration(
+
+                                        image:DecorationImage(
+                                            image:NetworkImage(thumbnail),
+
+                                            fit:BoxFit.fitWidth,
+                                            filterQuality: FilterQuality.high
+                                        ),
+                                        borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                      ),) ,
+                                    SizedBox(
+                                      width: 8.0,
+                                    ),
+                                    Text(
+                                        title,
+                                        style:(
+                                            TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize:22,
+                                            )
+                                        )
+                                    ),
+                                    Container(
+                                        width: 130.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black26,
+                                          shape: BoxShape.rectangle,
+                                          borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                        ),
+                                        child:Stack(
+                                            children:[
+                                              Container(
+                                                  alignment: Alignment.topCenter,
+                                                  child:Text(
+
+                                                      type,
+                                                      style:(
+                                                          TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize:18,
+                                                          )
+                                                      )
+                                                  ))])
+                                    ),
+                                    Padding(
+                                        padding: EdgeInsets.only(bottom:8.0)),
+                                    Container(
+                                        width: 135.0,
+                                        height: 130.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black26,
+                                          shape: BoxShape.rectangle,
+                                          borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                        ),
+                                        child:Stack(
+                                            children:[
+                                              Container(
+                                                  alignment: Alignment.topCenter,
+                                                  child:Text(
+
+                                                      address
+                                                          +'\n'+phone+'\n'+website,
+                                                      style:(
+                                                          TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize:18,
+                                                          )
+                                                      )
+                                                  ))])),
+
+                                  ],
+                                ),
+
+                              ]),
+
+
+
+                        ), LatLng(y, x)
+                    );
+                  }
+              ));
+        }
+        if (type == "Dog park"){
+          final Uint8List customIcon = await getBytesFromAsset(
+              "assets/images/parkmarker.png", 150);
+          markers.add(
+              Marker(
+                  markerId: MarkerId(id.toString()),
+                  position: LatLng(y, x),
+
+                  icon: BitmapDescriptor.fromBytes(customIcon),
+                  onTap: () {
+                    _customInfoWindowController.addInfoWindow!(
+                        Container(
+                          decoration:BoxDecoration(
+                            color:Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Column(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    thumbnail==''?
+                                    Text(
+                                        '',
+                                        style:(
+                                            TextStyle(
+                                            )
+                                        )
+                                    )
+                                        : thumbnail[0]!='h'?
+                                    Text(
+                                        '',
+                                        style:(
+                                            TextStyle(
+                                            )
+                                        )
+                                    )
+                                        :Container(
+                                      width:510,
+                                      height:70,
+                                      decoration: BoxDecoration(
+
+                                        image:DecorationImage(
+                                            image:NetworkImage(thumbnail),
+
+                                            fit:BoxFit.fitWidth,
+                                            filterQuality: FilterQuality.high
+                                        ),
+                                        borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                      ),) ,
+                                    SizedBox(
+                                      width: 8.0,
+                                    ),
+                                    Text(
+                                        title,
+                                        style:(
+                                            TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize:22,
+                                            )
+                                        )
+                                    ),
+                                    Container(
+                                        width: 130.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black26,
+                                          shape: BoxShape.rectangle,
+                                          borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                        ),
+                                        child:Stack(
+                                            children:[
+                                              Container(
+                                                  alignment: Alignment.topCenter,
+                                                  child:Text(
+
+                                                      type,
+                                                      style:(
+                                                          TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize:18,
+                                                          )
+                                                      )
+                                                  ))])
+                                    ),
+                                    Padding(
+                                        padding: EdgeInsets.only(bottom:8.0)),
+                                    Container(
+                                        width: 135.0,
+                                        height: 130.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black26,
+                                          shape: BoxShape.rectangle,
+                                          borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                                        ),
+                                        child:Stack(
+                                            children:[
+                                              Container(
+                                                  alignment: Alignment.topCenter,
+                                                  child:Text(
+
+                                                      address
+                                                          +'\n'+phone+'\n'+website,
+                                                      style:(
+                                                          TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize:18,
+                                                          )
+                                                      )
+                                                  ))])),
+
+                                  ],
+                                ),
+
+                              ]),
+
+
+
+                        ), LatLng(y, x)
+                    );
+                  }
+              ));
+        }
+
+    }
       return markers;
     }
     on PostgrestException catch (error) {
@@ -673,290 +1127,38 @@ return data;
     }
     return List<Marker>.empty();
   }
-  Future display_parks(String type) async {
+}
 
-    final Uint8List customIcon = await getBytesFromAsset(
-        "assets/images/parkmarker.png", 150);
+class NewWidget extends StatefulWidget {
+  final criteria;
 
-    final  markers = List<Marker>.empty(growable: true);
-    try {
-      final data = await SupabaseCredentials.supabaseClient
-          .from('locations')
-          .select('*').eq('type', type) as List<dynamic>;
-
-      for (var entry in data){
-        final map = Map.from(entry);
-        var x = map['longitude'];
-        var y =map['latitude'];
-        var id = map['id'];
-        var title = map['title'];
-        var address = map['address'];
-        var website = map['website'];
-        var phone = map['phone'];
-        var thumbnail = map['thumbnail'];
-        var type = map['type'];
-        markers.add(
-            Marker(
-                markerId: MarkerId(id.toString()),
-                position: LatLng(y, x),
-                icon: BitmapDescriptor.fromBytes(customIcon),
-                onTap: () {
-
-                  _customInfoWindowController.addInfoWindow!(
-                      Container(
-                        decoration:BoxDecoration(
-                          color:Colors.white,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width:510,
-                                height:70,
-                                decoration: BoxDecoration(
-
-                                  image:DecorationImage(
-                                      image:NetworkImage(thumbnail),
-
-                                      fit:BoxFit.fitWidth,
-                                      filterQuality: FilterQuality.high
-                                  ),  ),),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-
-                                    SizedBox(
-                                      width: 8.0,
-                                    ),
-                                    Text(
-                                      title+'\n'+type+'\n'+address
-                                          +'\n'+phone+'\n'+website+'\n',
-                                      style:
-                                      Theme
-                                          .of(context)
-                                          .textTheme
-                                          .bodyText1!
-                                          .copyWith(
-                                        color: Colors.black,
-                                      ),
-                                    ),
+  NewWidget({Key? key, required this.criteria}) : super(key:key);
+  @override
+  _NewWidgetState createState() => _NewWidgetState();
 
 
-                                  ],
-                                ),
-                              ),
-                            ]),
+}
 
+class _NewWidgetState extends State<NewWidget> {
+  @override
+  void initState() {
+    print('da5alt');
 
-
-                      ), LatLng(y, x)
-                  );
-                }
-            ));
-      }
-      return markers;
-    }
-    on PostgrestException catch (error) {
-      print(error.message);
-    }
-    catch (e){
-      print(e);
-    }
-    return List<Marker>.empty();
   }
-  Future display_stores(String type) async {
-
-    final Uint8List customIcon = await getBytesFromAsset(
-        "assets/images/petstoremarker.png", 150);
-
-    final  markers = List<Marker>.empty(growable: true);
-    try {
-      final data = await SupabaseCredentials.supabaseClient
-          .from('locations')
-          .select('*').eq('type', type) as List<dynamic>;
-
-      for (var entry in data){
-        final map = Map.from(entry);
-        var x = map['longitude'];
-        var y =map['latitude'];
-        var id = map['id'];
-        var title = map['title'];
-        var address = map['address'];
-        var website = map['website'];
-        var phone = map['phone'];
-        var thumbnail = map['thumbnail'];
-        var type = map['type'];
-        markers.add(
-            Marker(
-                markerId: MarkerId(id.toString()),
-                position: LatLng(y, x),
-                icon: BitmapDescriptor.fromBytes(customIcon),
-                onTap: () {
-
-                  _customInfoWindowController.addInfoWindow!(
-                      Container(
-                        decoration:BoxDecoration(
-                          color:Colors.white,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width:510,
-                                height:70,
-                                decoration: BoxDecoration(
-
-                                  image:DecorationImage(
-                                      image:NetworkImage(thumbnail),
-
-                                      fit:BoxFit.fitWidth,
-                                      filterQuality: FilterQuality.high
-                                  ),  ),),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-
-                                    SizedBox(
-                                      width: 8.0,
-                                    ),
-                                    Text(
-                                      title+'\n'+type+'\n'+address
-                                          +'\n'+phone+'\n'+website+'\n',
-                                      style:
-                                      Theme
-                                          .of(context)
-                                          .textTheme
-                                          .bodyText1!
-                                          .copyWith(
-                                        color: Colors.black,
-                                      ),
-                                    ),
-
-
-                                  ],
-                                ),
-                              ),
-                            ]),
-
-
-
-                      ), LatLng(y, x)
-                  );
-                }
-            ));
-      }
-      return markers;
-    }
-    on PostgrestException catch (error) {
-      print(error.message);
-    }
-    catch (e){
-      print(e);
-    }
-    return List<Marker>.empty();
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      itemCount: widget.criteria.length,
+      itemBuilder: (context, index) {
+        var result = widget.criteria[index];
+        return ListTile(
+          title: Text(result),
+        );
+      },
+    );
   }
-  Future display_vets(String type) async {
-
-    final Uint8List customIcon = await getBytesFromAsset(
-        "assets/images/vetmarker.png", 150);
-
-    final  markers = List<Marker>.empty(growable: true);
-    try {
-      final data = await SupabaseCredentials.supabaseClient
-          .from('locations')
-          .select('*').eq('type', type) as List<dynamic>;
-
-      for (var entry in data){
-        final map = Map.from(entry);
-        var x = map['longitude'];
-        var y =map['latitude'];
-        var id = map['id'];
-        var title = map['title'];
-        var address = map['address'];
-        var website = map['website'];
-        var phone = map['phone'];
-        var thumbnail = map['thumbnail'];
-        var type = map['type'];
-        markers.add(
-            Marker(
-                markerId: MarkerId(id.toString()),
-                position: LatLng(y, x),
-                icon: BitmapDescriptor.fromBytes(customIcon),
-                onTap: () {
-
-                  _customInfoWindowController.addInfoWindow!(
-                      Container(
-                        decoration:BoxDecoration(
-                          color:Colors.white,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width:510,
-                                height:70,
-                                decoration: BoxDecoration(
-
-                                  image:DecorationImage(
-                                      image:NetworkImage(thumbnail),
-
-                                      fit:BoxFit.fitWidth,
-                                      filterQuality: FilterQuality.high
-                                  ),  ),),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-
-                                    SizedBox(
-                                      width: 8.0,
-                                    ),
-                                    Text(
-                                      title+'\n'+type+'\n'+address
-                                          +'\n'+phone+'\n'+website+'\n',
-                                      style:
-                                      Theme
-                                          .of(context)
-                                          .textTheme
-                                          .bodyText1!
-                                          .copyWith(
-                                        color: Colors.black,
-                                      ),
-                                    ),
-
-                                  ],
-                                ),
-                              ),
-                            ]),
 
 
-
-                      ), LatLng(y, x)
-                  );
-                }
-            ));
-      }
-      return markers;
-    }
-    on PostgrestException catch (error) {
-      print(error.message);
-    }
-    catch (e){
-      print(e);
-    }
-    return List<Marker>.empty();
-  }
 }
 class CustomSearchDelegate extends SearchDelegate {
   CustomSearchDelegate({
