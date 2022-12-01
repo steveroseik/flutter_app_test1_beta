@@ -12,6 +12,7 @@ import 'package:flutter_app_test1/breedAdopt_main.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/pages/editPetPage.dart';
 import 'package:flutter_app_test1/pages/loadingPage.dart';
+import 'package:glassmorphism_ui/glassmorphism_ui.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
@@ -58,6 +59,8 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   final Size windowSize = MediaQueryData.fromWindow(window).size;
   late OverlayEntry loading = initLoading(context, windowSize);
   bool requestsLoading = true;
+  String petAge = "";
+  String petRating = "";
 
   // if user has no pets he is forced to add at least one pet
   usrHasPets() async {
@@ -84,7 +87,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
       isLoading = false;
     });
 
-    getRequests(true);
+
   }
 
   refreshNotificationCount(){
@@ -112,15 +115,39 @@ class _HomeBreedPageState extends State<HomeBreedPage>
         if (pet.status == 0) notifCount ++;
       }
       setState(() {});
-      _controller2.forward();
 
     }else{
       setState(() {
 
       });
     }
+
   }
 
+
+  refreshSelectedPetInfo(){
+    final age = AgeCalculator.dateDifference(fromDate: selectedPet!.pet.birthdate, toDate: DateTime.now());
+    petAge = "";
+    print(age.years);
+    if (age.years > 1){
+      petAge += age.years.toString() + " Years, ";
+    }else if (age.years == 1){
+      petAge += age.years.toString() + " Year, ";
+    }
+    if (age.months > 1){
+      petAge += age.months.toString() + " Months";
+    }else if (age.months == 1){
+      petAge += age.months.toString() + " Month";
+    }
+
+    if (selectedPet!.pet.rateCount > 0){
+      petRating = (selectedPet!.pet.rateSum ~/ selectedPet!.pet.rateCount).toString() + " / 5";
+    }else{
+      petRating = 'n/a';
+    }
+
+    createPetVaccines();
+  }
 
   createPetVaccines(){
     vaccineList.clear();
@@ -137,6 +164,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   void initState() {
     getUserCurrentLocation();
     usrHasPets();
+    getRequests(true);
     super.initState();
     _controller = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -167,7 +195,24 @@ class _HomeBreedPageState extends State<HomeBreedPage>
               child: Column(
                 children: [
                   SizedBox(height: 20),
-                  Row(
+                  isLoading ? Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+
+                        Container(width: width*0.2, height: height*0.04, child: Shimmer(
+                          gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                          child: Container(
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                color: Colors.grey.shade300
+                            ),
+                          ),
+                        ),),
+                      ],
+                    ),
+                  ) : Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Padding(
@@ -198,14 +243,16 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                       SizedBox(width: 10),
                     ],
                   ),
-                  Row(
+                  isLoading ? Container(
+                    height: height*0.135,
+                    child: ShimmerOwnerPetCard(),
+                  ) : Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Container(
-                        height: height / 6,
+                        height: height*0.13,
                         width: width * 0.9,
-                        padding: EdgeInsets.all(10),
-                        child: isLoading ? ShimmerOwnerPetCard() : ListView.builder(
+                        child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             shrinkWrap: true,
                             itemCount: petPods.length,
@@ -230,13 +277,13 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                       selectedPet = petPods[index];
                                       _controller.forward();
                                       petIndex.value = index;
-                                      createPetVaccines();
+                                      refreshSelectedPetInfo();
                                       setState(() {});
                                     } else {
                                       if (index != -1) {
                                         if (selectedPet != petPods[index]) {
                                           selectedPet = petPods[index];
-                                          createPetVaccines();
+                                          refreshSelectedPetInfo();
                                           setState(() {
                                             viewVaccines.value = 0;
                                             petIndex.value = index;
@@ -256,8 +303,124 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                       ),
                     ],
                   ),
-                  SizedBox(height: 10),
-                  Expanded(
+                  SizedBox(height: height*0.045),
+                  isLoading ?
+                  Container(
+                    height: height*0.15,
+                    padding: EdgeInsets.all(5),
+                    child: Row(
+                      children: [
+                        Flexible(
+                          flex: 1,
+                          child: Container(
+                            margin: EdgeInsets.all(5),
+                            child: Container(
+                              padding: EdgeInsets.all(15),
+                              height: double.infinity,
+                              decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  color: Colors.grey.shade300
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Shimmer(
+                                    gradient: LinearGradient(colors: [Colors.grey, Colors.white]),
+                                    child: CircleAvatar(
+                                      radius: width*0.04,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(0,0,10,0),
+                                    child: Shimmer(
+                                      gradient: LinearGradient(colors: [Colors.grey, Colors.white]),
+                                      child: Container(
+                                        height: 10,
+                                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.white,),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Flexible(
+                          flex: 1,
+                          child: Container(
+                            margin: EdgeInsets.all(5),
+                            child: Container(
+                              padding: EdgeInsets.all(15),
+                              height: double.infinity,
+                              decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  color: Colors.grey.shade300
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Shimmer(
+                                    gradient: LinearGradient(colors: [Colors.grey, Colors.white]),
+                                    child: CircleAvatar(
+                                      radius: width*0.04,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(0,0,10,0),
+                                    child: Shimmer(
+                                      gradient: LinearGradient(colors: [Colors.grey, Colors.white]),
+                                      child: Container(
+                                        height: 10,
+                                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.white,),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Flexible(
+                          flex: 1,
+                          child: Container(
+                            margin: EdgeInsets.all(5),
+                            child: Container(
+                              padding: EdgeInsets.all(15),
+                              height: double.infinity,
+                              decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  color: Colors.grey.shade300
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Shimmer(
+                                    gradient: LinearGradient(colors: [Colors.grey, Colors.white]),
+                                    child: CircleAvatar(
+                                      radius: width*0.04,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(0,0,10,0),
+                                    child: Shimmer(
+                                      gradient: LinearGradient(colors: [Colors.grey, Colors.white]),
+                                      child: Container(
+                                        height: 10,
+                                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.white,),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ) : Expanded(
                     child: SingleChildScrollView(
                       child: Container(
                         child: Column(
@@ -278,175 +441,187 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                             opacity: _controller,
                                             child: Column(
                                               children: [
-                                                Padding(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 30.0),
-                                                  child: Row(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    children: [
-                                                      Column(
-                                                        children: [
-                                                          Text('Age',
-                                                            style: TextStyle(
-                                                              fontWeight: FontWeight.w800,
-                                                              color: Colors.grey
-                                                            ),),
-                                                          SizedBox(height: 5),
-                                                          Container(
-                                                            padding: EdgeInsets.symmetric(horizontal: 5),
-                                                              decoration: BoxDecoration(
-                                                                borderRadius: BorderRadius.circular(20),
-                                                                color: CupertinoColors.extraLightBackgroundGray,
-                                                              ),child: Padding(
-                                                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
-                                                            child: Text("${AgeCalculator.dateDifference(fromDate: selectedPet!.pet.birthdate, toDate: DateTime.now()).years}",
-                                                              style: TextStyle(
-                                                                color: Colors.grey,
-                                                                fontWeight: FontWeight.w800,
-                                                              ),),
-                                                          )),
-                                                        ],
-                                                      ),
-                                                      Spacer(),
-                                                      Column(
-                                                        children: [
-                                                          Text('Gender',
-                                                            style: TextStyle(
-                                                              fontWeight: FontWeight.w800,
-                                                              color: Colors.grey,
-                                                            ),),
-                                                          SizedBox(height: 5),
-                                                          Container(
-                                                              padding: EdgeInsets.symmetric(horizontal: 5),
-                                                              decoration: BoxDecoration(
-                                                                borderRadius: BorderRadius.circular(20),
-                                                                color: CupertinoColors.extraLightBackgroundGray,
-                                                              ),child: Padding(
-                                                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
-                                                            child: Text((selectedPet!.pet.isMale ? 'Male' : 'Female'),
-                                                              style: TextStyle(
-                                                                color: Colors.grey,
-                                                                fontWeight: FontWeight.w600,
-                                                              ),),
-                                                          )),
-                                                        ],
-                                                      ),
-                                                      Spacer(),
-                                                      Column(
-                                                        children: [
-                                                          Text('Mates',
-                                                            style: TextStyle(
-                                                              fontWeight: FontWeight.w800,
-                                                              color: Colors.grey,
-                                                            ),),
-                                                          SizedBox(height: 5),
-                                                          Container(
-                                                              decoration: BoxDecoration(
-                                                                borderRadius: BorderRadius.circular(20),
-                                                                color: CupertinoColors.extraLightBackgroundGray,
-                                                              ),child: Padding(
-                                                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
-                                                            child: Text("${0}",
-                                                              style: TextStyle(
-                                                                color: Colors.grey,
-                                                                fontWeight: FontWeight.w600,
-                                                              ),),
-                                                          )),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
 
-                                                SizedBox(height: 10,),
+                                                ColumnSuper(
+                                                  innerDistance: -20,
+                                                  children: [
+                                                    AnimatedContainer(
+                                                      height: 80,
+                                                      width: width*0.8,
+                                                      padding: EdgeInsets.all(width*0.04),
+                                                      duration: Duration(
+                                                          milliseconds: 1000),
+                                                      decoration: BoxDecoration(
+                                                        gradient: LinearGradient(colors: [Colors.blueGrey.shade900, Colors.blueGrey.shade700]),
+                                                          borderRadius:
+                                                          BorderRadius.circular(
+                                                              20)),
+                                                      child: Row(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Container(
+                                                            child: Row(
+                                                              children: [
+                                                                Icon(CupertinoIcons.calendar_circle_fill, color: Colors.white,),
+                                                                SizedBox(width: width*0.009,),
+                                                                Text(petAge, style: TextStyle(
+                                                                  fontWeight: FontWeight.w600,
+                                                                  color: Colors.white
+                                                                ),)
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          Spacer(),
+                                                          Container(
+                                                            child: Icon(selectedPet!.pet.isMale ? Icons.male_rounded : Icons.female_rounded,
+                                                            color: selectedPet!.pet.isMale ? Colors.blue : Colors.pinkAccent,),
+                                                          )
+                                                        ],
+                                                      )
+                                                    ),
+                                                    AnimatedContainer(
+                                                      height: 80,
+                                                      width: width*0.7,
+                                                      duration: Duration(
+                                                          milliseconds: 1000),
+                                                      decoration: BoxDecoration(
+                                                          gradient: LinearGradient(colors: [Colors.blueGrey.shade700, Colors.blueGrey.shade900]),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                  20)),
+                                                      child: Row(
+                                                        children: [
+                                                          Flexible(
+                                                            child: ListTile(
+                                                              leading: CircleAvatar(
+                                                                backgroundColor: Colors.transparent,
+                                                                  child: Icon(
+                                                                      Icons
+                                                                          .vaccines,
+                                                                      color: Colors
+                                                                          .white,)),
+                                                              title: Padding(
+                                                                padding: const EdgeInsets.symmetric(vertical: 10.0),
+                                                                child: Column(
+                                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                                  children: [
+                                                                    Text(
+                                                                      'Vaccinations',
+                                                                      style: TextStyle(
+                                                                          color: Colors.white,
+                                                                          fontFamily:
+                                                                          'Roboto',
+                                                                          fontWeight:
+                                                                          FontWeight
+                                                                              .w500),
+                                                                    ),
+                                                                    SizedBox(height: 10),
+                                                                    LinearPercentIndicator(
+                                                                      lineHeight: 5.0,
+                                                                      percent: (selectedPet!
+                                                                          .pet
+                                                                          .vaccines
+                                                                          .length /
+                                                                          8),
+                                                                      barRadius:
+                                                                      Radius.circular(
+                                                                          20),
+                                                                      backgroundColor:
+                                                                      Colors.blueGrey.shade900,
+                                                                      progressColor:
+                                                                      Colors.white,
+                                                                      trailing: Text(
+                                                                        '${(selectedPet!.pet.vaccines.length / 8 * 100).toInt()}%',
+                                                                        style: TextStyle(
+                                                                            fontWeight:
+                                                                            FontWeight
+                                                                                .w600,
+                                                                            color: Colors.white),
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              )
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                                 AnimatedContainer(
-                                                  height: 80,
+                                                  height: height*0.06,
+                                                  width: width*0.6,
+                                                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
                                                   duration: Duration(
                                                       milliseconds: 1000),
                                                   decoration: BoxDecoration(
-                                                      color: CupertinoColors.extraLightBackgroundGray,
-                                                      border: Border.all(
-                                                          color: Colors.grey.shade300,
-                                                          width: 1),
                                                       borderRadius:
-                                                          BorderRadius.circular(
-                                                              20)),
+                                                      BorderRadius.circular(
+                                                          20)),
                                                   child: Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                                     children: [
-                                                      SizedBox(height: 10),
-                                                      Flexible(
-                                                        child: ListTile(
-                                                          leading: CircleAvatar(
-                                                              backgroundColor:
-                                                                  Colors.blueGrey,
-                                                              child: Icon(
-                                                                  Icons
-                                                                      .vaccines,
-                                                                  color: Colors
-                                                                      .white,)),
-                                                          title: Padding(
-                                                            padding: const EdgeInsets.symmetric(vertical: 10.0),
-                                                            child: Column(
-                                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                                              children: [
-                                                                Text(
-                                                                  'Vaccinations',
-                                                                  style: TextStyle(
-                                                                      color: Colors
-                                                                          .blueGrey,
-                                                                      fontFamily:
-                                                                      'Roboto',
-                                                                      fontWeight:
-                                                                      FontWeight
-                                                                          .w500),
-                                                                ),
-                                                                SizedBox(height: 10),
-                                                                LinearPercentIndicator(
-                                                                  lineHeight: 5.0,
-                                                                  percent: (selectedPet!
-                                                                      .pet
-                                                                      .vaccines
-                                                                      .length /
-                                                                      8),
-                                                                  barRadius:
-                                                                  Radius.circular(
-                                                                      20),
-                                                                  backgroundColor:
-                                                                  Colors.grey.shade300,
-                                                                  progressColor:
-                                                                  Colors.blueGrey,
-                                                                  trailing: Text(
-                                                                    '${(selectedPet!.pet.vaccines.length / 8 * 100).toInt()}%',
-                                                                    style: TextStyle(
-                                                                        fontWeight:
-                                                                        FontWeight
-                                                                            .w600,
-                                                                        color: Colors
-                                                                            .blueGrey),
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          )
-                                                        ),
+                                                      Container(
+                                                        width: width*0.06,
+                                                        child: Image(image: AssetImage("assets/verifiedDocuments.png",),
+                                                          color: selectedPet!.pet.passport == "" ? Colors.redAccent.withOpacity(0.9):
+                                                          Colors.green.withOpacity(0.8), fit: BoxFit.contain,),
                                                       ),
+                                                      selectedPet!.pet.passport == ""  ?ElevatedButton.icon(
+                                                        style: ElevatedButton.styleFrom(
+                                                            backgroundColor: Colors.blueGrey.shade800,
+                                                            shape: RoundedRectangleBorder(
+                                                                borderRadius: BorderRadius.circular(30.0))),
+                                                        icon: Icon(Icons.add, size: width*0.03, color: Colors.white),
+                                                        onPressed: () {
+                                                          BA_key.currentState?.pushNamed('/petDocument', arguments: [selectedPet!]);
+                                                        },
+                                                        label: Text('Add passport',
+                                                            style: TextStyle(
+                                                                color: Colors.white,
+                                                                fontSize: 9,
+                                                                fontWeight: FontWeight.w400)),
+                                                      ) : Row(
+                                                        children: [
+                                                          Text(
+                                                            petRating,
+                                                            style: TextStyle(
+                                                                fontSize: 12,
+                                                                fontFamily: 'Roboto',
+                                                                fontWeight: FontWeight.w800,
+                                                                color: Colors.blueGrey.shade500),
+                                                            overflow: TextOverflow.visible,
+                                                            textAlign: TextAlign.center,
+                                                          ),
+                                                          FittedBox(child: Icon(Icons.star_rate_rounded, color: CupertinoColors.activeOrange)),
+                                                        ],
+                                                      )
                                                     ],
                                                   ),
                                                 ),
                                                 SizedBox(height: 2,),
-                                                ElevatedButton.icon(
-                                                  style: ElevatedButton.styleFrom(
-                                                      backgroundColor: Colors.white,
-                                                      shape: RoundedRectangleBorder(
-                                                          borderRadius: BorderRadius.circular(30.0))),
-                                                  icon: Icon(Icons.edit, size: 10, color: Colors.blueGrey),
-                                                  onPressed: () {
-                                                    _customSheet();
-                                                  },
-                                                  label: Text('Edit pet info',
-                                                      style: TextStyle(
-                                                          color: Colors.blueGrey,
-                                                          fontSize: 10,
-                                                          fontWeight: FontWeight.w600)),
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+
+                                                    ElevatedButton.icon(
+                                                      style: ElevatedButton.styleFrom(
+                                                          backgroundColor: Colors.blueGrey,
+                                                          shape: RoundedRectangleBorder(
+                                                              borderRadius: BorderRadius.circular(30.0))),
+                                                      icon: Icon(Icons.edit, size: width*0.03, color: Colors.white),
+                                                      onPressed: () {
+                                                        _customSheet();
+                                                      },
+                                                      label: Text('Edit pet info',
+                                                          style: TextStyle(
+                                                              color: Colors.white,
+                                                              fontSize: 10,
+                                                              fontWeight: FontWeight.w600)),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
@@ -459,48 +634,17 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                   },
                                 )),
                             SizedBox(height: 10),
-                            isLoading ?
                             Container(
-                              height: 100,
-                              padding: EdgeInsets.all(5),
-                              child: Row(
-                                children: [
-                                  Flexible(
-                                    flex: 1,
-                                    child: Shimmer(
-                                      gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(20),
-                                            color: Colors.grey.shade300
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 10),
-                                  Flexible(
-                                    flex: 1,
-                                    child: Shimmer(
-                                      gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(20),
-                                            color: Colors.grey.shade300
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                                : Container(
                               height: 100,
                               padding: EdgeInsets.symmetric(horizontal: 10),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                 children: [
                                   GestureDetector(
-                                    onTap: () async {
+                                    onTap: tapped ? null : () async {
+                                      setState(() {
+                                        tapped = true;
+                                      });
                                       if (petIndex.value != -1) {
                                         setState(() {});
                                         if (!loading.mounted) {
@@ -515,10 +659,17 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                         }
                                         BA_key.currentState?.pushNamed(
                                             '/petMatch',
-                                            arguments: [selectedPet, pets]);
+                                            arguments: [selectedPet, pets]).then((value) {
+                                              if ( value as bool == true){
+                                                BA_key.currentState?.pushNamed('/search_manual', arguments: petPods);
+                                              }
+                                        });
                                       }else{
                                         showSnackbar(context, 'Select a pet first');
                                       }
+                                      setState(() {
+                                        tapped = false;
+                                      });
                                     },
                                     child: Container(
                                       padding: EdgeInsets.all(15),
@@ -629,42 +780,39 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                 ],
               ),
             ),
-            floatingActionButton: FadeTransition(
-              opacity: _controller2,
-              child: Container(
-                child: FittedBox(
-                  child: Stack(
-                    alignment: Alignment(1.4, -1.5),
-                    children: [
-                      FloatingActionButton(  // Your actual Fab
-                        onPressed: () {
-                          BA_key.currentState?.pushNamed('/notif', arguments: [petRequests, petPods]).then((value){
-                           refreshNotificationCount();
-                          });
-                        },
-                        child: Icon(Icons.notifications),
-                        backgroundColor: Colors.blueGrey.shade800,
+            floatingActionButton: Container(
+              child: FittedBox(
+                child: Stack(
+                  alignment: Alignment(1.4, -1.5),
+                  children: [
+                    FloatingActionButton(  // Your actual Fab
+                      onPressed: requestsLoading ? null : () {
+                        BA_key.currentState?.pushNamed('/notif', arguments: [petRequests, petPods]).then((value){
+                         refreshNotificationCount();
+                        });
+                      },
+                      child: requestsLoading ? CircularProgressIndicator(backgroundColor: Colors.orange, color: Colors.blueGrey.shade800,): Icon(Icons.local_fire_department_rounded, color: Colors.orange,),
+                      backgroundColor: Colors.blueGrey.shade800,
+                    ),
+                    notifCount == 0 ? Container() : Container(             // This is your Badge
+                      child: Center(
+                        // Here you can put whatever content you want inside your Badge
+                        child: Text('${notifCount}', style: TextStyle(color: Colors.white)),
                       ),
-                      notifCount == 0 ? Container() : Container(             // This is your Badge
-                        child: Center(
-                          // Here you can put whatever content you want inside your Badge
-                          child: Text('${notifCount}', style: TextStyle(color: Colors.white)),
-                        ),
-                        padding: EdgeInsets.all(3),
-                        constraints: BoxConstraints(minHeight: 32, minWidth: 32),
-                        decoration: BoxDecoration( // This controls the shadow
-                          boxShadow: [
-                            BoxShadow(
-                                spreadRadius: 1,
-                                blurRadius: 5,
-                                color: Colors.black.withAlpha(50))
-                          ],
-                          borderRadius: BorderRadius.circular(16),
-                          color: Colors.redAccent,  // This would be color of the Badge
-                        ),
+                      padding: EdgeInsets.all(3),
+                      constraints: BoxConstraints(minHeight: 32, minWidth: 32),
+                      decoration: BoxDecoration( // This controls the shadow
+                        boxShadow: [
+                          BoxShadow(
+                              spreadRadius: 1,
+                              blurRadius: 5,
+                              color: Colors.black.withAlpha(50))
+                        ],
+                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.redAccent,  // This would be color of the Badge
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             )

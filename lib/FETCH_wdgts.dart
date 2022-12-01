@@ -262,7 +262,8 @@ Widget _customDropDownView(BuildContext context, Breed? selectedItem) {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontSize: 13.5, color: Colors.black)),
     leading:
-    CircleAvatar(backgroundImage: NetworkImage(selectedItem.photoUrl)),
+    CircleAvatar(backgroundColor: CupertinoColors.extraLightBackgroundGray,
+        backgroundImage: NetworkImage(selectedItem.photoUrl)),
   );
 }
 
@@ -431,6 +432,19 @@ class PetPod {
     }
   }
 
+  PetPod copyWith({
+    PetProfile? pet,
+    bool? isSelected,
+    GeoLocation? petLocation,
+    int? distance
+  }) {
+    return PetPod(pet ?? this.pet,
+      isSelected ?? this.isSelected,
+      petLocation ?? this.petLocation,
+      distance ?? this.distance,
+    );
+  }
+
   fetchLocation() async{
     try{
       final resp = await SupabaseCredentials.supabaseClient.from('users')
@@ -584,6 +598,7 @@ class CustomPetMatch extends StatelessWidget {
                     radius: width * 0.15,
                     backgroundColor: Colors.white ,
                     child: CircleAvatar(
+                      backgroundColor: CupertinoColors.extraLightBackgroundGray,
                       radius: width * 0.15 - 2,
                       backgroundImage: NetworkImage(pod.photoUrl),
                     )
@@ -647,32 +662,32 @@ class CustomPet extends StatelessWidget {
     final height = MediaQuery.of(context).size.height;
     final width = MediaQuery.of(context).size.width;
     return Container(
-      width: width * 0.25,
-      padding: EdgeInsets.all(10),
-      margin: EdgeInsets.symmetric(horizontal: 5),
+      height: double.infinity,
+      width: width*0.22,
+      padding: EdgeInsets.all(width*height*0.00004),
+      margin: EdgeInsets.symmetric(horizontal: width*height*0.000015),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(width*height*0.00008),
         color: pod.isSelected ? Colors.blueGrey.shade900 : CupertinoColors.extraLightBackgroundGray,
         border: Border.all(width: 2, color:  CupertinoColors.extraLightBackgroundGray),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          CircleAvatar(
-            radius: width * 0.07,
-            backgroundColor: pod.isSelected ? Colors.white : Colors.blueGrey,
+          Expanded(
             child: CircleAvatar(
-              radius: width * 0.07 - 2,
-              backgroundImage: NetworkImage(pod.pet.photoUrl),
-            )
+              backgroundColor: pod.isSelected ? Colors.white : Colors.blueGrey,
+              child: CircleAvatar(
+                backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                backgroundImage: NetworkImage(pod.pet.photoUrl),
+              )
+            ),
           ),
-          SizedBox(height: 10,),
-          Padding(
-            padding: const EdgeInsets.all(3),
+          SizedBox(height: height*0.01,),
+          FittedBox(
             child: Text(
               pod.pet.name,
               style: TextStyle(
-                  fontSize: 15,
                   fontFamily: 'Roboto',
                   fontWeight: FontWeight.w600,
                   color: pod.isSelected ? Colors.white : Colors.blueGrey),
@@ -718,6 +733,7 @@ class PetConfirmDialog extends StatelessWidget {
                     radius: width * 0.15,
                     backgroundColor: Colors.white ,
                     child: CircleAvatar(
+                      backgroundColor: CupertinoColors.extraLightBackgroundGray,
                       radius: width * 0.15 - 2,
                       backgroundImage: NetworkImage(pod.photoUrl),
                     )
@@ -804,6 +820,7 @@ class _PetRequestBannerState extends State<PetRequestBanner> {
                     radius: width * 0.07,
                     backgroundColor: CupertinoColors.extraLightBackgroundGray ,
                     child: CircleAvatar(
+                      backgroundColor: CupertinoColors.extraLightBackgroundGray,
                       radius: width * 0.07 - 2,
                       backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl),
                     )
@@ -815,6 +832,7 @@ class _PetRequestBannerState extends State<PetRequestBanner> {
                       radius: width * 0.035,
                       backgroundColor: CupertinoColors.extraLightBackgroundGray ,
                       child: CircleAvatar(
+                        backgroundColor: CupertinoColors.extraLightBackgroundGray,
                         radius: width * 0.035 - 2,
                         backgroundImage: NetworkImage(widget.receiverPet.pet.photoUrl),
                       )
@@ -1122,7 +1140,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
           backgroundColor: Colors.white,
           child: CircleAvatar(
             radius: 49,
-            backgroundColor: Colors.blue,
+            backgroundColor: CupertinoColors.extraLightBackgroundGray,
             backgroundImage: NetworkImage(widget.request.sender_pet.pet.photoUrl),
           ),
         ),
@@ -1602,6 +1620,7 @@ class _PetViewState extends State<PetView> {
   int distance = 0;
   String distanceText = "";
   bool distanceLoading = true;
+  bool tapped = false;
 
   late Timer _timer;
   int _start = 5;
@@ -1623,7 +1642,10 @@ class _PetViewState extends State<PetView> {
               setState(() {
                 timer.cancel();
               });
+            }else{
+              print('tying ${widget.profile.pet.name}');
             }
+
             setState(() {
               _start--;
             });
@@ -1850,7 +1872,10 @@ class _PetViewState extends State<PetView> {
                 foregroundColor: Colors.blue,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50.0))),
-            onPressed: () async{
+            onPressed: tapped ? null : () async{
+              setState(() {
+                tapped = true;
+              });
               final petInd = await _customSheet(context);
               print(petInd);
               final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -1871,6 +1896,9 @@ class _PetViewState extends State<PetView> {
                   showSnackbar(context, 'Unexpected behavior!');
                 }
               }
+              setState(() {
+                tapped = false;
+              });
             },
             icon: Icon(CupertinoIcons.heart_fill, color: Colors.black, size: 9*width*0.003,),
             label: Text('Send Request', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 8*width*0.003),),
@@ -1919,11 +1947,12 @@ class _PetViewState extends State<PetView> {
                           itemCount: goodPets.length,
                           scrollDirection: Axis.horizontal,
                           itemBuilder: (context, index) {
+                            PetPod temPet = goodPets[index].copyWith(isSelected: false);
                             return InkWell(
                                 onTap: (){
                                   BA_key.currentState?.pop(index);
                                 },
-                                child: CustomPet(pod: goodPets[index]));
+                                child: CustomPet(pod: temPet));
                           }),
                     ),
                   ],

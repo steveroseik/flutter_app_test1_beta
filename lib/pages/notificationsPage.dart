@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
@@ -52,10 +53,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
     for (MateItem item in widget.requests){
       if (item.status == 2){
         matches.add(item);
-        // petRequest.remove(item);
+        print('2');
       }
       if (item.status == 0) {
         petRequest.add(item);
+        print('0');
       }
     }
     if (matches.isNotEmpty ) match = true;
@@ -100,7 +102,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 ),
                 Container(
                   padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-                  height: height*0.13,
+                  height: height*0.135,
                   width: double.infinity,
                   child: Align(
                     alignment: Alignment.bottomCenter,
@@ -112,18 +114,23 @@ class _NotificationsPageState extends State<NotificationsPage> {
                             onTap: (){
                               BA_key.currentState?.pushNamed('/petProfile', arguments: [matches[index], widget.ownerPets, 2]);
                             },
-                            child: Column(
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: Colors.blueGrey.shade900,
-                                  radius: 34*height*0.0012,
-                                  child: CircleAvatar(
-                                    radius: 30*height*0.0012,
-                                    backgroundImage: NetworkImage(matches[index].sender_pet.pet.photoUrl),
+                            child: Container(
+                              margin: EdgeInsets.symmetric(horizontal: 5),
+                              child: Column(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: Colors.blueGrey.shade900,
+                                    radius: 34*height*0.0012,
+                                    child: CircleAvatar(
+                                      backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                                      radius: 34*height*0.0012-1,
+                                      backgroundImage: NetworkImage(matches[index].sender_pet.pet.photoUrl),
+                                    ),
                                   ),
-                                ),
-                                Text(matches[index].sender_pet.pet.name, style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blueGrey.shade800),)
-                              ],
+                                  Spacer(),
+                                  FittedBox(child: Text(matches[index].sender_pet.pet.name, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey.shade800),))
+                                ],
+                              ),
                             ),
                           );
                         }),
@@ -137,7 +144,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
               child: Text("Notifications",
                 style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blueGrey.shade800),),
             ),
-            Expanded(
+            SizedBox(height: height*0.03,),
+            !notif ?  Center(
+              child: Text(
+                "No new requests.",
+                style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: width*0.04,
+                    fontWeight: FontWeight.w500,color: CupertinoColors.systemGrey2),
+                textAlign: TextAlign.center,
+              ),
+            ) : Expanded(
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: ListView.builder(

@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:advance_pdf_viewer/advance_pdf_viewer.dart';
 import 'package:age_calculator/age_calculator.dart';
 import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_multi_select_items/flutter_multi_select_items.dart';
 import 'package:geolocator/geolocator.dart';
@@ -13,11 +16,12 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:whatsapp_unilink/whatsapp_unilink.dart';
 import '../APILibraries.dart';
 import '../FETCH_wdgts.dart';
 import '../JsonObj.dart';
 import '../configuration.dart';
+import 'dart:io' show Platform;
+import 'dart:ui';
 
 class PetProfilePage extends StatefulWidget{
   MateItem pod;
@@ -40,9 +44,42 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
   late AnimationController animController;
   late Animation animation;
   late PDFDocument document;
+  int distance = -1;
   UserPod? ownerPod;
   int petState = 0;
+  bool ownerVerified = false;
+  bool tapped = false;
+  late Timer _timer;
+  int timer_counter=5;
+  final Size windowSize = MediaQueryData.fromWindow(window).size;
+  late OverlayEntry loading = initLoading(context, windowSize);
 
+
+  startTimer(){
+    const interval = Duration(seconds: 1);
+    _timer = Timer.periodic(interval, (timer) {
+      if (timer_counter == 0){
+        setState(() {
+          _timer.cancel();
+        });
+
+      }else{
+        timer_counter--;
+        if ( widget.pod.sender_pet.distance > -1){
+          distance = widget.pod.sender_pet.distance;
+          if (widget.pod.sender_pet.distance >= 1000){
+            distanceText = (widget.pod.sender_pet.distance/1000).toInt().toString() + " Kilometers";
+          }else{
+            distanceText = (widget.pod.sender_pet.distance).toInt().toString() + " meters";
+          }
+          setState(() {
+
+          });
+        }
+      }
+    });
+
+  }
   initPet() async{
     if (widget.pod.status == -1){
       petState = 1;
@@ -50,11 +87,17 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
       petState = widget.pod.status;
     }
 
-    if (widget.pod.sender_pet.distance >= 1000){
-      distanceText = (widget.pod.sender_pet.distance/1000).toInt().toString() + " Kilometers";
+    distance = widget.pod.sender_pet.distance;
+    if ( distance > -1){
+      if (widget.pod.sender_pet.distance >= 1000){
+        distanceText = (widget.pod.sender_pet.distance/1000).toInt().toString() + " Kilometers";
+      }else{
+        distanceText = (widget.pod.sender_pet.distance).toInt().toString() + " meters";
+      }
     }else{
-      distanceText = (widget.pod.sender_pet.distance).toInt().toString() + " meters";
+      startTimer();
     }
+
 
     final age = AgeCalculator.age(widget.pod.sender_pet.pet.birthdate);
     if (age.years > 1){
@@ -77,6 +120,8 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
     if (widget.pod.sender_pet.pet.rateCount > 0){
       rating = (widget.pod.sender_pet.pet.rateSum/widget.pod.sender_pet.pet.rateCount).toStringAsFixed(1) + " / 5";
     }
+
+    ownerVerified = widget.pod.sender_pet.pet.verified;
     setState(() {
 
     });
@@ -98,7 +143,6 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
     animController = AnimationController(duration: Duration(milliseconds: 300), vsync: this);
     animation = CurvedAnimation(parent: animController, curve: Curves.easeIn);
     initPDF();
-
     super.initState();
   }
   @override
@@ -135,7 +179,7 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                         child: FittedBox(child:  Row(
                           children: [
                             Icon(Icons.location_pin, color: Colors.blueGrey.shade700,),
-                            Text(distanceText,
+                            Text(distance == -1 ? "" : distanceText,
                                 style: TextStyle(
                                     fontWeight: FontWeight.w800,
                                     color: Colors.blueGrey.shade700
@@ -144,8 +188,16 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                         )),
                       ),
                       if (petState == 2) GestureDetector(
-                        onTap: ()async{
+                        onTap: tapped ? null : ()async{
                          if (ownerPod == null){
+                           if (!loading.mounted) {
+                             OverlayState? overlay =
+                             Overlay.of(context);
+                             overlay?.insert(loading);
+                             setState(() {
+
+                             });
+                           }
                            try{
                              final resp = jsonEncode(await SupabaseCredentials.supabaseClient
                                  .from('users')
@@ -155,6 +207,12 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
 
                            }
                          }
+                         if(loading.mounted){
+                           loading.remove();
+                         }
+                         setState(() {
+
+                         });
                          _ownerInfo();
 
                         },
@@ -169,13 +227,14 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                             child: Row(
                               children: [
                                 Icon(Icons.circle_outlined, color: Colors.redAccent,),
-                                SizedBox(width: 10,),
+                                SizedBox(width: width*0.015,),
                                 Text("Owner Information",
                                     style: TextStyle(
+                                      fontSize: width*0.03,
                                         fontWeight: FontWeight.w700,
                                         color: Colors.blueGrey
                                     )),
-                                SizedBox(width: 15,),
+                                SizedBox(width: width*0.02,),
                                 Icon(CupertinoIcons.arrowshape_turn_up_right, size: width*0.04, color: Colors.blueGrey,)
                               ],
                             ),
@@ -185,18 +244,23 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           ElevatedButton.icon(
-                            onPressed: ()async {
+                            onPressed: tapped ? null : ()async {
+                              setState(() {
+                                tapped = true;
+                              });
                               final resp = await updateMateRequest(widget.pod.request_id, 2);
                               if (resp == 200){
                                 widget.pod.status = 2;
                                 petState = 2;
                                 setState(() {
-
                                 });
 
                               }else{
                                 showSnackbar(context, "Failed to communicate with server, try again.");
                               }
+                              setState(() {
+                                tapped = false;
+                              });
                             },
                             style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green.shade300,
@@ -219,17 +283,22 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                                 backgroundImage: NetworkImage(widget.ownerPets[0].pet.photoUrl),),),
                           ),
                           ElevatedButton.icon(
-                            onPressed: ()async {
+                            onPressed: tapped ? null : ()async {
+                              setState(() {
+                                tapped = true;
+                              });
                               final resp = await updateMateRequest(widget.pod.request_id, 1);
                               if (resp == 200){
                                 widget.pod.status = 1;
                                 petState = 1;
                                 setState(() {
-
                                 });
                               }else{
                                 showSnackbar(context, "Failed to communicate with server, try again.");
                               }
+                              setState(() {
+                                tapped = false;
+                              });
                             },
                             style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
@@ -245,8 +314,35 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                           ),
                         ],
                       ) else ElevatedButton.icon(
-                        onPressed: ()async {
-                          // _customSheet();
+                        onPressed:tapped ? null :  ()async {
+                          setState(() {
+                            tapped = true;
+                          });
+
+                          final petInd = await _customSheet(context);
+                          print(petInd);
+                          final uid = FirebaseAuth.instance.currentUser!.uid;
+                          if (petInd != -1){
+                            if (uid == widget.ownerPets[petInd].pet.ownerId){
+                              final stat = await sendMateRequest(widget.ownerPets[petInd].pet.ownerId,
+                                  widget.pod.sender_pet.pet.ownerId,
+                                  widget.ownerPets[petInd].pet.id,
+                                  widget.pod.sender_pet.pet.id);
+                              if (stat == 200){
+                                showNotification(context, 'Request sent successfully');
+                              }else if (stat == 0){
+                                showSnackbar(context, 'You have already sent a request.');
+                              }else{
+                                showSnackbar(context, 'Failed to send request');
+                              }
+                            }else{
+                              showSnackbar(context, 'Unexpected behavior!');
+                            }
+                          }
+
+                          setState(() {
+                            tapped = false;
+                          });
                         },
                         style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red.shade300,
@@ -274,14 +370,23 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                           backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl)
                         ),
                       ),
-                      Container(
+                      ownerVerified ? Container(
                         decoration: BoxDecoration(
                           color: CupertinoColors.extraLightBackgroundGray,
                           borderRadius: BorderRadius.circular(50)
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(5.0),
-                          child: Icon(Icons.verified_user_rounded, size: 18, color: Colors.blueGrey.shade600,),
+                          child: Icon(Icons.verified_user_rounded, size: 18, color: Colors.green,),
+                        ),
+                      ) :  Container(
+                        decoration: BoxDecoration(
+                            color: CupertinoColors.extraLightBackgroundGray,
+                            borderRadius: BorderRadius.circular(50)
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(5.0),
+                          child: Icon(CupertinoIcons.exclamationmark_shield_fill, size: 18, color: Colors.orange,),
                         ),
                       )
                     ],
@@ -569,19 +674,6 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                           ],
                         ),
 
-                        SizedBox(height: height*0.02,),
-                       Row(
-                         mainAxisAlignment: MainAxisAlignment.end,
-                         crossAxisAlignment: CrossAxisAlignment.center,
-                         children: [
-                           Text(distanceText, style: TextStyle(
-                               color: Colors.white70,
-                               fontWeight: FontWeight.w600
-                           ),),
-                           SizedBox(width: width*0.03,),
-                           Icon(CupertinoIcons.map_pin_ellipse, color: Colors.white70,),
-                         ],
-                       )
                       ],
                     ),
                   ),
@@ -591,29 +683,64 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         ElevatedButton.icon(
-                          onPressed: ()async {
+                          onPressed: tapped ? null : () async{
+                            setState(() {
+                              tapped = true;
+                            });
+                            ClipboardData data = ClipboardData(text: '+20${ownerData.phone}');
+                            await Clipboard.setData(data);
+                            showNotification(context, 'Copied!');
+                            setState(() {
+                              tapped = false;
+                            });
                           },
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
+                              backgroundColor: Colors.green.shade200,
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18.0)
                               )
                           ),
-                          icon:  Icon(CupertinoIcons.location_fill, color: Colors.blueGrey.shade800, size: width*0.040,),
-                          label: Text('Request Location', style: TextStyle(
+                          icon:  Icon(Icons.copy_rounded, color: Colors.blueGrey.shade800, size: width*0.040,),
+                          label: Text('Copy', style: TextStyle(
                               color: Colors.blueGrey.shade800,
                               fontSize: width*0.03
                           ),),
                         ),
                         ElevatedButton.icon(
-                          onPressed: () async{
-                            final link = WhatsAppUnilink(
-                              phoneNumber: '+20 ${ownerData.phone}',
-                              text: "",
-                            );
-                            // Convert the WhatsAppUnilink instance to a Uri.
-                            // The "launch" method is part of "url_launcher".
-                            await launchUrl(link.asUri());
+                          onPressed: tapped ? null : ()async {
+                            setState(() {
+                              tapped = true;
+                            });
+                            launchUrl(Uri.parse("tel://+20${ownerData.phone}"));
+                            setState(() {
+                              tapped = false;
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade300,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18.0)
+                              )
+                          ),
+                          icon:  Icon(CupertinoIcons.phone_solid, color: Colors.blueGrey.shade800, size: width*0.040,),
+                          label: Text('Phone call', style: TextStyle(
+                              color: Colors.blueGrey.shade800,
+                              fontSize: width*0.03
+                          ),),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: tapped ? null : () async{
+                            setState(() {
+                              tapped = true;
+                            });
+                            if (Platform.isAndroid){
+                              await launchUrl(Uri.parse("whatsapp://send?phone=+20${ownerData.phone}"));
+                            }else if (Platform.isIOS){
+                              await launchUrl(Uri.parse("whatsapp://send?phone=+20${ownerData.phone}"));
+                            }
+                            setState(() {
+                              tapped = false;
+                            });
                           },
                           style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green.shade400,
@@ -621,9 +748,9 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                                   borderRadius: BorderRadius.circular(18.0)
                               )
                           ),
-                          icon:  Icon(CupertinoIcons.phone_solid, color: Colors.white, size: width*0.040,),
-                          label: Text('Phone Number', style: TextStyle(
-                              color: Colors.white,
+                          icon:  Icon(CupertinoIcons.text_bubble_fill, color: Colors.blueGrey.shade900, size: width*0.040,),
+                          label: Text('Whatsapp', style: TextStyle(
+                              color: Colors.blueGrey.shade900,
                               fontSize: width*0.03
                           ),),
                         ),
@@ -636,5 +763,110 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
     ).then((value) async{
 
     });
+  }
+  Future<int> _customSheet(BuildContext context) async{
+    int resp = -1;
+    await showModalBottomSheet(
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        context: context,
+        builder: (builder){
+          List<PetPod> goodPets = <PetPod>[];
+
+          for (PetPod p in widget.ownerPets) {
+            // if (p.pet.breed == mateItem.sender_pet.pet.breed) {
+            goodPets.add(p);
+            // }
+          }
+          final height = MediaQuery
+              .of(context)
+              .size
+              .height;
+          final width = MediaQuery
+              .of(context)
+              .size
+              .width;
+          return goodPets.length > 0 ? Container(height: height * 0.5,
+              child: Column(
+                children: [
+                  Text("Choose a pet \nto send the request",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: width*0.04,
+                      color: Colors.white,
+                    ), textAlign: TextAlign.center,),
+                  SizedBox(height: height*0.02,),
+                  Container(
+                    height: height*0.15,
+                    alignment: Alignment.center,
+                    child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: goodPets.length,
+                        scrollDirection: Axis.horizontal,
+                        itemBuilder: (context, index) {
+                          PetPod temPet = goodPets[index].copyWith(isSelected: false);
+                          return InkWell(
+                              onTap: (){
+                                BA_key.currentState?.pop(index);
+                              },
+                              child: CustomPet(pod: temPet));
+                        }),
+                  ),
+                ],
+              )) : Container(
+            height: height*0.6,
+            width: double.infinity,
+            child: Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(30),
+                  width: 300,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      color: Colors.white.withOpacity(0.9)
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text("Sorry",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: width*0.04,
+                          color: Colors.blueGrey.shade900.withOpacity(0.9),
+                        ), textAlign: TextAlign.center,),
+                      SizedBox(height: 10,),
+                      Text("Your pets don't share same breed",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: width*0.035,
+                          color: Colors.blueGrey.shade900.withOpacity(0.9),
+                        ), textAlign: TextAlign.center,),
+                      SizedBox(height: 20,),
+                      ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade300.withOpacity(0.9),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18.0)
+                              )
+                          ),
+                          onPressed: (){
+                            BA_key.currentState?.pop();
+                          }, child: Text('I understand'))
+                    ],
+                  ),
+                )
+              ],
+            ),
+          );
+        }
+    ).then((value) async{
+      if (value != null){
+        resp =  value;
+      }else{
+        resp = -1;
+      }
+
+    });
+    return resp;
   }
 }

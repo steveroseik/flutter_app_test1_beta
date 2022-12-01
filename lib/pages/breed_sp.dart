@@ -13,6 +13,7 @@ import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_switch/flutter_switch.dart';
 import 'package:multi_select_flutter/chip_display/multi_select_chip_display.dart';
 import 'package:multi_select_flutter/util/multi_select_item.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 import '../FETCH_wdgts.dart';
@@ -52,12 +53,16 @@ class _breedSearchPageState extends State<breedSearchPage> {
 
   late Timer _sortTimer;
   int sortTrials = 5;
+  bool isLoading = true;
 
   initPets() async{
 
     pets.addAll(await fetchResultedPets());
     breedList.addAll(await fetchBreedNameList());
-    setState(() {});
+    setState(() {
+      isLoading = false;
+    });
+
   }
 
   startSorting(List<PetPod> pods){
@@ -83,6 +88,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
         }
         setState(() {
           pets.addAll(pods);
+          isLoading = false;
           time.cancel();
         });
       }else{
@@ -94,6 +100,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
   refreshResults(List<dynamic> newList){
     setState(() {
       pets.clear();
+      isLoading = true;
     });
     final encoded = petProfileFromJson(jsonEncode(newList));
     final pods = List<PetPod>.generate(encoded.length, (index){
@@ -425,7 +432,100 @@ class _breedSearchPageState extends State<breedSearchPage> {
         ),
         body: Scaffold(
           appBar: init_appBar(BA_key),
-          body: Padding(
+          body: isLoading ?  GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1/1.3,
+              mainAxisSpacing: 10.0,
+            ),
+            itemCount: 6,
+            itemBuilder: (context, index) {
+              return Container(
+                padding: EdgeInsets.all(10),
+                child: Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(25),
+                    color: Colors.grey.shade300
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                          child: CircleAvatar(
+
+                          ),
+                      ),
+                      Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                          child: Container(
+                            height: 10,
+                            width: double.infinity,
+                            margin: EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20), color: Colors.white),
+
+                          )),
+                      Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                          child: Container(
+                            height: 10,
+                            width: width*0.3,
+                            margin: EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20), color: Colors.white),
+
+                          )),
+                      Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                          child: Container(
+                            height: 10,
+                            width: double.infinity,
+                            margin: EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20), color: Colors.white),
+
+                          )),
+                      Spacer(),
+                      Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                          child: Container(
+                            height: 10,
+                            width: width*0.3,
+                            margin: EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20), color: Colors.white),
+
+                          )),
+                      Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                          child: Container(
+                            height: 10,
+                            width: double.infinity,
+                            margin: EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20), color: Colors.white),
+
+                          )),
+                      Center(
+                        child: Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                            child: Container(
+                              height: 20,
+                              width: width*0.2,
+                              margin: EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20), color: Colors.white),
+
+                            )),
+                      )
+                    ],
+                  ),
+                ),
+              );
+            },
+          ) : pets.length == 0 ? Text(
+            "No available pets",
+            style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: width*0.04,
+                fontWeight: FontWeight.w500,color: CupertinoColors.systemGrey2),
+            textAlign: TextAlign.center,
+          ) : Padding(
             padding: EdgeInsets.all(10),
             child: GridView.builder(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

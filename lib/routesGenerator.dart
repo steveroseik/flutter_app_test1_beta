@@ -29,6 +29,7 @@ import 'package:flutter_app_test1/pages/login.dart';
 import 'package:flutter_app_test1/pages/signup_completion.dart';
 import 'package:flutter_app_test1/mainApp.dart';
 import 'package:flutter_app_test1/pages/signupWithEmail.dart';
+import 'package:flutter_app_test1/pages/verifyAccount.dart';
 import 'package:flutter_app_test1/verifyPhone.dart';
 import 'package:flutter_app_test1/pages/meets_selectpets.dart';
 
@@ -225,6 +226,11 @@ class RouteGenerator {
         return _errorRoute();
       case '/setting':
         return MaterialPageRoute(builder: (_) => editSettings());
+      case '/verifyAccount':
+        if (args is UserPod){
+          return MaterialPageRoute(builder: (_) => VerifyAccountPage(userPod: args));
+        }
+       return _errorRoute();
       default:
       // if an unmatched route is called, return error route
         return _errorRoute();

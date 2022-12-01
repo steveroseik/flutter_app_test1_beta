@@ -225,6 +225,34 @@ Future addUser(String userid, String email, int phone, String fname,
 
 }
 
+verifyUser(String userId)async{
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+  try{
+    if (uid == userId){
+      upgradeUserPets(uid);
+      await SupabaseCredentials.supabaseClient.from('users').update({'type': 1}).eq('id', uid);
+    }
+
+  }catch (e){
+    print(e);
+  }
+
+}
+
+
+upgradeUserPets(String uid) async{
+  try{
+    final resp = await SupabaseCredentials.supabaseClient.from('pets').select('id').eq('owner_id', uid) as List<dynamic>;
+
+    for (Map pet in resp){
+      await SupabaseCredentials.supabaseClient.from('pets').update({'verified': true}).eq('id', pet['id']);
+    }
+  }catch(e){
+    print(e);
+  }
+
+}
+
 Future checkEmailAvailability(TextEditingController email) async {
   var ret = -100;
 
@@ -421,16 +449,17 @@ Future fetchResultedPets() async{
 
 }
 
-Future<List<PetProfile>> getPetMatch() async{
+Future<List<PetPod>> getPetMatch() async{
   try{
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final petList = await SupabaseCredentials.supabaseClient.from('pets').select('*') as List<dynamic>;
     final pets = petProfileFromJson(jsonEncode(petList));
 
-    return pets;
+    final petPods = List<PetPod>.generate(pets.length, (index) => PetPod(pets[index], false, GeoLocation(0.0,0.0), 1));
+    return petPods;
   }catch (e){
     print(e);
-    return List<PetProfile>.empty();
+    return List<PetPod>.empty();
   }
 }
 
@@ -443,6 +472,17 @@ Future updateVaccine(String petId, List<dynamic> data) async{
      print(e);
    }
    return i;
+}
+
+Future updatePassport(String urlPath, String petId) async{
+  int i = -100;
+  try{
+    await SupabaseCredentials.supabaseClient.from('pets').update({'passport': urlPath}).eq('id', petId);
+    i = 200;
+  }catch (e){
+    print(e);
+  }
+  return i;
 }
 
 Future<int> sendMateRequest(String sid, String rid, String spid, String rpid) async{

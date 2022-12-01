@@ -3,7 +3,8 @@ import 'package:flutter_app_test1/breedAdopt_main.dart';
 import 'package:flutter_app_test1/explore_main.dart';
 import 'package:flutter_app_test1/home_main.dart';
 import 'package:flutter_app_test1/pages/explore.dart';
-import 'package:flutter_app_test1/pages/reminder.dart';
+import 'package:flutter_app_test1/pages/loadingPage.dart';
+import 'package:flutter_app_test1/pages/verifyAccount.dart';
 import 'package:flutter_app_test1/pages/settings.dart';
 import 'package:flutter_app_test1/pages/home.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
@@ -30,10 +31,9 @@ class mainApp extends StatefulWidget {
 
 class _mainAppState extends State<mainApp> {
 
-  var _selectedIndex = 2;
+  var _selectedIndex = 1;
   List<Widget> _pages = [
     home_root(),
-    ReminderPage(),
     BA_root(),
     explore_root(),
     SettingsMain()
@@ -76,11 +76,11 @@ class _mainAppState extends State<mainApp> {
         },
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.notes, color: _selectedIndex == 0 ? Colors.black : Colors.grey.shade500), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.timer, color: _selectedIndex == 1 ? Colors.black : Colors.grey.shade500), label: 'Health'),
-          BottomNavigationBarItem(icon: Icon(Icons.pets,  color: _selectedIndex == 2 ? Colors.black : Colors.grey.shade500), label: 'Breed & Adopt'),
-          BottomNavigationBarItem(icon: ImageIcon(AssetImage("assets/mapsIcon.png"), size: 25, color: _selectedIndex == 3 ? Colors.black : Colors.grey.shade500), label: 'Explore'),
+          // BottomNavigationBarItem(icon: Icon(Icons.timer, color: _selectedIndex == 1 ? Colors.black : Colors.grey.shade500), label: 'Health'),
+          BottomNavigationBarItem(icon: Icon(Icons.pets,  color: _selectedIndex == 1 ? Colors.black : Colors.grey.shade500), label: 'Breed & Adopt'),
+          BottomNavigationBarItem(icon: ImageIcon(AssetImage("assets/mapsIcon.png"), size: 25, color: _selectedIndex == 2 ? Colors.black : Colors.grey.shade500), label: 'Explore'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.settings, color: _selectedIndex == 4 ? Colors.black : Colors.grey.shade500), label: 'Settings'),
+              icon: Icon(Icons.settings, color: _selectedIndex == 3 ? Colors.black : Colors.grey.shade500), label: 'Settings'),
         ],
       ),
     );

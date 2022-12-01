@@ -46,7 +46,6 @@ class _LoginPageState extends State<LoginPage> {
     final width = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      resizeToAvoidBottomInset: false,
       body: SingleChildScrollView(
         child: Column(
           children: <Widget>[

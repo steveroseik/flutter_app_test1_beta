@@ -146,6 +146,15 @@ class _PetDocumentUploadState extends State<PetDocumentUpload> with TickerProvid
                               if (urlPath == ""){
                                 urlPath = await uploadAndStorePDF(pdfDocument);
                               }else{
+                                if (widget.arguments.length == 1){
+                                  final PetPod petPassed = widget.arguments[0];
+                                  final resp = await updatePassport(urlPath, petPassed.pet.id);
+                                  if (resp == 200){
+                                    BA_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
+                                  }else{
+                                    showSnackbar(context, "Failed to connect with database, Check your internet connection.");
+                                  }
+                                }
                                 int value = await addPet(widget.arguments[0],widget.arguments[1],widget.arguments[2],widget.arguments[3],
                                     widget.arguments[4],widget.arguments[5],widget.arguments[6], urlPath);
                                 if (value == 200){
@@ -168,10 +177,35 @@ class _PetDocumentUploadState extends State<PetDocumentUpload> with TickerProvid
                       ),
                     )
                   ],
-                ))
+                )),
           ],
         ),
       ),
+        floatingActionButton: widget.arguments.length == 1 ? Container() : InkWell(
+          onTap:() async{
+            setState(() {
+              tapped = true;
+            });
+            int value = await addPet(widget.arguments[0],widget.arguments[1],widget.arguments[2],widget.arguments[3],
+                widget.arguments[4],widget.arguments[5],widget.arguments[6], "");
+            if (value == 200){
+              BA_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
+            }else{
+              showSnackbar(context, "Failed to connect with database, Check your internet connection.");
+            }
+            setState(() {
+              tapped = true;
+            });
+          },
+          child: Container(
+              padding: EdgeInsets.all(20),
+              child: Text('Skip',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.blueGrey
+              ),)),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.startDocked
     );
   }
 }
