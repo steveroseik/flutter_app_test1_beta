@@ -30,7 +30,6 @@ class SelectPets_MeetsState extends State<SelectPets_Meets> {
   final uid = FirebaseAuth.instance.currentUser!.uid; // user id
   var isLoading = true;
   List<int> fitsCrit=[];
-  var str ='';
   var attendees = 0;
   Future from_meet() async {
     try {
@@ -52,10 +51,9 @@ class SelectPets_MeetsState extends State<SelectPets_Meets> {
   }
 
   Future add_to_meets(petIDs) async {
-    print('da5alt');
 
     attendees++;
-    try {    print('da5alt gowa');
+    try {
 
     await SupabaseCredentials.supabaseClient.from('meets').update({
         'no_of_attending': attendees,
@@ -71,34 +69,30 @@ class SelectPets_MeetsState extends State<SelectPets_Meets> {
   }
 
   int validate_pets(var x){
+    if(widget.criteria[0]=='All breeds welcome') return 2;
   for (int i = 0;i < widget.criteria.length; i++){
     var z = widget.criteria[i];
-    for (int j = 0; j < z.length; j++) {
-      if (z[j] != ',') {
-        str = str + z[j];
-      }
-      if(z[j]==','){
-        if(x == str){
-          return 1;
-        }
-      str ='';
-      }
-
-    };
-  }
+      if(z==x){
+         return 1;
+       }
+    }
   return 0;
 }
   initUser() async {
     Podsinitial = await fetchPets(-1);
     for (int i = 0; i < Podsinitial.length;i++){
       var x = Podsinitial[i].pet.breed;
-      fitsCrit.add(0);
       var y = validate_pets(x);
       if(y == 1){ fitsCrit.add(1);break;}
+
+      if(y==2){fitsCrit.add(2);break;}
     }
     for (int i = 0; i < fitsCrit.length; i++){
       if(fitsCrit[i]==1){
         petPods.add(Podsinitial[i]);
+      }
+      if(fitsCrit[i]==2){
+        petPods = Podsinitial;
       }
     }
     setState(() {
@@ -184,17 +178,15 @@ class SelectPets_MeetsState extends State<SelectPets_Meets> {
                 }
 
                 if(petPods.length > 0) {
-                  if (!petIDs.isEmpty) {
-                    add_to_meets(petIDs);
-                  }
-                  else {
-                    showSnackbar(context, 'Please select at least one pet');
-                  }
+                  petIDs.isEmpty? showSnackbar(context, 'Please select at least one pet') :
+                  add_to_meets(petIDs);
+                  if(!petIDs.isEmpty){
+                  explore_key.currentState
+                      ?.pushNamed('/');
+                  setState(() {});}
                 }
 
-    explore_key.currentState
-                    ?.pushNamed('/');
-                setState(() {});
+
 
               },
             ),
