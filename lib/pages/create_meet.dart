@@ -19,20 +19,24 @@ import '../JsonObj.dart';
 import '../configuration.dart';
 
 class CreateMeet extends StatefulWidget {
-
   const CreateMeet({Key? key}) : super(key: key);
+
   @override
   State<CreateMeet> createState() => _CreateMeetState();
 }
-class Size{
+
+class Size {
   String size;
+
   Size({
     required this.size,
   });
+
   Map toJson() => {
     '&': size,
   };
 }
+
 class _CreateMeetState extends State<CreateMeet> {
   DateTime dateTime = DateTime.now();
   final markers = List<Marker>.empty(growable: true);
@@ -40,10 +44,10 @@ class _CreateMeetState extends State<CreateMeet> {
   final uid = FirebaseAuth.instance.currentUser!.uid; // user id
   TimeOfDay _timeOfDay = TimeOfDay(hour: 12, minute: 00);
   Completer<GoogleMapController> _controller = Completer();
-  double lat = 0,
-      long = 0;
-  String name = '',
-      description = '';
+  double lat = 0, long = 0;
+  TextEditingController meetName = TextEditingController();
+  TextEditingController descName = TextEditingController();
+
   var isLoading = true;
   bool breedsLoading = true;
   var size = 0;
@@ -58,20 +62,18 @@ class _CreateMeetState extends State<CreateMeet> {
     Size(size: "Large"),
   ];
 
-  late var _items = breeds
-      .map((pet) => MultiSelectItem<Breed>(pet, pet.name))
-      .toList();
+  late var _items =
+  breeds.map((pet) => MultiSelectItem<Breed>(pet, pet.name)).toList();
   final size_items = sizes
       .map((petsize) => MultiSelectItem<Size>(petsize, petsize.size))
       .toList();
+
   initUser() async {
     petPods = await fetchPets(-1);
 
-
     breeds = await getBreedList(0);
-    _items = breeds
-        .map((pet) => MultiSelectItem<Breed>(pet, pet.name))
-        .toList();
+    _items =
+        breeds.map((pet) => MultiSelectItem<Breed>(pet, pet.name)).toList();
     setState(() {
       isLoading = false;
     });
@@ -79,61 +81,63 @@ class _CreateMeetState extends State<CreateMeet> {
       breedsLoading = false;
     });
 
-
     final location = await getUserCurrentLocation();
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
         zoom: 15, target: LatLng(location.latitude, location.longitude))));
     setState(() {});
   }
+
   Future getsizes(sizelist) async {
-    final  breednames = List<String>.empty(growable: true);
-    if(sizelist.contains('Medium')) print('yes');
+    final breednames = List<String>.empty(growable: true);
+    if (sizelist.contains('Medium')) print('yes');
     var x = sizelist[0];
-    label: try {
-      if(sizelist.length==3) {
+    label:
+    try {
+      if (sizelist.length == 3) {
         breednames.add('All breeds welcome');
         break label;
       }
-      if(sizelist.contains('Small')){
+      if (sizelist.contains('Small')) {
         final data = await SupabaseCredentials.supabaseClient
             .from('breed')
-            .select('*').lte('height', 34) as List<dynamic>;
+            .select('*')
+            .lte('height', 34) as List<dynamic>;
         for (var entry in data) {
           final map = Map.from(entry);
           breednames.add(map['name']);
         }
       }
-      if(sizelist.contains('Medium')){
+      if (sizelist.contains('Medium')) {
         final data = await SupabaseCredentials.supabaseClient
             .from('breed')
-            .select('*').lte('height', 49).gte('height', 35) as List<dynamic>;
+            .select('*')
+            .lte('height', 49)
+            .gte('height', 35) as List<dynamic>;
         for (var entry in data) {
           final map = Map.from(entry);
           breednames.add(map['name']);
         }
       }
 
-      if(sizelist.contains('Large')) {
+      if (sizelist.contains('Large')) {
         final data = await SupabaseCredentials.supabaseClient
             .from('breed')
-            .select('*').gte('height', 50) as List<dynamic>;
+            .select('*')
+            .gte('height', 50) as List<dynamic>;
         for (var entry in data) {
           final map = Map.from(entry);
           breednames.add(map['name']);
         }
       }
-    }
-    on PostgrestException catch (error) {
+    } on PostgrestException catch (error) {
       print(error.message);
-    }
-    catch (e) {
-    }
+    } catch (e) {}
     return breednames;
   }
 
-
-  Future insert_breeds(double longitude, double latitude, String title, String descr, List<String> petIDs) async {
+  Future insert_breeds(double longitude, double latitude, String title,
+      String descr, List<String> petIDs) async {
     String jsonString = jsonEncode(tempSelectedBreed);
     // String jsonSize = jsonEncode(tempSelectedSizes);
     List<String> attending_pets = [];
@@ -147,20 +151,19 @@ class _CreateMeetState extends State<CreateMeet> {
         'date': timestamp,
         'host_pets': petIDs,
         'host_id': uid,
-        'no_of_attending':0,
+        'no_of_attending': 0,
         'breed_list': jsonString,
         'size': size,
         'attending_pets': attending_pets
       });
-    }
-
-    catch (e) {
+    } catch (e) {
       print(e);
     }
   }
 
-  Future insert_sizes(double longitude, double latitude, String title, String descr, List<String> petIDs, breednames) async {
-    if(breednames[0]!='All breeds welcome') size=1;
+  Future insert_sizes(double longitude, double latitude, String title,
+      String descr, List<String> petIDs, breednames) async {
+    if (breednames[0] != 'All breeds welcome') size = 1;
     try {
       final timestamp = dateTime.toIso8601String();
       await SupabaseCredentials.supabaseClient.from('meets').insert({
@@ -171,13 +174,11 @@ class _CreateMeetState extends State<CreateMeet> {
         'date': timestamp,
         'host_pets': petIDs,
         'host_id': uid,
-        'no_of_attending':0,
-        'size':size,
+        'no_of_attending': 0,
+        'size': size,
         'breed_list': breednames
       });
-    }
-
-    catch (e) {
+    } catch (e) {
       print(e);
     }
   }
@@ -188,7 +189,7 @@ class _CreateMeetState extends State<CreateMeet> {
     initMarkers();
   }
 
-  initMarkers() async{
+  initMarkers() async {
     // BitmapDescriptor.fromAssetImage(ImageConfiguration(size: Size(5, 5)),
     //     'assets/icon_male.png')
     //     .then((d) {
@@ -200,95 +201,93 @@ class _CreateMeetState extends State<CreateMeet> {
     markers.addAll(data);
     setState(() {});
   }
+
   Future<Position> getUserCurrentLocation() async {
-    await Geolocator.requestPermission().then((value) {}).onError((error,
-        stackTrace) async {
+    await Geolocator.requestPermission()
+        .then((value) {})
+        .onError((error, stackTrace) async {
       await Geolocator.requestPermission();
       print("ERROR" + error.toString());
     });
     return await Geolocator.getCurrentPosition();
   }
 
-  Future getdata() async{
+  Future getdata() async {
     try {
       final data = await SupabaseCredentials.supabaseClient
           .from('locations')
           .select('*') as List<dynamic>;
       return data;
-    }
-    on PostgrestException catch (error) {
+    } on PostgrestException catch (error) {
       print(error.message);
-    }
-    catch (e){
+    } catch (e) {
       print(e);
     }
   }
+
   Future initializeMarkers() async {
     int ret = -100;
-    final  markers = List<Marker>.empty(growable: true);
+    final markers = List<Marker>.empty(growable: true);
     try {
       final data = await SupabaseCredentials.supabaseClient
           .from('locations')
           .select('*') as List<dynamic>;
 
-      for (var entry in data){
+      for (var entry in data) {
         final map = Map.from(entry);
         var x = map['longitude'];
-        var y =map['latitude'];
+        var y = map['latitude'];
         var id = map['id'];
-        markers.add(
-            Marker(
-                markerId: MarkerId(id.toString()),
-                position: LatLng(y, x),
-                onTap: () {
-
-                }
-            ));
+        markers.add(Marker(
+            markerId: MarkerId(id.toString()),
+            position: LatLng(y, x),
+            onTap: () {}));
       }
       return markers;
-    }
-    on PostgrestException catch (error) {
+    } on PostgrestException catch (error) {
       print(error.message);
-    }
-    catch (e){
+    } catch (e) {
       print(e);
     }
     return List<Marker>.empty();
   }
+
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery
-        .of(context)
-        .size
-        .width;
-    final height = MediaQuery
-        .of(context)
-        .size
-        .height;
+    final width = MediaQuery.of(context).size.width;
+    final height = MediaQuery.of(context).size.height;
     return Scaffold(
         appBar: init_appBar(rootNav_key), // CHANGE KEY!!!
-        body: SingleChildScrollView(child: Column(
-            children: [
+        body: SingleChildScrollView(
+            child: Column(children: <Widget>[
               Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
+                padding: EdgeInsets.all(15),
+                child: Column(children: <Widget>[
+                    Text("Create Meet",
+                    style: TextStyle(
+                        fontSize: 30,
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold)),
+                SizedBox(
+                  height: 15,
+                ),
+                Align(
+                  child: Text(
+                      "A meet is an event where you get to meet our dog owner community!",
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              Text("Create Meet", style: TextStyle(fontSize: 30,
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold)),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
-              ),
-              Text(
-                  "A meet is an event where you get to meet our dog owner community!",
-                  style: TextStyle(fontSize: 12, color: Colors.grey)),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
+              SizedBox(
+                height: 15,
               ),
               Container(
                   height: height / 6,
                   width: width * 0.9,
                   padding: EdgeInsets.all(10),
-                  child: isLoading ? ShimmerOwnerPetCard() : ListView.builder(
+                  child: isLoading
+                      ? ShimmerOwnerPetCard()
+                      : ListView.builder(
                       scrollDirection: Axis.horizontal,
                       shrinkWrap: true,
                       itemCount: petPods.length,
@@ -298,167 +297,229 @@ class _CreateMeetState extends State<CreateMeet> {
                             setState(() {
                               if (petPods[index].isSelected == true) {
                                 petPods[index].isSelected = false;
-                              }
-                              else
+                              } else
                                 petPods[index].isSelected = true;
                             });
                           },
-                          child: CustomPet(
-                              pod: petPods[index]),
+                          child: CustomPet(pod: petPods[index]),
                         );
-                      })
+                      })),
+              SizedBox(
+                height: 15,
               ),
               Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
-              ),
-              Text("What would you like to call your Meet?",
-                  style: TextStyle(fontSize: 20, color: Colors.black)),
-              SizedBox(
-                child: TextField(
-                  onChanged: (value) {
-                    name = value;
-                    setState(() {});
-                  },
+                padding: const EdgeInsets.only(left: 5.0, right: 5.0),
+                child: TextFormField(
+                  controller: meetName,
                   decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Meet Name',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: const BorderSide(
+                            color: Colors.blueGrey, width: 2)),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.blueGrey),
+                        borderRadius: BorderRadius.circular(20)),
+                    filled: true,
+                    fillColor: CupertinoColors.extraLightBackgroundGray,
+                    labelStyle: const TextStyle(color: Colors.grey),
+                    labelText: 'Name your meet',
+                  ),
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty) {
+                      return null;
+                    } else {
+                      return 'Meet name empty';
+                    }
+                  },
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                ),
+              ),
+              Padding(
+                padding:
+                const EdgeInsets.only(bottom: 10, left: 5, top: 20.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Breeds allowed (optional)",
+                      style: TextStyle(
+                          fontSize: 17,
+                          color: Colors.black,
+                          fontFamily: "poppins")),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 5.0, right: 5.0),
+                child: breedsLoading
+                    ? Container()
+                    : Container(
+                  child: Column(
+                    children: <Widget>[
+                      MultiSelectBottomSheetField<Breed?>(
+                        initialChildSize: 0.7,
+                        maxChildSize: 0.95,
+                        listType: MultiSelectListType.CHIP,
+                        checkColor: Colors.grey,
+                        selectedColor: Colors.grey,
+                        selectedItemsTextStyle: TextStyle(
+                          fontSize: 25,
+                          color: Colors.white,
+                        ),
+                        unselectedColor: Colors.greenAccent[200],
+                        buttonIcon: Icon(
+                          Icons.add,
+                          color: Colors.grey,
+                        ),
+                        searchHintStyle: TextStyle(
+                          fontSize: 20,
+                        ),
+                        searchable: true,
+                        buttonText: Text(
+                          "Dog Breeds",
+                          //style: TextStyle(color: Colors.grey)
+                        ),
+                        title: Text(
+                          "Breeds",
+                          style: TextStyle(
+                            fontSize: 25,
+                            color: Colors.pink,
+                          ),
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey.withOpacity(0.1),
+                          borderRadius:
+                          BorderRadius.all(Radius.circular(15)),
+                          border: Border.all(
+                            color: Colors.blueGrey,
+                            width: 2,
+                          ),
+                        ),
+                        items: _items,
+                        onConfirm: (values) {
+                          _selectedBreeds = values;
+                          tempSelectedBreed = _selectedBreeds;
+                        },
+                        chipDisplay: MultiSelectChipDisplay(
+                          onTap: (value) {
+                            setState(() {
+                              _selectedBreeds.remove(value);
+                            });
+                          },
+                        ),
+                      ),
+                      _selectedBreeds == null || _selectedBreeds.isEmpty
+                          ? Container(
+                          padding: EdgeInsets.all(10),
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "None selected",
+                            style: TextStyle(color: Colors.grey),
+                          ))
+                          : Container(),
+                    ],
                   ),
                 ),
-
               ),
               Padding(
-                padding: const EdgeInsets.only(bottom:10,top: 20.0),
-
-                child:  Text("Breeds allowed (optional)",
-                    style: TextStyle(fontSize: 20, color: Colors.black)),
-
-
-              ),
-
-              breedsLoading? Container() : Container(
-                child: Column(
-                  children: <Widget>[
-                    MultiSelectBottomSheetField<Breed?>(
-                      initialChildSize: 0.7,
-                      maxChildSize: 0.95,
-                      listType: MultiSelectListType.CHIP,
-                      checkColor: Colors.grey,
-                      selectedColor: Colors.grey,
-                      selectedItemsTextStyle: TextStyle(
-                        fontSize: 25,
-                        color: Colors.white,
-                      ),
-                      unselectedColor: Colors.greenAccent[200],
-                      buttonIcon: Icon(
-                        Icons.add,
-                        color: Colors.grey,
-                      ),
-                      searchHintStyle: TextStyle(
-                        fontSize: 20,
-                      ),
-                      searchable: true,
-                      buttonText: Text("Dog Breeds"),
-                      title: Text(
-                        "Breeds",
-                        style: TextStyle(
-                          fontSize: 25,
-                          color: Colors.pink,
-                        ),
-                      ),                      items: _items,
-                      onConfirm: (values) {
-                        _selectedBreeds=values;
-                        tempSelectedBreed=_selectedBreeds;
-                      },
-                      chipDisplay: MultiSelectChipDisplay(
-                        onTap: (value) {
-                          setState(() {
-                            _selectedBreeds.remove(value);
-                          });
-                        },
-                      ),
-                    ),
-                    _selectedBreeds == null || _selectedBreeds.isEmpty
-                        ? Container(
-                        padding: EdgeInsets.all(10),
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "None selected",
-                          style: TextStyle(color: Colors.black54),
-                        ))
-                        : Container(),
-                  ],
+                padding:
+                const EdgeInsets.only(bottom: 10, left: 5, top: 10.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Dog sizes allowed (optional)",
+                      style: TextStyle(
+                          fontSize: 17,
+                          color: Colors.black,
+                          fontFamily: "poppins")),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom:10,top: 20.0),
-
-                child:  Text("Dog sizes allowed (optional)",
-                    style: TextStyle(fontSize: 20, color: Colors.black)),
               ),
               Container(
-                child: Column(
-                  children: <Widget>[
-                    MultiSelectBottomSheetField<Size?>(
-                      initialChildSize: 0.7,
-                      maxChildSize: 0.95,
-                      listType: MultiSelectListType.CHIP,
-                      checkColor: Colors.grey,
-                      selectedColor: Colors.grey,
-                      selectedItemsTextStyle: TextStyle(
-                        fontSize: 25,
-                        color: Colors.white,
-                      ),
-                      unselectedColor: Colors.greenAccent[200],
-                      buttonIcon: Icon(
-                        Icons.add,
-                        color: Colors.grey,
-                      ),
-                      searchHintStyle: TextStyle(
-                        fontSize: 20,
-                      ),
-                      searchable: true,
-                      buttonText: Text("Dog Sizes"),
-                      title: Text(
-                        "Sizes",
-                        style: TextStyle(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 5.0, right: 5.0),
+                  child: Column(
+                    children: <Widget>[
+                      MultiSelectBottomSheetField<Size?>(
+                        initialChildSize: 0.7,
+                        maxChildSize: 0.95,
+                        listType: MultiSelectListType.CHIP,
+                        checkColor: Colors.grey,
+                        selectedColor: Colors.grey,
+                        selectedItemsTextStyle: TextStyle(
                           fontSize: 25,
-                          color: Colors.pink,
+                          color: Colors.white,
+                        ),
+                        unselectedColor: Colors.greenAccent[200],
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey.withOpacity(0.1),
+                          borderRadius: BorderRadius.all(Radius.circular(15)),
+                          border: Border.all(
+                            color: Colors.blueGrey,
+                            width: 2,
+                          ),
+                        ),
+                        buttonIcon: Icon(
+                          Icons.add,
+                          color: Colors.grey,
+                        ),
+                        searchHintStyle: TextStyle(
+                          fontSize: 20,
+                        ),
+                        searchable: true,
+                        buttonText: Text(
+                          "Dog Sizes",
+                          //style: TextStyle(color: Colors.grey)
+                        ),
+                        title: Text(
+                          "Sizes",
+                          style: TextStyle(
+                            fontSize: 25,
+                            color: Colors.pink,
+                          ),
+                        ),
+                        items: size_items,
+                        onConfirm: (values) {
+                          _selectedSizes = values;
+                          tempSelectedSizes = _selectedSizes;
+                        },
+                        chipDisplay: MultiSelectChipDisplay(
+                          onTap: (value) {
+                            setState(() {
+                              _selectedSizes.remove(value);
+                            });
+                          },
                         ),
                       ),
-                      items: size_items,
-                      onConfirm: (values) {
-                        _selectedSizes=values;
-                        tempSelectedSizes=_selectedSizes;
-
-                      },
-                      chipDisplay: MultiSelectChipDisplay(
-                        onTap: (value) {
-                          setState(() {
-                            _selectedSizes.remove(value);
-                          });
-                        },
-                      ),
-                    ),
-                    _selectedSizes == null || _selectedSizes.isEmpty
-                        ? Container(
-                        padding: EdgeInsets.all(10),
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "None selected",
-                          style: TextStyle(color: Colors.black54),
-                        ))
-                        : Container(),
-                  ],
+                      _selectedSizes == null || _selectedSizes.isEmpty
+                          ? Container(
+                          padding: EdgeInsets.all(10),
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "None selected",
+                            style: TextStyle(color: Colors.black54),
+                          ))
+                          : Container(),
+                    ],
+                  ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
-              ),
-              Text("Where would you like to Meet? Tap the exact location",
-                  style: TextStyle(fontSize: 20, color: Colors.black)),
-              Column(
-                  children:[
-                    IconButton(
+              Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        bottom: 10, left: 15, top: 20.0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text("Meet location",
+                          style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.black,
+                              fontFamily: "poppins")),
+                    ),
+                  ),
+                  Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        bottom: 8, left: 5, top: 20.0, right: 15),
+                    child: IconButton(
                       onPressed: () async {
                         final alldata = await getdata();
 
@@ -466,104 +527,108 @@ class _CreateMeetState extends State<CreateMeet> {
                         GeoLocation selectedLocation = await showSearch(
                             context: context,
                             // delegate to customize the search bar
-                            delegate: CustomSearchDelegate(alldata: alldata)
+                            delegate: CustomSearchDelegate(alldata: alldata));
 
-                        );
-
-                        final GoogleMapController controller = await _controller.future;
-                        controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
-                            zoom: 15, target: LatLng(selectedLocation.Lat(), selectedLocation.Long()))));
-
+                        final GoogleMapController controller =
+                        await _controller.future;
+                        controller.animateCamera(
+                            CameraUpdate.newCameraPosition(CameraPosition(
+                                zoom: 15,
+                                target: LatLng(selectedLocation.Lat(),
+                                    selectedLocation.Long()))));
                       },
-                      icon: const Icon(Icons.search, color:Colors.black),
+                      icon: const Icon(Icons.search, color: Colors.black),
                     ),
-                    Center(
-
-                      child: Container(
-                        height: 150,
-                        width: MediaQuery
-                            .of(context)
-                            .size
-                            .width - 100,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(30),
-                          ),
-                          child: GoogleMap(
-                              myLocationButtonEnabled: true,
-                              myLocationEnabled: true,
-                              initialCameraPosition: CameraPosition(
-                                  target: LatLng(31.233334, 30.033333),
-                                  zoom: 13.4746),
-                              markers: Set<Marker>.of(markers),
-
-                              onMapCreated: (GoogleMapController controller) {
-                                _controller.complete(controller);
-                              },
-                              onTap: (LatLng latLng) {
-                                lat = latLng.latitude;
-                                long = latLng.longitude;
-                              }
-                          ),
-                        ),
-                      ),
-                    ),
-                  ]),
-
-// option to add in coordinates or select location
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
-              ),
-              Text("When do you want to Meet?",
-                  style: TextStyle(fontSize: 20, color: Colors.black)),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  ElevatedButton(
-                    child: Text('Pick a date'),
-                    onPressed: () {
-                      showDatePicker();
-                    },
-                  ),
-                  //    Text(
-                  //      _timeOfDay.format(context).toString(),
-                  //      style: TextStyle(fontSize: 50),
-                  //    ),
-
+                  )
                 ],
-
               ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
-              ),
-
-              Text("Tell us more about your Meet",
-                  style: TextStyle(fontSize: 20, color: Colors.black)),
-              SizedBox(
-                child: TextField(
-                  onChanged: (value) {
-                    description = value;
-                    setState(() {});
-                  },
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Meet Description',
+              Column(children: [
+                Center(
+                  child: Container(
+                    height: 150,
+                    width: MediaQuery.of(context).size.width - 100,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.all(
+                        Radius.circular(30),
+                      ),
+                      child: GoogleMap(
+                          myLocationButtonEnabled: true,
+                          myLocationEnabled: true,
+                          initialCameraPosition: CameraPosition(
+                              target: LatLng(31.233334, 30.033333),
+                              zoom: 13.4746),
+                          markers: Set<Marker>.of(markers),
+                          onMapCreated: (GoogleMapController controller) {
+                            _controller.complete(controller);
+                          },
+                          onTap: (LatLng latLng) {
+                            lat = latLng.latitude;
+                            long = latLng.longitude;
+                          }),
+                    ),
                   ),
                 ),
-
+              ]),
+              Padding(
+                padding: const EdgeInsets.only(
+                    bottom: 20, left: 5, top: 20.0, right: 5),
+                child: Row(
+                  children: [
+                    Text("When is your Meet?",
+                        style: TextStyle(
+                            fontSize: 17,
+                            color: Colors.black,
+                            fontFamily: "poppins")),
+                    Spacer(),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.blueGrey,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.0))),
+                      child: Text('Pick a date'),
+                      onPressed: () {
+                        showDatePicker();
+                      },
+                    ),
+                  ],
+                ),
               ),
               Padding(
-                padding: const EdgeInsets.all(30.0),
+                padding: const EdgeInsets.only(left: 5.0, right: 5.0),
+                child: TextFormField(
+                  controller: descName,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: const BorderSide(
+                            color: Colors.blueGrey, width: 2)),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.blueGrey),
+                        borderRadius: BorderRadius.circular(20)),
+                    filled: true,
+                    fillColor: CupertinoColors.extraLightBackgroundGray,
+                    labelStyle: const TextStyle(color: Colors.grey),
+                    labelText: 'Tell us more about your Meet',
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 20.0),
                 child: new ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                  ),
-
-                  child: new Text('Create Meet', style: TextStyle(
-                      color: Colors.black),
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.blueGrey[600],
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0))),
+                  child: new Text(
+                    'Create Meet',
+                    style: TextStyle(color: Colors.white, fontSize: 20),
                   ),
                   onPressed: () {
                     List<String> petIDs = <String>[];
@@ -576,60 +641,60 @@ class _CreateMeetState extends State<CreateMeet> {
                     validate(petIDs);
                   },
                 ),
-
               )
-            ])
-        ));
+            ]))
+        ])));
   }
 
   validate(List<String> petIDs) async {
     String tempstring = jsonEncode(tempSelectedSizes);
     String stringsize = '';
-    for (int i =0; i< tempstring.length;i++){
-      if(tempstring[i]!='"' && tempstring[i]!="["&& tempstring[i]!="}"&& tempstring[i]!="&"&& tempstring[i]!=":"&& tempstring[i]!="]"&& tempstring[i]!="{"){
+    for (int i = 0; i < tempstring.length; i++) {
+      if (tempstring[i] != '"' &&
+          tempstring[i] != "[" &&
+          tempstring[i] != "}" &&
+          tempstring[i] != "&" &&
+          tempstring[i] != ":" &&
+          tempstring[i] != "]" &&
+          tempstring[i] != "{") {
         stringsize = stringsize + tempstring[i];
       }
     }
     List<String> listsize = stringsize.split(',');
     final breednames = await getsizes(listsize);
 
-    if (name != '') {
-      if (description != '') {
+    if (meetName.text != '') {
+      if (descName.text != '') {
+        if (!petIDs.isEmpty) {
 
-        // if (!petIDs.isEmpty) {
-
-        if (dateTime != DateTime.now()) {
-          if (long != 0 || lat != 0) {
-            if(tempSelectedBreed.length>0)
-              insert_breeds(long, lat, name, description, petIDs);
-            else
-              insert_sizes(long, lat, name, description, petIDs, breednames);
-            explore_key.currentState
-                ?.pushNamed('/');
-            setState(() {});
-          }
-          else {
-            showSnackbar(context, 'Please tap the Meet location on the map');
+          if (dateTime != DateTime.now()) {
+            if (long != 0 || lat != 0) {
+              if (tempSelectedBreed.length > 0)
+                insert_breeds(long, lat, meetName.text, descName.text, petIDs);
+              else
+                insert_sizes(long, lat, meetName.text, descName.text,
+                    petIDs, breednames);
+              explore_key.currentState?.pushNamed('/');
+              setState(() {});
+              showNotification(context, 'You have created a Meet!');
+            } else {
+              showSnackbar(context, 'Please tap the Meet location on the map');
+            }
+          } else {
+            showSnackbar(context, "Meet date cannot be today's date");
           }
         }
         else {
-          showSnackbar(context, "Meet date cannot be today's date");
+          showSnackbar(context, 'Please select at least one pet');
         }
-        // }
-        // else {
-        // showSnackbar(context, 'Please select at least one pet');
-        //}
 
-      }
-      else {
+      } else {
         showSnackbar(context, 'Please add a description to your Meet');
       }
-    }
-    else {
+    } else {
       showSnackbar(context, 'Please name your Meet');
     }
   }
-
 
   //DatePicker Widget
   void showDatePicker() {
@@ -637,11 +702,7 @@ class _CreateMeetState extends State<CreateMeet> {
         context: context,
         builder: (BuildContext builder) {
           return Container(
-            height: MediaQuery
-                .of(context)
-                .copyWith()
-                .size
-                .height * 0.25,
+            height: MediaQuery.of(context).copyWith().size.height * 0.25,
             color: Colors.white,
             child: Column(
               children: [
@@ -662,37 +723,36 @@ class _CreateMeetState extends State<CreateMeet> {
           );
         });
   }
-
 }
+
 class CustomSearchDelegate extends SearchDelegate {
   CustomSearchDelegate({
     required this.alldata,
   });
 
   final alldata;
-  final  lat = List<double>.empty(growable: true);
-  final  long = List<double>.empty(growable: true);
+  final lat = List<double>.empty(growable: true);
+  final long = List<double>.empty(growable: true);
   double longit = 0.0, latit = 0.0;
 
   Set<Marker> markersList = {};
 
-  final  placenames = List<String>.empty(growable: true);
-  initState(){
-    initUser();
+  final placenames = List<String>.empty(growable: true);
 
+  initState() {
+    initUser();
   }
 
-  initUser()async{
+  initUser() async {
     lat.clear();
     long.clear();
     placenames.clear();
     final data = await getLocations();
     placenames.addAll(data);
-
   }
 
   Future getLocations() async {
-    final  placenames = List<String>.empty(growable: true);
+    final placenames = List<String>.empty(growable: true);
     try {
       final data = await SupabaseCredentials.supabaseClient
           .from('locations')
@@ -703,11 +763,9 @@ class CustomSearchDelegate extends SearchDelegate {
         var title = map['title'];
         placenames.add(title);
       }
-    }
-    on PostgrestException catch (error) {
+    } on PostgrestException catch (error) {
       print(error.message);
-    }
-    catch (e) {
+    } catch (e) {
       print(e);
     }
     return placenames;
@@ -777,14 +835,14 @@ class CustomSearchDelegate extends SearchDelegate {
             itemBuilder: (context, index) {
               var result = matchQuery[index];
               return ListTile(
-                onTap: () async{
+                onTap: () async {
                   //Here where I would like to go to new screen
                   int add = 0;
                   int addlong = 0;
-                  var temp='';
+                  var temp = '';
                   var z;
-                  for(int i = 0; i < placenames.length; i++){
-                    if(placenames[i]==result){
+                  for (int i = 0; i < placenames.length; i++) {
+                    if (placenames[i] == result) {
                       var plc = placenames[i];
                       print('res: $result');
                       print('places: $placenames');
@@ -793,7 +851,7 @@ class CustomSearchDelegate extends SearchDelegate {
                       break;
                     }
                   }
-                  for(var entry in alldata){
+                  for (var entry in alldata) {
                     final map = Map.from(entry);
                     lat.add(map['latitude']);
                     long.add(map['longitude']);
@@ -803,17 +861,11 @@ class CustomSearchDelegate extends SearchDelegate {
 
                   setState(() {});
                   close(context, GeoLocation(latit, longit));
-
-
-                }
-
-
-                ,title: Text(result),
+                },
+                title: Text(result),
               );
             },
-          );});
-
+          );
+        });
   }
-
 }
-
