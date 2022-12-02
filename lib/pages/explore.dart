@@ -39,6 +39,11 @@ class _MapsPageState extends State<MapsPage> {
   Icon customIcon = const Icon(Icons.search);
   Widget customSearchBar = const Text('Search');
   final uid = FirebaseAuth.instance.currentUser!.uid;
+  bool pressMeets = false;
+  bool pressVets = false;
+  bool pressParks = false;
+  bool pressStores = false;
+
 
   initMarkers() async{
     // BitmapDescriptor.fromAssetImage(ImageConfiguration(size: Size(5, 5)),
@@ -164,37 +169,41 @@ class _MapsPageState extends State<MapsPage> {
               children: <Widget>[
                 new ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: pressVets ? Colors.red : Colors.white,
                   ),
                   child: new Text('Vets',style: TextStyle(
                       color: Colors.black),
                   ),
-                  onPressed: ()  =>  shortcutMarkers('Veterinarian'),
+                  onPressed: ()  => {setState(() => pressVets = true),setState(() =>pressMeets = false),setState(() =>pressStores = false),setState(() =>pressParks = false),
+                    shortcutMarkers('Veterinarian')},
                 ),
                 new ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: pressParks ? Colors.red : Colors.white,
                   ),child: new Text('Parks',style: TextStyle(
                     color: Colors.black),
                 ),
-                  onPressed: ()  =>  shortcutMarkers('Dog park'),
+                  onPressed: ()  => {                     setState(() => pressParks = true),setState(() =>pressVets = false),setState(() =>pressStores = false),setState(() =>pressMeets = false),
+                    shortcutMarkers('Dog park')},
                 ),
                 new ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: pressStores ? Colors.red : Colors.white,
                   ),child: new Text('Pet Stores',style: TextStyle(
                     color: Colors.black),
                 ),
-                  onPressed: ()  =>  shortcutMarkers('Pet store'),
+                  onPressed: ()  =>{                     setState(() => pressStores = true),setState(() =>pressVets = false),setState(() =>pressMeets = false),setState(() =>pressParks = false),
+                    shortcutMarkers('Pet store')},
                 ),
                 new ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+                    backgroundColor: pressMeets ? Colors.red : Colors.white,
                   ),
                   child: new Text('Meets',style: TextStyle(
                       color: Colors.black),
                   ),
                   onPressed: ()=>{
+                    setState(() => pressMeets = true),setState(() =>pressVets = false),setState(() =>pressStores = false),setState(() =>pressParks = false),
                    initMeets(),
                   }
                 ),
