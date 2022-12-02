@@ -83,7 +83,7 @@ class _CreateMeetState extends State<CreateMeet> {
     final location = await getUserCurrentLocation();
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
-        zoom: 15, target: LatLng(location.longitude, location.latitude))));
+        zoom: 15, target: LatLng(location.latitude, location.longitude))));
     setState(() {});
   }
   Future getsizes(sizelist) async {
