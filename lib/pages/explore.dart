@@ -1191,51 +1191,7 @@ class CustomSearchDelegate extends SearchDelegate {
     placenames.clear();
     final data = await getLocations();
     placenames.addAll(data);
-    /*final latdata = await getlat();
-    lat.addAll(latdata);
-    final longdata = await getlong();
-    long.addAll(longdata);*/
   }
-  /*Future getlat() async {
-    final  lati = List<double>.empty(growable: true);
-    try {
-      final data = await SupabaseCredentials.supabaseClient
-          .from('locations')
-          .select('*') as List<dynamic>;
-      for (var entry in data) {
-        final map = Map.from(entry);
-        lati.add(map['latitude']);
-      }
-      return lati;
-
-    }
-    on PostgrestException catch (error) {
-      print(error.message);
-    }
-    catch (e) {
-      print(e);
-    }
-  }
-  Future getlong() async {
-    final  longi = List<double>.empty(growable: true);
-    try {
-      final data = await SupabaseCredentials.supabaseClient
-          .from('locations')
-          .select('*') as List<dynamic>;
-      for (var entry in data) {
-        final map = Map.from(entry);
-        longi.add(map['longitude']);
-      }
-      return longi;
-
-    }
-    on PostgrestException catch (error) {
-      print(error.message);
-    }
-    catch (e) {
-      print(e);
-    }
-  }*/
   Future getLocations() async {
     final  placenames = List<String>.empty(growable: true);
     try {
