@@ -6,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
+import 'package:flutter_app_test1/pages/selectmeetlocation.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -501,77 +502,33 @@ class _CreateMeetState extends State<CreateMeet> {
                   ),
                 ),
               ),
-              Row(
-                children: [
                   Padding(
                     padding: const EdgeInsets.only(
                         bottom: 10, left: 15, top: 20.0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text("Meet location",
-                          style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.black,
-                              fontFamily: "poppins")),
-                    ),
-                  ),
-                  Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                        bottom: 8, left: 5, top: 20.0, right: 15),
-                    child: IconButton(
-                      onPressed: () async {
-                        final alldata = await getdata();
-
-                        // method to show the search bar
-                        GeoLocation selectedLocation = await showSearch(
-                            context: context,
-                            // delegate to customize the search bar
-                            delegate: CustomSearchDelegate(alldata: alldata));
-
-                        final GoogleMapController controller =
-                        await _controller.future;
-                        controller.animateCamera(
-                            CameraUpdate.newCameraPosition(CameraPosition(
-                                zoom: 15,
-                                target: LatLng(selectedLocation.Lat(),
-                                    selectedLocation.Long()))));
-                      },
-                      icon: const Icon(Icons.search, color: Colors.black),
-                    ),
-                  )
-                ],
-              ),
-              Column(children: [
-                Center(
-                  child: Container(
-                    height: 150,
-                    width: MediaQuery.of(context).size.width - 100,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.all(
-                        Radius.circular(30),
+                    child: new ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.blueGrey[600],
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.0))),
+                      child: new Text(
+                        'Select Meet Location',
+                        style: TextStyle(color: Colors.white, fontSize: 20),
                       ),
-                      child: GoogleMap(
-                          myLocationButtonEnabled: true,
-                          myLocationEnabled: true,
-                          initialCameraPosition: CameraPosition(
-                              target: LatLng(31.233334, 30.033333),
-                              zoom: 13.4746),
-                          markers: Set<Marker>.of(markers),
-                          onMapCreated: (GoogleMapController controller) {
-                            _controller.complete(controller);
-                          },
-                          onTap: (LatLng latLng) {
-                            lat = latLng.latitude;
-                            long = latLng.longitude;
-                          }),
+                      onPressed: () async {
+                        GeoLocation result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SelectLocation()),
+                        );
+                        lat = result.Lat();
+                        long = result.Long();
+
+
+//                        explore_key.currentState?.pushNamed('/select_location');
+                        setState(() {});
+                      },
                     ),
                   ),
-                ),
-              ]),
               Padding(
                 padding: const EdgeInsets.only(
                     bottom: 20, left: 5, top: 20.0, right: 5),
@@ -869,3 +826,4 @@ class CustomSearchDelegate extends SearchDelegate {
         });
   }
 }
+
