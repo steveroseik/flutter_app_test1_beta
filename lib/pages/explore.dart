@@ -157,7 +157,7 @@ class _MapsPageState extends State<MapsPage> {
           ),
           CustomInfoWindow(
             controller: _customInfoWindowController,
-            height: 290,
+            height: 310,
             width: 200,
             offset: 50,
           ),
@@ -220,6 +220,7 @@ class _MapsPageState extends State<MapsPage> {
 
               child: TextButton(
                   onPressed:(){
+                    double lat = 0,long=0;
                     explore_key.currentState
                         ?.pushNamed('/create_meet');
                     setState(() {});
@@ -647,7 +648,7 @@ return data;
                             mainAxisAlignment: MainAxisAlignment.start,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                        thumbnail==''?
+                        thumbnail=='' || thumbnail[0]!='h'?
                         Text(
                             '',
                             style:(
@@ -708,7 +709,9 @@ return data;
                                                         fontSize:18,
                                                       )
                                                   )
-                                              ))])),
+                                              ),
+
+                                          )])),
 
                                   ],
                                 ),
@@ -1280,15 +1283,10 @@ class CustomSearchDelegate extends SearchDelegate {
             return ListTile(
               onTap: () async{
                 //Here where I would like to go to new screen
-                int add = 0;
-                int addlong = 0;
-                var temp='';
+
                 var z;
                 for(int i = 0; i < placenames.length; i++){
                   if(placenames[i]==result){
-                    var plc = placenames[i];
-                    print('res: $result');
-                    print('places: $placenames');
 
                     z = i;
                     break;
