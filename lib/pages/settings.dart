@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import '../APILibraries.dart';
 import '../JsonObj.dart';
@@ -228,8 +229,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 InkWell(
-                  onTap: () {
+                  onTap: () async{
+                    final prefs = await SharedPreferences.getInstance();
+                    prefs.clear();
                     FirebaseAuth.instance.signOut();
+
                   },
                   child: ProfileListItem(
                     icon: LineAwesomeIcons.alternate_sign_out,

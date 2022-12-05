@@ -9,6 +9,7 @@ import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:intl/intl.dart';
@@ -43,15 +44,38 @@ class _MapsPageState extends State<MapsPage> {
   bool pressVets = false;
   bool pressParks = false;
   bool pressStores = false;
+  late Timer _timer;
+  int timerCount = 5;
 
+
+  void startTimer() {
+    const time = const Duration(seconds: 1);
+    _timer = Timer.periodic(
+      time, (Timer timer) async{
+
+        final prefs = await SharedPreferences.getInstance();
+        if (prefs.getDouble('lat') != null){
+          final lat = prefs.getDouble('lat');
+          final long = prefs.getDouble('long');
+          initUser(lat!, long!);
+          setState(() {
+            timer.cancel();
+          });
+        }else{
+          if (timerCount == 0 ){
+            setState(() {
+              timer.cancel();
+            });
+            print('no location');
+          }else{
+            timerCount--;
+          }
+        }
+    },
+    );
+  }
 
   initMarkers() async{
-    // BitmapDescriptor.fromAssetImage(ImageConfiguration(size: Size(5, 5)),
-    //     'assets/icon_male.png')
-    //     .then((d) {
-    //   customIcon = d;
-    // });
-
     markers.clear();
     final data = await initializeMarkers();
     markers.addAll(data);
@@ -63,31 +87,22 @@ class _MapsPageState extends State<MapsPage> {
     markers.addAll(data);
     setState(() {});
   }
-  Future<Position> getUserCurrentLocation() async {
-    await Geolocator.requestPermission().then((value){
-    }).onError((error, stackTrace) async {
-      await Geolocator.requestPermission();
-      print("ERROR"+error.toString());
-    });
-    return await Geolocator.getCurrentPosition();
-  }
 
   @override
   void initState() {
-    initUser();
+    startTimer();
     initMarkers();
     super.initState();
   }
-  void initUser() async{
-    final location = await getUserCurrentLocation();
+  void initUser(double lat, double long) async{
+    // final location = await getUserCurrentLocation();
     final GoogleMapController controller = await _controller.future;
 
     controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
-        zoom: 15, target: LatLng(location.latitude, location.longitude))));
+        zoom: 15, target: LatLng(lat, long))));
     setState(() {});
   }
   shortcutMarkers(String type) async{
-
 
       markers.clear();
     final data = await Display(type);

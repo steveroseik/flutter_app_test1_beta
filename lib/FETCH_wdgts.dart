@@ -157,14 +157,25 @@ class _BreedSearchWidgetState extends State<BreedSearchWidget> {
   }
 
 
-  initWidget(){
+  initWidget() async{
     if (widget.controller == 0){
-      genBreeds();
+      await genBreeds();
     }else{
       finalList.addAll(widget.bList);
     }
+
+    if (widget.breedSelected != ''){
+      for ( Breed breed in finalList){
+        if (breed.name == widget.breedSelected){
+          _selected = breed;
+          break;
+        }
+      }
+    }
     if (this.mounted){
-      setState(() {});
+      setState(() {
+        isLoading = false;
+      });
     }
 
   }
@@ -303,14 +314,12 @@ class selectItem {
 }
 class MateItem{
   PetPod sender_pet;
-  String receiver_id;
-  String request_id;
-  int status;
+  MateRequest? request;
   
-  MateItem(this.sender_pet, this.receiver_id, this.request_id, this.status);
+  MateItem({required this.sender_pet, this.request});
 
   getStat(){
-    return this.status;
+    return this.request?.status ?? -1;
   }
 }
 
@@ -466,28 +475,16 @@ class PetPod {
 
   calculateDistance() async {
     try {
-      if (this.petLocation.Lat() != 0.0 && this.petLocation.Long() != 0.0) {
-        final prefs = await SharedPreferences.getInstance();
-        final sLat = prefs.getDouble('lat');
-        final sLong = prefs.getDouble('long');
-
-        final resp = await SupabaseCredentials.supabaseClient.from('users')
-            .select('lat,long')
-            .eq('id', this.pet.ownerId) as List<dynamic>;
-        final lat = resp[0]['lat'].toDouble();
-        final long = resp[0]['long'].toDouble();
-
-        if (lat != 0.0 && long != 0.0) {
-          this.setLocation(GeoLocation(lat, long));
-        }
-
-        if ((sLat != null && sLat != 0.0) && (sLong != null && sLong != 0.0) && lat > 0.0 && long > 0.0) {
-          distance = Geolocator.distanceBetween(sLat, sLong, lat, long).toInt();
-        } else {
+      final prefs = await SharedPreferences.getInstance();
+      final sLat = prefs.getDouble('lat');
+      final sLong = prefs.getDouble('long');
+      if ((sLat != null && sLat != 0.0) && (sLong != null && sLong != 0.0)){
+        if (this.petLocation.Lat() > 0.0 && this.petLocation.Long() > 0.0) {
+          distance = Geolocator.distanceBetween(sLat, sLong, petLocation.Lat(), petLocation.Long()).toInt();
+        }else{
           distance = -1;
         }
       } else {
-        print('not needed');
         distance = -1;
 
       }
@@ -811,7 +808,7 @@ class _PetRequestBannerState extends State<PetRequestBanner> {
         gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.redAccent.withOpacity(0.7), Colors.blueGrey.withOpacity(0.9)]),
+            colors: [Colors.blueGrey.shade900, Colors.black]),
         child: Center(
           child: ListTile(
             leading: Stack(
@@ -1094,7 +1091,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
                             borderRadius: BorderRadius.circular(10.0))),
                     icon: Icon(Icons.close_rounded, size: 15, color: Colors.black,),
                     onPressed: () async{
-                      final resp = await updateMateRequest(widget.request.request_id, 2);
+                      final resp = await updateMateRequest(widget.request.request!.id, 2);
                       if (resp == 200){
                         BA_key.currentState?.pop(true);
                       }else{
@@ -1116,7 +1113,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
                     icon: Icon(Icons.check_rounded, size: 15),
                     onPressed: () async{
 
-                      final resp = await updateMateRequest(widget.request.request_id, 1);
+                      final resp = await updateMateRequest(widget.request.request!.id, 1);
                       if (resp == 200){
                         BA_key.currentState?.pop(true);
                       }else{
@@ -1463,144 +1460,138 @@ class _PetMatchCardState extends State<PetMatchCard> {
     if (widget.pod.pet.rateCount > 0){
       rating = (widget.pod.pet.rateSum/widget.pod.pet.rateCount).toStringAsFixed(1) + " / 5";
     }
-    return GestureDetector(
-      onTap: (){
-        final tempItem = MateItem(widget.pod, "0", "0", -1);
-        BA_key.currentState?.pushNamed('/petProfile', arguments: [tempItem, [widget.sender], 0]);
-      },
-      child: GlassContainer(
-        height: 100,
-        width: 100,
-        blur: 10,
-        color: Colors.blueGrey.shade900.withOpacity(0.7),
-        border: Border.fromBorderSide(BorderSide.none),
-        borderRadius: BorderRadius.circular(16),
-        shadowColor: Colors.black.withOpacity(0.2),
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: <Widget>[
-                  Center(
-                    child: Container(
-                      height: 130,
-                      width: double.infinity,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Image(image: NetworkImage(widget.pod.pet.photoUrl), fit: BoxFit.cover,),
+    return GlassContainer(
+      height: 100,
+      width: 100,
+      blur: 10,
+      color: Colors.blueGrey.shade900.withOpacity(0.7),
+      border: Border.fromBorderSide(BorderSide.none),
+      borderRadius: BorderRadius.circular(16),
+      shadowColor: Colors.black.withOpacity(0.2),
+      child: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Column(
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    height: 130,
+                    width: double.infinity,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image(image: NetworkImage(widget.pod.pet.photoUrl), fit: BoxFit.cover,),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 3*height*0.005,),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+
+                      Padding(
+                        padding: const EdgeInsets.all(3),
+                        child: Text(
+                          widget.pod.pet.name,
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontFamily: 'Roboto',
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white),
+                          overflow: TextOverflow.visible,
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    ),
+                      Spacer(),
+                      Icon(Icons.star_rate_rounded, color: CupertinoColors.activeOrange),
+                      Padding(
+                        padding: const EdgeInsets.all(3),
+                        child: Text(
+                          rating,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontFamily: 'Roboto',
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white),
+                          overflow: TextOverflow.visible,
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    ],
                   ),
-                  SizedBox(height: 3*height*0.005,),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
+                ),
+                SizedBox(height: height*0.020,),
+                Text(
+                  widget.pod.pet.breed,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white70),
+                  overflow: TextOverflow.visible,
+                  textAlign: TextAlign.center,
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(3*Checkbox.width*0.05),
+                  child: Text(petText, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white54,
+                      fontSize: 11*width*0.0027)),
+                ),
+                SizedBox(height: height*0.02,),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      CircularPercentIndicator(
+                        radius: 13,
+                        lineWidth: 2,
+                        percent: petVaccines,
+                        backgroundColor: Colors.blueGrey.shade900,
+                        progressColor: Colors.white,
+                        center: ImageIcon(AssetImage("assets/vaccineIcon.png"), color: Colors.white, size: 15),
+                      ),
+                      SizedBox(width: width*0.03,),
+                      Container(width: 20, height: 20,
+                          child: Image(image: AssetImage("assets/verifiedDocuments.png",),
+                            color: widget.pod.pet.passport == "" ? Colors.redAccent.withOpacity(0.8):
+                            Colors.green.withOpacity(0.8), fit: BoxFit.fill,)),
+                      Spacer(),
+                      Icon(widget.pod.pet.isMale ? Icons.male_rounded : Icons.female_rounded,
+                          color: widget.pod.pet.isMale ? Colors.blue : Colors.pink, size: 30,),
+                    ],
+                  ),
+                ),
+                SizedBox(height: height*0.01,),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
 
-                        Padding(
-                          padding: const EdgeInsets.all(3),
-                          child: Text(
-                            widget.pod.pet.name,
-                            style: TextStyle(
-                                fontSize: 15,
-                                fontFamily: 'Roboto',
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white),
-                            overflow: TextOverflow.visible,
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        Spacer(),
-                        Icon(Icons.star_rate_rounded, color: CupertinoColors.activeOrange),
-                        Padding(
-                          padding: const EdgeInsets.all(3),
-                          child: Text(
-                            rating,
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontFamily: 'Roboto',
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white),
-                            overflow: TextOverflow.visible,
-                            textAlign: TextAlign.center,
-                          ),
-                        )
-                      ],
-                    ),
+                      Icon(widget.pod.pet.verified ?Icons.verified_user_rounded : Icons.shield_outlined,
+                          color: widget.pod.pet.verified ? Colors.blue.shade300.withOpacity(0.8) : Colors.redAccent.withOpacity(0.8)),
+                      Spacer(),
+                      distanceLoading ? Padding(
+                        padding: const EdgeInsets.all(8*Checkbox.width*0.05),
+                        child: SizedBox(height: 10, width: 10, child: CircularProgressIndicator()),
+                      ) : Padding(
+                        padding: const EdgeInsets.all(8*Checkbox.width*0.05),
+                        child: Text(distanceText, style: TextStyle( fontFamily: "Poppins", fontWeight: FontWeight.w900, color: Colors.white60,
+                            fontSize: 11*width*0.0027)),
+                      ),
+                      Icon(Icons.location_on_rounded, color: Colors.white60,),
+                    ],
                   ),
-                  SizedBox(height: height*0.020,),
-                  Text(
-                    widget.pod.pet.breed,
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontFamily: 'Roboto',
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white70),
-                    overflow: TextOverflow.visible,
-                    textAlign: TextAlign.center,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(3*Checkbox.width*0.05),
-                    child: Text(petText, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white54,
-                        fontSize: 11*width*0.0027)),
-                  ),
-                  SizedBox(height: height*0.02,),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        CircularPercentIndicator(
-                          radius: 13,
-                          lineWidth: 2,
-                          percent: petVaccines,
-                          backgroundColor: Colors.blueGrey.shade900,
-                          progressColor: Colors.white,
-                          center: ImageIcon(AssetImage("assets/vaccineIcon.png"), color: Colors.white, size: 15),
-                        ),
-                        SizedBox(width: width*0.03,),
-                        Container(width: 20, height: 20,
-                            child: Image(image: AssetImage("assets/verifiedDocuments.png",),
-                              color: widget.pod.pet.passport == "" ? Colors.redAccent.withOpacity(0.8):
-                              Colors.green.withOpacity(0.8), fit: BoxFit.fill,)),
-                        Spacer(),
-                        Icon(widget.pod.pet.isMale ? Icons.male_rounded : Icons.female_rounded,
-                            color: widget.pod.pet.isMale ? Colors.blue : Colors.pink, size: 30,),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: height*0.01,),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-
-                        Icon(widget.pod.pet.verified ?Icons.verified_user_rounded : Icons.shield_outlined,
-                            color: widget.pod.pet.verified ? Colors.blue.shade300.withOpacity(0.8) : Colors.redAccent.withOpacity(0.8)),
-                        Spacer(),
-                        distanceLoading ? Padding(
-                          padding: const EdgeInsets.all(8*Checkbox.width*0.05),
-                          child: SizedBox(height: 10, width: 10, child: CircularProgressIndicator()),
-                        ) : Padding(
-                          padding: const EdgeInsets.all(8*Checkbox.width*0.05),
-                          child: Text(distanceText, style: TextStyle( fontFamily: "Poppins", fontWeight: FontWeight.w900, color: Colors.white60,
-                              fontSize: 11*width*0.0027)),
-                        ),
-                        Icon(Icons.location_on_rounded, color: Colors.white60,),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ],
-          ),
+                )
+              ],
+            ),
+          ],
         ),
       ),
     );;
@@ -1610,7 +1601,9 @@ class _PetMatchCardState extends State<PetMatchCard> {
 class PetView extends StatefulWidget {
   final PetPod profile;
   final List<PetPod> ownerPets;
-  const PetView({Key? key, required this.profile, required this.ownerPets}) : super(key: key);
+  int? location;
+  List<PetPod> rootPets;
+  PetView({Key? key, required this.profile, required this.ownerPets, this.location, required this.rootPets}) : super(key: key);
 
   @override
   State<PetView> createState() => _PetViewState();
@@ -1629,28 +1622,18 @@ class _PetViewState extends State<PetView> {
     const time = const Duration(seconds: 2);
     _timer = Timer.periodic(
       time, (Timer timer) {
-        if (this.mounted){
-          if (_start <= 0) {
-            setState(() {
-              print('failed');
-              timer.cancel();
-            });
-          } else {
-            distance = widget.profile.getDistance();
-            if ( distance != -1){
-              generateDistance();
-              setState(() {
-                timer.cancel();
-              });
-            }else{
-              print('tying ${widget.profile.pet.name}');
-            }
 
-            setState(() {
-              _start--;
-            });
-          }
+      if (this.mounted){
+        distance = widget.profile.getDistance();
+        if ( distance != -1){
+          generateDistance();
+          setState(() {
+            timer.cancel();
+          });
+        }else{
         }
+      }
+
       },
     );
   }
@@ -1671,7 +1654,7 @@ class _PetViewState extends State<PetView> {
 
   }
   @override
-  void initState() {
+  void initState(){
     startTimer();
     super.initState();
   }
@@ -1685,7 +1668,7 @@ class _PetViewState extends State<PetView> {
     final petVaccines = widget.profile.pet.vaccines.length/8;
     String ratingText;
     if (widget.profile.pet.rateCount > 0){
-      ratingText = (widget.profile.pet.rateSum ~/ widget.profile.pet.rateCount).toString();
+      ratingText = (widget.profile.pet.rateSum ~/ widget.profile.pet.rateCount).toString() + ' / 5';
     }else{
       ratingText = 'n/a';
     }
@@ -1695,6 +1678,8 @@ class _PetViewState extends State<PetView> {
       petText = petText + petAge.years.toString() + "";
       if (petAge.months > 0){
         petText = petText +"."+ petAge.months.toString() + " years";
+      }else{
+        petText = petText + " years";
       }
     }else{
       if (petAge.months > 0){
@@ -1711,159 +1696,153 @@ class _PetViewState extends State<PetView> {
       child: Column(
 
         children: [
-          GestureDetector(
-            onTap: (){
-              final tempItem = MateItem(widget.profile, "0", "0", -1);
-              BA_key.currentState?.pushNamed('/petProfile', arguments: [tempItem, widget.ownerPets, 0]);
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-              height: height*0.215,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: CupertinoColors.extraLightBackgroundGray,
-                border: Border.all(width: 2, color:  CupertinoColors.extraLightBackgroundGray),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: <Widget>[
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+            height: height*0.215,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: CupertinoColors.extraLightBackgroundGray,
+              border: Border.all(width: 2, color:  CupertinoColors.extraLightBackgroundGray),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: <Widget>[
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Center(
-                        child: CircleAvatar(
-                          radius : 10*width*0.007,
-                          backgroundColor: Colors.grey,
-                          backgroundImage: NetworkImage(widget.profile.pet.photoUrl),
-                        ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Center(
+                      child: CircleAvatar(
+                        radius : 10*width*0.007,
+                        backgroundColor: Colors.grey,
+                        backgroundImage: NetworkImage(widget.profile.pet.photoUrl),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(3),
-                            child: Text(
-                              widget.profile.pet.name,
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Roboto',
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.blueGrey.shade900),
-                              overflow: TextOverflow.visible,
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Icon(Icons.star_rate_rounded, color: CupertinoColors.activeOrange),
-                              Padding(
-                                padding: const EdgeInsets.all(3),
-                                child: Text(
-                                  ratingText,
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontFamily: 'Roboto',
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.blueGrey.shade600),
-                                  overflow: TextOverflow.visible,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(3*Checkbox.width*0.05),
-                            child: Text(petText, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.blueGrey.shade700,
-                                fontSize: 11*width*0.0027)),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 3*height*0.005,),
-                  FittedBox(
-                    child: Text(
-                      widget.profile.pet.breed,
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey),
-                      overflow: TextOverflow.visible,
-                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  SizedBox(height: height*0.008,),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                          width: 60,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            color: Colors.blueGrey.shade900,
-                          ),
-                          child:  Padding(
-                            padding: const EdgeInsets.all(5.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  ImageIcon(AssetImage("assets/vaccineIcon.png"), color: Colors.white, size: 18),
-                                  SizedBox(width: 5),
-                                  CircularPercentIndicator(
-                                    radius: 9,
-                                    lineWidth: 2,
-                                    percent: petVaccines,
-                                    backgroundColor: Colors.blueGrey.shade900,
-                                    progressColor: Colors.white,
-                                  )
-                                ]),
-                          )
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20)
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(5.0),
-                          child: Icon(widget.profile.pet.isMale ? Icons.male_rounded : Icons.female_rounded,
-                              color: widget.profile.pet.isMale ? Colors.blue : Colors.pink),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 15.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-
-                        distanceLoading ? Padding(
-                          padding: const EdgeInsets.all(8*Checkbox.width*0.05),
-                          child: SizedBox(height: 10, width: 10, child: CircularProgressIndicator()),
-                        ) : Padding(
-                          padding: const EdgeInsets.all(8*Checkbox.width*0.05),
-                          child: Text(distanceText, style: TextStyle( fontFamily: "Poppins", fontWeight: FontWeight.w900, color: Colors.blueGrey.shade900,
+                        Padding(
+                          padding: const EdgeInsets.all(3),
+                          child: Text(
+                            widget.profile.pet.name,
+                            style: TextStyle(
+                                fontSize: 15,
+                                fontFamily: 'Roboto',
+                                fontWeight: FontWeight.w800,
+                                color: Colors.blueGrey.shade900),
+                            overflow: TextOverflow.visible,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Icon(Icons.star_rate_rounded, color: CupertinoColors.activeOrange),
+                            Padding(
+                              padding: const EdgeInsets.all(3),
+                              child: Text(
+                                ratingText,
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontFamily: 'Roboto',
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.blueGrey.shade600),
+                                overflow: TextOverflow.visible,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(3*Checkbox.width*0.05),
+                          child: Text(petText, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.blueGrey.shade700,
                               fontSize: 11*width*0.0027)),
                         ),
-                        Spacer(),
-                        widget.profile.pet.verified ? Icon(Icons.verified_user_sharp, color: Colors.green,) : Icon(CupertinoIcons.xmark_shield_fill, color: Colors.redAccent,),
-                        SizedBox(width: 10*Checkbox.width*0.05,),
-                        Container(width: 20, height: 20,
-                            child: Image(image: AssetImage("assets/verifiedDocuments.png"),
-                              fit: BoxFit.fill, color: widget.profile.pet.passport == "" ? Colors.redAccent : Colors.green,)),
                       ],
                     ),
-                  )
-                ],
-              ),
+                  ],
+                ),
+                SizedBox(height: 3*height*0.005,),
+                FittedBox(
+                  child: Text(
+                    widget.profile.pet.breed,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontFamily: 'Roboto',
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey),
+                    overflow: TextOverflow.visible,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                SizedBox(height: height*0.008,),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                        width: 60,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.blueGrey.shade900,
+                        ),
+                        child:  Padding(
+                          padding: const EdgeInsets.all(5.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                ImageIcon(AssetImage("assets/vaccineIcon.png"), color: Colors.white, size: 18),
+                                SizedBox(width: 5),
+                                CircularPercentIndicator(
+                                  radius: 9,
+                                  lineWidth: 2,
+                                  percent: petVaccines,
+                                  backgroundColor: Colors.blueGrey.shade900,
+                                  progressColor: Colors.white,
+                                )
+                              ]),
+                        )
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20)
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(5.0),
+                        child: Icon(widget.profile.pet.isMale ? Icons.male_rounded : Icons.female_rounded,
+                            color: widget.profile.pet.isMale ? Colors.blue : Colors.pink),
+                      ),
+                    ),
+                  ],
+                ),
+                Spacer(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+
+                      distanceLoading ? Padding(
+                        padding: const EdgeInsets.all(8*Checkbox.width*0.05),
+                        child: SizedBox(height: 10, width: 10, child: CircularProgressIndicator()),
+                      ) : Padding(
+                        padding: const EdgeInsets.all(8*Checkbox.width*0.05),
+                        child: Text(distanceText, style: TextStyle( fontFamily: "Poppins", fontWeight: FontWeight.w900, color: Colors.blueGrey.shade900,
+                            fontSize: 11*width*0.0027)),
+                      ),
+                      Spacer(),
+                      widget.profile.pet.verified ? Icon(Icons.verified_user_sharp, color: Colors.green,) : Icon(CupertinoIcons.xmark_shield_fill, color: Colors.redAccent,),
+                      SizedBox(width: 10*Checkbox.width*0.05,),
+                      Container(width: 20, height: 20,
+                          child: Image(image: AssetImage("assets/verifiedDocuments.png"),
+                            fit: BoxFit.fill, color: widget.profile.pet.passport == "" ? Colors.redAccent : Colors.green,)),
+                    ],
+                  ),
+                )
+              ],
             ),
           ),
           ElevatedButton.icon(
@@ -1872,33 +1851,7 @@ class _PetViewState extends State<PetView> {
                 foregroundColor: Colors.blue,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50.0))),
-            onPressed: tapped ? null : () async{
-              setState(() {
-                tapped = true;
-              });
-              final petInd = await _customSheet(context);
-              print(petInd);
-              final uid = FirebaseAuth.instance.currentUser!.uid;
-              if (petInd != -1){
-                if (uid == widget.ownerPets[petInd].pet.ownerId){
-                  final stat = await sendMateRequest(widget.ownerPets[petInd].pet.ownerId,
-                      widget.profile.pet.ownerId,
-                      widget.ownerPets[petInd].pet.id,
-                      widget.profile.pet.id);
-                  if (stat == 200){
-                    showNotification(context, 'Request sent successfully');
-                  }else if (stat == 0){
-                    showSnackbar(context, 'You have already sent a request.');
-                  }else{
-                    showSnackbar(context, 'Failed to send request');
-                  }
-                }else{
-                  showSnackbar(context, 'Unexpected behavior!');
-                }
-              }
-              setState(() {
-                tapped = false;
-              });
+            onPressed:(){
             },
             icon: Icon(CupertinoIcons.heart_fill, color: Colors.black, size: 9*width*0.003,),
             label: Text('Send Request', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 8*width*0.003),),

@@ -209,7 +209,7 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
                 height: 150,
                 child: CircleAvatar(
                           radius: 100,
-                          backgroundColor: handleColor(),
+                          backgroundColor: CupertinoColors.extraLightBackgroundGray,
                           child: ValueListenableBuilder<int>(
                                 valueListenable: img_src,
                               builder: (BuildContext context, int value, Widget? child){
@@ -220,6 +220,7 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
                                         backgroundImage: IMAGE.AssetImage('assets/images/mini.png'));
                                   }else{
                                     return CircleAvatar (
+                                        backgroundColor: CupertinoColors.extraLightBackgroundGray,
                                         radius: 70,
                                         backgroundImage: IMAGE.FileImage(imageFile!));
                                   }

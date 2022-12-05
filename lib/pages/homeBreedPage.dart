@@ -49,7 +49,9 @@ class _HomeBreedPageState extends State<HomeBreedPage>
 
   List<PetPod> petPods = <PetPod>[];
 
-  List<MateItem> petRequests = <MateItem>[];
+  List<MateItem> petReqItems = <MateItem>[];
+  List<MateRequest> petRequests = <MateRequest>[];
+  List<MateRequest> sentRequests = <MateRequest>[];
 
   final petIndex = ValueNotifier<int>(-1);
   PetPod? selectedPet;
@@ -61,66 +63,81 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   bool requestsLoading = true;
   String petAge = "";
   String petRating = "";
+  late GeoLocation userLocation;
 
   // if user has no pets he is forced to add at least one pet
   usrHasPets() async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.get('hasPets') != null && prefs.get('hasPets') == false) {
-      setState(() {
+      if (this.mounted) setState(() {
         isLoading = false;
       });
       BA_key.currentState?.pushNamedAndRemoveUntil(
           '/add_pet', (Route<dynamic> route) => false);
     }else{
-      final resp = await fetchUserPets();
-      if (!resp){
+      await updatePets(petIndex.value);
+      if (petPods.isEmpty){
         BA_key.currentState?.pushNamedAndRemoveUntil(
             '/add_pet', (Route<dynamic> route) => false);
       }
     }
-    if (this.mounted){
-      await updatePets(petIndex.value);
+
+    if (mounted && petPods.isNotEmpty) {
+        setState(() {
+        isLoading = false;
+      });
+      _controller2.forward();
     }
-
-
-    setState(() {
-      isLoading = false;
-    });
 
 
   }
 
   refreshNotificationCount(){
     notifCount = 0;
-    for(MateItem item in petRequests){
-      if (item.status == 0) notifCount++;
+    for(MateRequest req in petRequests){
+      if (req.status == 0) notifCount++;
     }
-    setState(() {
+    if (this.mounted) {
+      setState(() {
     });
+    }
   }
 
   updatePets(int index) async {
     petPods = await fetchPets(index);
   }
 
-  getRequests(bool r) async {
-   requestsLoading = r;
-   setState(() {});
+  genRelations() async{
+    notifCount = 0;
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    petRequests = await fetchPetRequests(uid).whenComplete(() {
-     requestsLoading = false;
-    });
-    if (petRequests.isNotEmpty){
-      for ( MateItem pet in petRequests){
-        if (pet.status == 0) notifCount ++;
+    final  allRelations = await fetchPetsRelation(uid);
+    for ( MateRequest m in allRelations){
+      if (m.status != 1){
+        if(m.receiverId == uid){
+          petRequests.add(m);
+          if (m.status == 0) notifCount ++;
+        }
+        if (m.senderId == uid){
+          sentRequests.add(m);
+        }
       }
-      setState(() {});
-
-    }else{
-      setState(() {
-
-      });
     }
+
+    final petIDs = List<String>.generate(petRequests.length, (index) {
+      return petRequests[index].senderPet;
+    });
+    List<PetPod> generatedPets = await fetchRequestPets(petIDs);
+
+    for (MateRequest req in petRequests){
+      PetPod pet = generatedPets.firstWhere((element) =>
+      element.pet.id == req.senderPet);
+      petReqItems.add(MateItem(sender_pet: pet, request: req));
+    }
+
+    setState(() {
+      requestsLoading = false;
+    });
+
 
   }
 
@@ -129,15 +146,18 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     final age = AgeCalculator.dateDifference(fromDate: selectedPet!.pet.birthdate, toDate: DateTime.now());
     petAge = "";
     print(age.years);
+    bool years = false;
     if (age.years > 1){
-      petAge += age.years.toString() + " Years, ";
+      petAge += age.years.toString() + " Years";
+      years = true;
     }else if (age.years == 1){
-      petAge += age.years.toString() + " Year, ";
+      petAge += age.years.toString() + " Year";
+      years = true;
     }
     if (age.months > 1){
-      petAge += age.months.toString() + " Months";
+      petAge += ( years ? ", " : "" ) + age.months.toString() + "Months";
     }else if (age.months == 1){
-      petAge += age.months.toString() + " Month";
+      petAge += ( years ? ", " : "" )  + age.months.toString() + "Month";
     }
 
     if (selectedPet!.pet.rateCount > 0){
@@ -159,13 +179,16 @@ class _HomeBreedPageState extends State<HomeBreedPage>
         .toList();
   }
 
+  updateLocation() async{
+    await getUserCurrentLocation();
+    print('finished');
+  }
 
   @override
   void initState() {
-    getUserCurrentLocation();
-    usrHasPets();
-    getRequests(true);
-    super.initState();
+    updateLocation();
+     usrHasPets();
+     genRelations();
     _controller = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -176,6 +199,9 @@ class _HomeBreedPageState extends State<HomeBreedPage>
       vsync: this,
     );
     _animation2 = CurvedAnimation(parent: _controller2, curve: Curves.easeIn);
+
+    super.initState();
+
   }
 
   @override
@@ -425,7 +451,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                       child: Container(
                         child: Column(
                           children: [
-                            Container(
+                            isLoading? Container() : Container(
                                 width: width,
                                 child: ValueListenableBuilder<int>(
                                   valueListenable: petIndex,
@@ -652,16 +678,16 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                               Overlay.of(context);
                                           overlay?.insert(loading);
                                         }
-                                        final pets = await getPetMatch();
+                                        final pets = await getPetMatch(petPods[petIndex.value].pet);
                                         setState(() {});
                                         if (loading.mounted) {
                                           loading.remove();
                                         }
                                         BA_key.currentState?.pushNamed(
                                             '/petMatch',
-                                            arguments: [selectedPet, pets]).then((value) {
+                                            arguments: [selectedPet, pets, petRequests, sentRequests]).then((value) {
                                               if ( value as bool == true){
-                                                BA_key.currentState?.pushNamed('/search_manual', arguments: petPods);
+                                                BA_key.currentState?.pushNamed('/search_manual', arguments: [petPods, petRequests, sentRequests]);
                                               }
                                         });
                                       }else{
@@ -703,7 +729,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                                   ),
                                   GestureDetector(
                                     onTap: (){
-                                      BA_key.currentState?.pushNamed('/search_manual', arguments: petPods);
+                                      BA_key.currentState?.pushNamed('/search_manual', arguments: [petPods, petRequests, sentRequests]);
                                     },
                                     child: Container(
                                       width: MediaQuery.of(context).size.width/3.5,
@@ -780,18 +806,19 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                 ],
               ),
             ),
-            floatingActionButton: Container(
+            floatingActionButton: FadeTransition(
+              opacity: _controller2,
               child: FittedBox(
                 child: Stack(
                   alignment: Alignment(1.4, -1.5),
                   children: [
                     FloatingActionButton(  // Your actual Fab
-                      onPressed: requestsLoading ? null : () {
-                        BA_key.currentState?.pushNamed('/notif', arguments: [petRequests, petPods]).then((value){
+                      onPressed: requestsLoading ? null : () async{
+                        BA_key.currentState?.pushNamed('/notif', arguments: [petReqItems, petPods]).then((value){
                          refreshNotificationCount();
                         });
                       },
-                      child: requestsLoading ? CircularProgressIndicator(backgroundColor: Colors.orange, color: Colors.blueGrey.shade800,): Icon(Icons.local_fire_department_rounded, color: Colors.orange,),
+                      child: Icon(Icons.local_fire_department_rounded, color: Colors.orange,),
                       backgroundColor: Colors.blueGrey.shade800,
                     ),
                     notifCount == 0 ? Container() : Container(             // This is your Badge
@@ -818,27 +845,6 @@ class _HomeBreedPageState extends State<HomeBreedPage>
             )
             //
             );
-  }
-
-  void _modalBottomSheetMenu(MateItem request){
-    showModalBottomSheet(
-      backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        context: context,
-        builder: (builder){
-          return new Container(
-            padding: EdgeInsets.all(20),
-            height: MediaQuery.of(context).size.height/2,
-            color: Colors.transparent, //could change this to
-            //so you don't have to change MaterialApp canvasColor
-            child: PetRequestCard(request: request)
-          );
-        }
-    ).then((value) async{
-      if (value!= null && value){
-        getRequests(false);
-      }
-    });
   }
 
   void _customSheet(){

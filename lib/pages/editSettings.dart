@@ -46,6 +46,7 @@ class editsetting extends State<editSettings> {
                     InkWell(
                       onTap: () async {
 
+                        settingsNav_key.currentState?.pushNamed('/reauth');
                       },
                       child: ProfileListItem(
                         icon: Icons.email_outlined,
@@ -57,6 +58,7 @@ class editsetting extends State<editSettings> {
                       onTap: () async {
                         final email = FirebaseAuth.instance.currentUser!.email;
                         FirebaseAuth.instance.sendPasswordResetEmail(email: email!);
+                        showNotification(context, "An Email has been sent to ${email}.");
                       },
                       child: ProfileListItem(
                         icon: LineAwesomeIcons.lock,

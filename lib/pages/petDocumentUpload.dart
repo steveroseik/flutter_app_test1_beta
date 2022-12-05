@@ -142,31 +142,54 @@ class _PetDocumentUploadState extends State<PetDocumentUpload> with TickerProvid
                               setState(() {
                                 tapped = true;
                               });
-
+                              bool succeeded = false;
                               if (urlPath == ""){
-                                urlPath = await uploadAndStorePDF(pdfDocument);
-                              }else{
+                                try{
+                                  urlPath = await uploadAndStorePDF(pdfDocument);
+                                }catch (e){
+                                  urlPath = "";
+                                }
+
+                              }
+                              if (urlPath != ''){
                                 if (widget.arguments.length == 1){
                                   final PetPod petPassed = widget.arguments[0];
                                   final resp = await updatePassport(urlPath, petPassed.pet.id);
+                                  if (this.mounted) {setState(() {
+                                    tapped = false;
+                                  });}
+
                                   if (resp == 200){
                                     BA_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
                                   }else{
                                     showSnackbar(context, "Failed to connect with database, Check your internet connection.");
                                   }
-                                }
-                                int value = await addPet(widget.arguments[0],widget.arguments[1],widget.arguments[2],widget.arguments[3],
-                                    widget.arguments[4],widget.arguments[5],widget.arguments[6], urlPath);
-                                if (value == 200){
-                                  BA_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
                                 }else{
-                                  showSnackbar(context, "Failed to connect with database, Check your internet connection.");
-                                }
+                                  int value;
+                                  try{
+                                     value = await addPet(widget.arguments[0],widget.arguments[1],widget.arguments[2],widget.arguments[3],
+                                        widget.arguments[4],widget.arguments[5],widget.arguments[6], urlPath);
 
+                                  }catch (e){
+                                    value = -110;
+                                  }
+
+                                  if (this.mounted) {setState(() {
+                                    tapped = false;
+                                  });}
+                                  if (value == 200){
+                                    succeeded = true;
+                                    BA_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
+                                  }else{
+                                    showSnackbar(context, "Failed to connect with database, Check your internet connection.");
+                                  }
+                                }
                               }
-                              setState(() {
-                                tapped = false;
-                              });
+
+
+                              if (!succeeded){
+                                showSnackbar(context, "Failed to upload document");
+                              }
                             },
                             child: Text('Finish',
                               style: TextStyle(
@@ -182,20 +205,28 @@ class _PetDocumentUploadState extends State<PetDocumentUpload> with TickerProvid
         ),
       ),
         floatingActionButton: widget.arguments.length == 1 ? Container() : InkWell(
-          onTap:() async{
+          onTap:tapped ? null : () async{
+
             setState(() {
               tapped = true;
             });
             int value = await addPet(widget.arguments[0],widget.arguments[1],widget.arguments[2],widget.arguments[3],
                 widget.arguments[4],widget.arguments[5],widget.arguments[6], "");
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  tapped = false;
+                });
+              }
+            });
             if (value == 200){
               BA_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
             }else{
               showSnackbar(context, "Failed to connect with database, Check your internet connection.");
+
             }
-            setState(() {
-              tapped = true;
-            });
+
           },
           child: Container(
               padding: EdgeInsets.all(20),

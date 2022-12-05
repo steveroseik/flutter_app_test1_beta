@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,8 @@ class _SignupState extends State<Signup> {
   final lastName = TextEditingController();
   final email = TextEditingController();
   final TextEditingController ageFieldController = TextEditingController();
+  GlobalKey<FormState> formRegis = GlobalKey<FormState>();
+  GlobalKey<DropdownSearchState> formKey =  GlobalKey<DropdownSearchState>();
   final curUser = FirebaseAuth.instance.currentUser;
   String city = 'Cairo';
   String country = 'Egypt';
@@ -38,11 +41,19 @@ class _SignupState extends State<Signup> {
   bool isComplete = false;
   bool isLoading = true;
   late usrState emailController;
+  late List<String> cities;
 
   @override
   void initState() {
+    initCities();
     userVerified();
     super.initState();
+  }
+
+  initCities() async{
+    String fetchedCities = await rootBundle.loadString('assets/cities.txt');
+    cities = fetchedCities.split('\n');
+    cities.toSet().toList();
   }
 
   void userVerified() async{
@@ -146,7 +157,7 @@ class _SignupState extends State<Signup> {
       },
       child: Scaffold(
         body: SingleChildScrollView(
-            child: Column(
+          child: Column(
               children: <Widget>[
                 Container(
                     padding: EdgeInsets.symmetric(vertical:50),
@@ -194,7 +205,16 @@ class _SignupState extends State<Signup> {
                                 fillColor: CupertinoColors.extraLightBackgroundGray,
                                 labelStyle: TextStyle(color: Colors.grey),
                                 labelText: 'First name',
+
                               ),
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
+                              validator: (value){
+                                if (value == null || RegExp(r'[^a-zA-Z]').hasMatch(value)){
+                                  return 'Enter a valid name';
+                                }else{
+                                  return null;
+                                }
+                              }
                           )
                       ),
                       Padding(
@@ -214,6 +234,14 @@ class _SignupState extends State<Signup> {
                               labelStyle: TextStyle(color: Colors.grey),
                               labelText: 'Last name',
                             ),
+                            autovalidateMode: AutovalidateMode.onUserInteraction,
+                            validator: (value){
+                              if (value == null || RegExp(r'[^a-zA-Z]').hasMatch(value)){
+                                return 'Enter a valid name';
+                              }else{
+                                return null;
+                              }
+                            }
                           )
                       ),
                       Padding(
@@ -234,6 +262,13 @@ class _SignupState extends State<Signup> {
                               labelStyle: TextStyle(color: Colors.grey),
                               labelText: 'Email',
                             ),
+                            validator: (value){
+                              if (value == null ||RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value)){
+                                return 'Enter a valid email';
+                              }else{
+                                return null;
+                              }
+                            }
                           )
                       ),
                       Padding(
@@ -258,6 +293,13 @@ class _SignupState extends State<Signup> {
                                   labelStyle: TextStyle(color: Colors.grey),
                                   labelText: 'Birthdate',
                                 ),
+                                validator: (value){
+                                  if (value != null && value.length > 5){
+                                    return null;
+                                  }else{
+                                    return 'Please choos your birthdate';
+                                  }
+                                },
                               ),
                             ),
                             IconButton(
@@ -275,63 +317,89 @@ class _SignupState extends State<Signup> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            Container(
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    color: CupertinoColors.extraLightBackgroundGray,
-                                    border: Border.all(color: Colors.grey.shade300)
-                                ),
-                                padding: EdgeInsets.all(5),
-                                margin: EdgeInsets.all(5),
-                                child: DropdownButton<String>(
-                                  value: country,
-                                  style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 15
-                                  ),
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      country = newValue!;
-                                    });
-                                  },
-                                  items: <String>['Egypt']
-                                      .map<DropdownMenuItem<String>>((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 30),
-                                        child: Text(value),
-                                      ),
-                                    );
-                                  }).toList(),
-                                )
-                            ),
+                            // IgnorePointer(
+                            //   ignoring: true,
+                            //   child: Container(
+                            //       decoration: BoxDecoration(
+                            //           borderRadius: BorderRadius.circular(20),
+                            //           color: CupertinoColors.extraLightBackgroundGray,
+                            //           border: Border.all(color: Colors.grey.shade300)
+                            //       ),
+                            //       padding: EdgeInsets.all(5),
+                            //       margin: EdgeInsets.all(5),
+                            //       child: DropdownButton<String>(
+                            //         value: country,
+                            //         style: TextStyle(
+                            //             color: Colors.black,
+                            //             fontSize: 15
+                            //         ),
+                            //         onChanged: (String? newValue) {
+                            //           setState(() {
+                            //             country = newValue!;
+                            //           });
+                            //         },
+                            //         items: <String>['Egypt']
+                            //             .map<DropdownMenuItem<String>>((String value) {
+                            //           return DropdownMenuItem<String>(
+                            //             value: value,
+                            //             child: Padding(
+                            //               padding: EdgeInsets.symmetric(horizontal: 30),
+                            //               child: Text(value),
+                            //             ),
+                            //           );
+                            //         }).toList(),
+                            //       )
+                            //   ),
+                            // ),
                             Expanded(
                               child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(20),
-                                  color: CupertinoColors.extraLightBackgroundGray,
-                                  border: Border.all(color: Colors.grey.shade300)
-                                ),
-                                padding: EdgeInsets.all(5),
-                                margin: EdgeInsets.all(5),
-                                child: DropdownButton<String>(
-                                  value: city,
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      city = newValue!;
-                                    });
-                                  },
-                                  items: <String>['Cairo','Giza', 'Alexandria', 'Marsa Matrouh']
-                                      .map<DropdownMenuItem<String>>((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(value),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20.0),
+                                    color: CupertinoColors.extraLightBackgroundGray,
+                                  ),
+                                  child: DropdownSearch<String>(
+                                    key: formKey,
+                                    selectedItem: city,
+                                    onChanged: (String? b) {
+                                      city = b?? "";
+                                    },
+                                    compareFn: (i1, i2) => i1 == i2,
+                                    items: cities,
+                                    itemAsString: (String b) => b,
+                                    dropdownDecoratorProps: DropDownDecoratorProps(
+                                        dropdownSearchDecoration: InputDecoration(
+                                            border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(20.0),
+                                                borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(20),
+                                                borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)
+                                            )
+                                        )
+                                    ),
+                                    popupProps: PopupProps.modalBottomSheet(
+                                      showSearchBox: true,
+                                      fit: FlexFit.tight,
+                                      constraints: BoxConstraints.tightForFinite(height: MediaQuery.of(context).size.height * 0.7),
+                                      searchFieldProps: TextFieldProps(
+                                          decoration: InputDecoration(
+                                            hintText: 'Search city',
+                                          )),
+                                      itemBuilder: (ctx, item, isSelected) {
+                                        return Container(
+                                          padding: EdgeInsets.all(10),
+                                          child: Text(item,
+                                              textAlign: TextAlign.left,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                  fontSize: 13.5, color: Colors.black, fontWeight: FontWeight.w600)),
+                                        );
+                                      },
+                                    ),
+                                  ),
                             ),
+                            )
                           ],
                         ),
                       ),
@@ -340,24 +408,25 @@ class _SignupState extends State<Signup> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            Flexible(
-                              flex: 1,
-                              child: TextFormField(
-                                decoration:InputDecoration(
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                                  enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                      borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
-                                  focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.grey),
-                                      borderRadius: BorderRadius.circular(20)),
-                                  filled: true,
-                                  fillColor: CupertinoColors.extraLightBackgroundGray,
-                                  labelStyle: TextStyle(color: Colors.grey),
-                                  labelText: '+20',
-                                ),
-                              ),
-                            ),
+                            // Flexible(
+                            //   flex: 1,
+                            //   child: TextFormField(
+                            //     enabled: false,
+                            //     decoration:InputDecoration(
+                            //       border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                            //       enabledBorder: OutlineInputBorder(
+                            //           borderRadius: BorderRadius.circular(20),
+                            //           borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                            //       focusedBorder: OutlineInputBorder(
+                            //           borderSide: BorderSide(color: Colors.grey),
+                            //           borderRadius: BorderRadius.circular(20)),
+                            //       filled: true,
+                            //       fillColor: CupertinoColors.extraLightBackgroundGray,
+                            //       labelStyle: TextStyle(color: Colors.grey),
+                            //       labelText: '+20',
+                            //     ),
+                            //   ),
+                            // ),
                             SizedBox(width: 10),
                             Flexible(
                               flex: 4,
@@ -380,6 +449,13 @@ class _SignupState extends State<Signup> {
                                   labelStyle: TextStyle(color: Colors.grey),
                                   labelText: 'Phone number',
                                 ),
+                                autovalidateMode: AutovalidateMode.onUserInteraction,
+                                validator: (value){
+                                  if (value == null || value.length != 10){
+                                    return "Enter a valid phone number";
+                                  }
+                                  return null;
+                                },
                               ),
                             ),
                           ],
@@ -397,29 +473,41 @@ class _SignupState extends State<Signup> {
                               )
                           ),
                           onPressed: () async{
+
                               bool grantedRegistration = true;
-                              encryptString('me');
                               if (!RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(email.text)){
                                 grantedRegistration = false;
 
+                              }else{
+                                print('good email');
                               }
                               if (firstName.text == ""){
                                 // first name invalid
                                 grantedRegistration = false;
+                              }else{
+                                print('good name');
                               }
                               if (lastName.text == ""){
                                 // last name invalid
                                 grantedRegistration = false;
+                              }else{
+                                print('good last name');
                               }
 
                               if (phoneNumber.text.length != 10){
                                 //invalid phone number
                                 grantedRegistration = false;
+                              }else{
+                                print('good phone');
                               }
+
                               if (country.isEmpty){
                                 // country not chosen
                                 grantedRegistration = false;
+                              }else{
+                                print('err5');
                               }
+
                               if (city.isEmpty){
                                 // city not chosen
                                 grantedRegistration = false;
@@ -439,6 +527,8 @@ class _SignupState extends State<Signup> {
                                           lastName.text, country, city, ageFieldController.text);
                                       if (resp == 200){
                                         failedToSignup = false;
+                                      }else{
+                                        showSnackbar(context, 'Could not communicate with server, try again.');
                                       }
                                     }else{
                                       showSnackbar(context, 'Email address already exists.');
@@ -466,10 +556,9 @@ class _SignupState extends State<Signup> {
                       ),
                     ],
                   ),
-
                 ),
               ],
-            )
+            ),
         ),
       ),
     );

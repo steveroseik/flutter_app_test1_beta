@@ -32,12 +32,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
     widget.requests.addAll(petRequest);
     widget.requests.addAll(matches);
     for (MateItem item in widget.requests){
-      print(item.sender_pet.pet.name + ': ' + item.status.toString());
-      if (item.status == 2){
+      if (item.request!.status == 2){
         tempMatch.add(item);
-        print('item 2');
-      }else if (item.status == 0) {
-        print('item 0');
+      }else if (item.request!.status == 0) {
         tempReq.add(item);
       }
     }
@@ -51,13 +48,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
   filterMatches(){
     for (MateItem item in widget.requests){
-      if (item.status == 2){
+      if (item.request!.status == 2){
         matches.add(item);
-        print('2');
       }
-      if (item.status == 0) {
+      if (item.request!.status == 0) {
         petRequest.add(item);
-        print('0');
       }
     }
     if (matches.isNotEmpty ) match = true;
@@ -112,7 +107,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         itemBuilder: (context, index){
                           return InkWell(
                             onTap: (){
-                              BA_key.currentState?.pushNamed('/petProfile', arguments: [matches[index], widget.ownerPets, 2]);
+                              BA_key.currentState?.pushNamed('/petProfile', arguments: [matches[index], widget.ownerPets]);
                             },
                             child: Container(
                               margin: EdgeInsets.symmetric(horizontal: 5),
@@ -161,10 +156,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     scrollDirection: Axis.vertical,
                     itemCount: petRequest.length,
                     itemBuilder: (context, index){
-                      final PetPod petRec = fetchReceiverPet(petRequest[index].receiver_id);
+                      final PetPod petRec = fetchReceiverPet(petRequest[index].request!.receiverPet);
                       return InkWell(
                         onTap: (){
-                          BA_key.currentState?.pushNamed('/petProfile', arguments: [petRequest[index],[petRec], 1])
+                          BA_key.currentState?.pushNamed('/petProfile', arguments: [petRequest[index],[petRec]])
                               .then((value) {
                             updateRequests();
                           });

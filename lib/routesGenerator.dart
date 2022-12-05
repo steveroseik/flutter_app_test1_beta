@@ -1,15 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/JsonObj.dart';
-import 'package:flutter_app_test1/pages/BreedsArticles.dart';
 import 'package:flutter_app_test1/pages/EditProfile.dart';
-import 'package:flutter_app_test1/pages/FoodArticles.dart';
-import 'package:flutter_app_test1/pages/HealthArticles.dart';
-import 'package:flutter_app_test1/pages/TrainingArticles.dart';
 import 'dart:io';
 import 'package:flutter_app_test1/pages/breed.dart';
 import 'package:flutter_app_test1/pages/breed_sp.dart';
 import 'package:flutter_app_test1/pages/breed_registration.dart';
+import 'package:flutter_app_test1/pages/changeEmail.dart';
 import 'package:flutter_app_test1/pages/create_meet.dart';
 import 'package:flutter_app_test1/pages/editPass.dart';
 import 'package:flutter_app_test1/pages/editPetPage.dart';
@@ -22,6 +19,8 @@ import 'package:flutter_app_test1/pages/notificationsPage.dart';
 import 'package:flutter_app_test1/pages/petDocumentUpload.dart';
 import 'package:flutter_app_test1/pages/petMatchPage.dart';
 import 'package:flutter_app_test1/pages/petProfilePage.dart';
+import 'package:flutter_app_test1/pages/reAuth.dart';
+import 'package:flutter_app_test1/pages/selectmeetlocation.dart';
 import 'package:flutter_app_test1/pages/settings.dart';
 import 'package:flutter_app_test1/pages/user_profile.dart';
 import 'package:flutter_app_test1/pages/home.dart';
@@ -97,14 +96,14 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => addBreedPage());
       case '/petMatch':
         if (args is List){
-          return MaterialPageRoute(builder: (_) => PetMatchPage(senderPet: args[0],pets: args[1]));
+          return MaterialPageRoute(builder: (_) => PetMatchPage(senderPet: args[0],pets: args[1], petRequests: args[2], sentRequests: args[3],));
         }else{
           return _errorRoute();
         }
 
       case '/search_manual':
-        if (args is List<PetPod>){
-          return MaterialPageRoute(builder: (_) => breedSearchPage(ownerPets: args,));
+        if (args is List){
+          return MaterialPageRoute(builder: (_) => breedSearchPage(ownerPets: args[0],petRequests: args[1], sentRequests: args[2],));
         }
         return _errorRoute();
       case '/pet_register':
@@ -122,9 +121,13 @@ class RouteGenerator {
         }
         return _errorRoute();
       case '/pet_adopt':
-        return MaterialPageRoute(
-          builder: (_) => breedSearchPage(ownerPets: [],), // Second Page
-        );
+        if (args is List){
+          return MaterialPageRoute(
+            builder: (_) => breedSearchPage(ownerPets: args[0], petRequests: args[1], sentRequests: args[2]), // Second Page
+          );
+        }
+        return _errorRoute();
+
       case '/petDocument':
         if (args is List){
           return MaterialPageRoute(
@@ -134,7 +137,7 @@ class RouteGenerator {
       case '/petProfile':
         if (args is List){
           return MaterialPageRoute(
-              builder: (_) => PetProfilePage(pod: args[0], ownerPets: args[1], senderState: args[2]));
+              builder: (_) => PetProfilePage(pod: args[0], ownerPets: args[1]));
         }
         return _errorRoute();
       case '/notif':
@@ -162,14 +165,6 @@ class RouteGenerator {
           );
         }
         return _errorRoute();
-      case '/food_articles':
-        return MaterialPageRoute(builder: (_) => FoodArticles());
-      case '/health_articles':
-        return MaterialPageRoute(builder: (_) => HealthArticles());
-      case '/breeds_articles':
-        return MaterialPageRoute(builder: (_) => BreedsArticles());
-      case '/training_articles':
-        return MaterialPageRoute(builder: (_) => TrainingArticles());
       default:
       // if an unmatched route is called, return error route
         return _errorRoute();
@@ -220,7 +215,7 @@ class RouteGenerator {
       case '/':
         return MaterialPageRoute(builder: (_) => SettingsPage());
       case '/editProfile':
-        if (args is Map)
+        if (args is UserPod)
           return MaterialPageRoute(builder: (_) => EditProfile(userData: args));
         return _errorRoute();
       case '/editPass':
@@ -233,7 +228,11 @@ class RouteGenerator {
         if (args is UserPod){
           return MaterialPageRoute(builder: (_) => VerifyAccountPage(userPod: args));
         }
-       return _errorRoute();
+        return _errorRoute();
+      case '/changeEmail':
+          return MaterialPageRoute(builder: (_) => ChangeEmail());
+      case '/reauth':
+        return MaterialPageRoute(builder: (_) => ReAuthPage());
       default:
       // if an unmatched route is called, return error route
         return _errorRoute();

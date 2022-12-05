@@ -23,7 +23,9 @@ final PanelController _pc = PanelController();
 // Elevated Card
 class breedSearchPage extends StatefulWidget {
   final List<PetPod> ownerPets;
-  const breedSearchPage({Key? key, required this.ownerPets}) : super(key: key);
+  List<MateRequest> petRequests;
+  List<MateRequest> sentRequests;
+  breedSearchPage({Key? key, required this.ownerPets, required this.petRequests, required this.sentRequests}) : super(key: key);
 
   @override
   State<breedSearchPage> createState() => _breedSearchPageState();
@@ -58,15 +60,51 @@ class _breedSearchPageState extends State<breedSearchPage> {
   initPets() async{
 
     pets.addAll(await fetchResultedPets());
-    breedList.addAll(await fetchBreedNameList());
     setState(() {
       isLoading = false;
     });
 
+    breedList.addAll(await fetchBreedNameList());
+  }
+
+  generateDistances() async{
+    List<String> userIDs = List<String>.generate(pets.length, (index) {
+      return pets[index].pet.ownerId;
+    });
+
+    try{
+      final resp = await SupabaseCredentials.supabaseClient.from('users').select('id,lat,long').in_('id', userIDs) as List<dynamic>;
+    }catch (e){
+      print(e);
+    }
+
+
+
+  }
+
+  matchRequest(String petID){
+    List<MateRequest> allList = <MateRequest>[];
+    allList.addAll(widget.petRequests);
+    allList.addAll(widget.sentRequests);
+
+    for (MateRequest m in allList){
+
+      if (m.senderPet == petID){
+        return m;
+      }else if (m.receiverPet == petID){
+        return m;
+      }
+
+    }
+
+    return MateRequest(id: "-1", senderId: 'senderId', receiverId: 'receiverId', senderPet: 'senderPet', receiverPet: 'receiverPet', status: -1);
+
+
   }
 
   startSorting(List<PetPod> pods){
-    const time = const Duration(seconds: 2);
+    sortTrials = 5;
+    const time = const Duration(seconds: 1);
     _sortTimer = Timer.periodic(time, (Timer time) {
       int locAvail = 0;
       for (PetPod pod in pods){
@@ -76,6 +114,8 @@ class _breedSearchPageState extends State<breedSearchPage> {
       }
       if (sortTrials == 0) {
         setState(() {
+        pets.addAll(pods);
+        isLoading = false;
         time.cancel();
       });
       }
@@ -109,6 +149,9 @@ class _breedSearchPageState extends State<breedSearchPage> {
     sortTrials = 5;
     startSorting(pods);
   }
+
+
+
 
   @override
   void initState() {
@@ -525,18 +568,38 @@ class _breedSearchPageState extends State<breedSearchPage> {
                 fontSize: width*0.04,
                 fontWeight: FontWeight.w500,color: CupertinoColors.systemGrey2),
             textAlign: TextAlign.center,
-          ) : Padding(
-            padding: EdgeInsets.all(10),
-            child: GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1/1.3,
-                mainAxisSpacing: 10.0,
+          ) : Container(
+            height: height*0.72,
+            child: Padding(
+              padding: EdgeInsets.all(10),
+              child: GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 1/1.3,
+                  mainAxisSpacing: 10.0,
+                ),
+                itemCount: pets.length,
+                itemBuilder: (context, index) {
+
+                  return GestureDetector(
+                    onTap: (){
+                      MateRequest req = matchRequest(pets[index].pet.id);
+                      if (req.status == -1){
+                        MateItem petItem = MateItem(sender_pet: pets[index], request: req);
+                        BA_key.currentState?.pushNamed('/petProfile', arguments: [petItem, widget.ownerPets]).then((value) {
+                          if (req.status != -1){
+                            widget.sentRequests.add(req);
+                          }
+                        });
+                      }else{
+                        BA_key.currentState?.pushNamed('/petProfile', arguments: [MateItem(sender_pet: pets[index], request: req), widget.ownerPets]);
+                      }
+
+
+                    },
+                      child: PetView(profile: pets[index], ownerPets: widget.ownerPets, rootPets: pets));
+                },
               ),
-              itemCount: pets.length,
-              itemBuilder: (context, index) {
-                return PetView(profile: pets[index], ownerPets: widget.ownerPets,);
-              },
             ),
           ),
         ),

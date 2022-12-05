@@ -92,13 +92,16 @@ class Article{
   final String url;
   final String title;
   final String urlImage;
+  final String type;
 
   const Article({
     required this.url,
     required this.title,
     required this.urlImage,
+    required this.type,
   });
 }
+
 List<Article> articles =  [];
 List<Article> health_articles =  [];
 List<Article> food_articles =  [];
@@ -111,3 +114,6 @@ int getFileSize(File file){
   int sizeInKb = sizeInBytes ~/ (1024);
   return sizeInKb;
 }
+
+
+

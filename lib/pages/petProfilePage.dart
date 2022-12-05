@@ -25,9 +25,8 @@ import 'dart:ui';
 
 class PetProfilePage extends StatefulWidget{
   MateItem pod;
-  final int senderState;
   final List<PetPod> ownerPets;
-  PetProfilePage({Key? key, required this.pod, required this.ownerPets, required this.senderState}) : super(key: key);
+  PetProfilePage({Key? key, required this.pod, required this.ownerPets}) : super(key: key);
 
   @override
   State<PetProfilePage> createState() => _PetProfilePageState();
@@ -46,7 +45,7 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
   late PDFDocument document;
   int distance = -1;
   UserPod? ownerPod;
-  int petState = 0;
+  final petState = ValueNotifier<int>(-1);
   bool ownerVerified = false;
   bool tapped = false;
   late Timer _timer;
@@ -59,9 +58,11 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
     const interval = Duration(seconds: 1);
     _timer = Timer.periodic(interval, (timer) {
       if (timer_counter == 0){
-        setState(() {
-          _timer.cancel();
-        });
+        if (this.mounted) {
+          setState(() {
+            _timer.cancel();
+          });
+        }
 
       }else{
         timer_counter--;
@@ -72,21 +73,42 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
           }else{
             distanceText = (widget.pod.sender_pet.distance).toInt().toString() + " meters";
           }
-          setState(() {
+         if (mounted){
+           setState(() {
 
-          });
+           });
+         }
+        }else{
+          print('no distance');
         }
       }
     });
 
   }
-  initPet() async{
-    if (widget.pod.status == -1){
-      petState = 1;
+
+  initPetState(){
+    int? state = widget.pod.request?.status;
+    String? receiverPet = widget.pod.request?.receiverPet;
+    print('${state}, ${receiverPet}, ${widget.pod.sender_pet.pet.name}');
+
+    if (state != null && receiverPet != null){
+      if (state == 2){
+        petState.value = state;
+      }else if(state == 0){
+        if (receiverPet == widget.pod.sender_pet.pet.id){
+          petState.value = 1;
+        }else{
+          petState.value = 0;
+        }
+      }
     }else{
-      petState = widget.pod.status;
+      petState.value = -1;
     }
 
+  }
+  initPet() async{
+
+    initPetState();
     distance = widget.pod.sender_pet.distance;
     if ( distance > -1){
       if (widget.pod.sender_pet.distance >= 1000){
@@ -187,175 +209,228 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                           ],
                         )),
                       ),
-                      if (petState == 2) GestureDetector(
-                        onTap: tapped ? null : ()async{
-                         if (ownerPod == null){
-                           if (!loading.mounted) {
-                             OverlayState? overlay =
-                             Overlay.of(context);
-                             overlay?.insert(loading);
-                             setState(() {
+                      ValueListenableBuilder<int>(
+                          valueListenable: petState,
+                          builder: (BuildContext context, int value, Widget? widget){
+                            switch(value){
+                              case 0: {
+                                return Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    ElevatedButton.icon(
+                                      onPressed: tapped ? null : ()async {
+                                        setState(() {
+                                          tapped = true;
+                                        });
+                                        final resp = await updateMateRequest(this.widget.pod.request!.id, 2);
+                                        if (resp == 200){
+                                          this.widget.pod.request!.status = 2;
+                                          petState.value = 2;
+                                          setState(() {
+                                          });
 
-                             });
-                           }
-                           try{
-                             final resp = jsonEncode(await SupabaseCredentials.supabaseClient
-                                 .from('users')
-                                 .select('*').eq('id', widget.pod.sender_pet.pet.ownerId).single() as Map);
-                             ownerPod = userPodFromJson(resp);
-                           }catch (e){
-
-                           }
-                         }
-                         if(loading.mounted){
-                           loading.remove();
-                         }
-                         setState(() {
-
-                         });
-                         _ownerInfo();
-
-                        },
-                        child: Container(
-                          height: height*0.054,
-                          decoration: BoxDecoration(
-                            border: Border.all(width: 1, color: Colors.blueGrey),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(
-                              children: [
-                                Icon(Icons.circle_outlined, color: Colors.redAccent,),
-                                SizedBox(width: width*0.015,),
-                                Text("Owner Information",
-                                    style: TextStyle(
-                                      fontSize: width*0.03,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.blueGrey
-                                    )),
-                                SizedBox(width: width*0.02,),
-                                Icon(CupertinoIcons.arrowshape_turn_up_right, size: width*0.04, color: Colors.blueGrey,)
-                              ],
-                            ),
-                          ),
-                        ),
-                      ) else if (petState == 0) Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: tapped ? null : ()async {
-                              setState(() {
-                                tapped = true;
-                              });
-                              final resp = await updateMateRequest(widget.pod.request_id, 2);
-                              if (resp == 200){
-                                widget.pod.status = 2;
-                                petState = 2;
-                                setState(() {
-                                });
-
-                              }else{
-                                showSnackbar(context, "Failed to communicate with server, try again.");
+                                        }else{
+                                          showSnackbar(context, "Failed to communicate with server, try again.");
+                                        }
+                                        setState(() {
+                                          tapped = false;
+                                        });
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green.shade300,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(18.0)
+                                          )
+                                      ),
+                                      icon:  Icon(CupertinoIcons.checkmark_alt, color: Colors.white, size: width*0.03,),
+                                      label: Text('Accept', style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: width*0.024
+                                      ),),
+                                    ),
+                                    // SizedBox(width: width*0.02,),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                      child: CircleAvatar(
+                                        backgroundColor: Colors.blueGrey, radius: width*0.04,
+                                        child: CircleAvatar(radius: width*0.04-1,
+                                          backgroundImage: NetworkImage(this.widget.ownerPets[0].pet.photoUrl),),),
+                                    ),
+                                    ElevatedButton.icon(
+                                      onPressed: tapped ? null : ()async {
+                                        setState(() {
+                                          tapped = true;
+                                        });
+                                        final resp = await deleteMateRequest(this.widget.pod.request!.id);
+                                        if (resp == 200){
+                                          this.widget.pod.request!.status = -1;
+                                          petState.value = -1;
+                                          setState(() {
+                                          });
+                                        }else{
+                                          showSnackbar(context, "Failed to communicate with server, try again.");
+                                        }
+                                        setState(() {
+                                          tapped = false;
+                                        });
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(18.0)
+                                          )
+                                      ),
+                                      icon:  Icon(CupertinoIcons.xmark, color: Colors.black, size: width*0.03,),
+                                      label: Text('Decline', style: TextStyle(
+                                          color: Colors.black,
+                                          fontSize: width*0.024
+                                      ),),
+                                    ),
+                                  ],
+                                );
                               }
-                              setState(() {
-                                tapped = false;
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green.shade300,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(18.0)
-                                )
-                            ),
-                            icon:  Icon(CupertinoIcons.checkmark_alt, color: Colors.white, size: width*0.03,),
-                            label: Text('Accept', style: TextStyle(
-                                color: Colors.white,
-                                fontSize: width*0.024
-                            ),),
-                          ),
-                          // SizedBox(width: width*0.02,),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                            child: CircleAvatar(
-                              backgroundColor: Colors.blueGrey, radius: width*0.04,
-                              child: CircleAvatar(radius: width*0.04-1,
-                                backgroundImage: NetworkImage(widget.ownerPets[0].pet.photoUrl),),),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: tapped ? null : ()async {
-                              setState(() {
-                                tapped = true;
-                              });
-                              final resp = await updateMateRequest(widget.pod.request_id, 1);
-                              if (resp == 200){
-                                widget.pod.status = 1;
-                                petState = 1;
-                                setState(() {
-                                });
-                              }else{
-                                showSnackbar(context, "Failed to communicate with server, try again.");
+                              case 1: {
+                                return ElevatedButton.icon(
+                                  onPressed:tapped ? null :  ()async {
+                                    setState(() {
+                                      tapped = true;
+                                    });
+                                    final resp = await deleteMateRequest(this.widget.pod.request!.id);
+                                    if (resp == 200){
+                                      this.widget.pod.request!.status = -1;
+                                      petState.value = -1;
+                                      setState(() {
+                                      });
+                                    }else{
+                                      showSnackbar(context, "Failed to communicate with server, try again.");
+                                    }
+                                    setState(() {
+                                      tapped = false;
+                                    });
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blueGrey.shade800,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(18.0)
+                                      )
+                                  ),
+                                  icon:  Icon(CupertinoIcons.heart_slash_fill, color: Colors.white, size: width*0.03,),
+                                  label: Text('Cancel Request', style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: width*0.024
+                                  ),),
+                                );
                               }
-                              setState(() {
-                                tapped = false;
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(18.0)
-                                )
-                            ),
-                            icon:  Icon(CupertinoIcons.xmark, color: Colors.black, size: width*0.03,),
-                            label: Text('Decline', style: TextStyle(
-                                color: Colors.black,
-                                fontSize: width*0.024
-                            ),),
-                          ),
-                        ],
-                      ) else ElevatedButton.icon(
-                        onPressed:tapped ? null :  ()async {
-                          setState(() {
-                            tapped = true;
-                          });
+                              case 2: {
+                                return GestureDetector(
+                                  onTap: tapped ? null : ()async{
+                                    if (ownerPod == null){
+                                      if (!loading.mounted) {
+                                        OverlayState? overlay =
+                                        Overlay.of(context);
+                                        overlay?.insert(loading);
+                                        setState(() {
 
-                          final petInd = await _customSheet(context);
-                          print(petInd);
-                          final uid = FirebaseAuth.instance.currentUser!.uid;
-                          if (petInd != -1){
-                            if (uid == widget.ownerPets[petInd].pet.ownerId){
-                              final stat = await sendMateRequest(widget.ownerPets[petInd].pet.ownerId,
-                                  widget.pod.sender_pet.pet.ownerId,
-                                  widget.ownerPets[petInd].pet.id,
-                                  widget.pod.sender_pet.pet.id);
-                              if (stat == 200){
-                                showNotification(context, 'Request sent successfully');
-                              }else if (stat == 0){
-                                showSnackbar(context, 'You have already sent a request.');
-                              }else{
-                                showSnackbar(context, 'Failed to send request');
+                                        });
+                                      }
+                                      try{
+                                        final resp = jsonEncode(await SupabaseCredentials.supabaseClient
+                                            .from('users')
+                                            .select('*').eq('id', this.widget.pod.sender_pet.pet.ownerId).single() as Map);
+                                        ownerPod = userPodFromJson(resp);
+                                      }catch (e){
+
+                                      }
+                                    }
+                                    if(loading.mounted){
+                                      loading.remove();
+                                    }
+                                    setState(() {
+
+                                    });
+                                    _ownerInfo();
+
+                                  },
+                                  child: Container(
+                                    height: height*0.054,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(width: 1, color: Colors.blueGrey),
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.circle_outlined, color: Colors.redAccent,),
+                                          SizedBox(width: width*0.015,),
+                                          Text("Owner Information",
+                                              style: TextStyle(
+                                                  fontSize: width*0.03,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.blueGrey
+                                              )),
+                                          SizedBox(width: width*0.02,),
+                                          Icon(CupertinoIcons.arrowshape_turn_up_right, size: width*0.04, color: Colors.blueGrey,)
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
                               }
-                            }else{
-                              showSnackbar(context, 'Unexpected behavior!');
+                              default: return ElevatedButton.icon(
+                                onPressed:tapped ? null :  ()async {
+                                  setState(() {
+                                    tapped = true;
+                                  });
+
+                                  final petInd = await _customSheet(context);
+                                  final uid = FirebaseAuth.instance.currentUser!.uid;
+                                  if (petInd != -1){
+                                    if (uid == this.widget.ownerPets[petInd].pet.ownerId){
+                                      final newRequest = await sendMateRequest(this.widget.ownerPets[petInd].pet.ownerId,
+                                          this.widget.pod.sender_pet.pet.ownerId,
+                                          this.widget.ownerPets[petInd].pet.id,
+                                          this.widget.pod.sender_pet.pet.id);
+                                      if (newRequest.status == 0){
+                                        this.widget.pod.request!.status = newRequest.status;
+                                        this.widget.pod.request!.id = newRequest.id;
+                                        this.widget.pod.request!.receiverId = newRequest.receiverId;
+                                        this.widget.pod.request!.receiverPet = newRequest.receiverPet;
+                                        this.widget.pod.request!.senderId = newRequest.senderId;
+                                        this.widget.pod.request!.senderPet = newRequest.senderPet;
+                                        petState.value = 1;
+                                        showNotification(context, 'Request sent successfully');
+                                      }else if (newRequest.status  == -3){
+                                        showSnackbar(context, 'You have already sent a request.');
+                                        petState.value = 1;
+                                      }else if (newRequest.status == -4){
+                                        showSnackbar(context, 'User has sent you a request. refresh notifications.');
+                                      }else{
+                                        showSnackbar(context, 'Failed to send request');
+                                      }
+                                    }else{
+                                      showSnackbar(context, 'Unexpected behavior!');
+                                    }
+                                  }
+
+                                  setState(() {
+                                    tapped = false;
+                                  });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red.shade300,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(18.0)
+                                    )
+                                ),
+                                icon:  Icon(CupertinoIcons.heart_fill, color: Colors.white, size: width*0.03,),
+                                label: Text('Send Request', style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: width*0.024
+                                ),),
+                              );
                             }
-                          }
-
-                          setState(() {
-                            tapped = false;
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade300,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18.0)
-                            )
-                        ),
-                        icon:  Icon(CupertinoIcons.heart_fill, color: Colors.white, size: width*0.03,),
-                        label: Text('Ask to Mate', style: TextStyle(
-                            color: Colors.white,
-                            fontSize: width*0.024
-                        ),),
-                      )
+                          })
                     ],
                   ),
                   Spacer(),
@@ -774,9 +849,11 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
           List<PetPod> goodPets = <PetPod>[];
 
           for (PetPod p in widget.ownerPets) {
-            // if (p.pet.breed == mateItem.sender_pet.pet.breed) {
-            goodPets.add(p);
-            // }
+            if ((p.pet.breed == widget.pod.sender_pet.pet.breed)
+                && (p.pet.isMale != widget.pod.sender_pet.pet.isMale)){
+
+              goodPets.add(p);
+            }
           }
           final height = MediaQuery
               .of(context)

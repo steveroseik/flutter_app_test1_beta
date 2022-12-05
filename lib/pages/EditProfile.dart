@@ -12,9 +12,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 
 import '../FETCH_wdgts.dart';
+import '../JsonObj.dart';
 
 class EditProfile extends StatefulWidget {
-  final Map userData;
+  final UserPod userData;
 
   const EditProfile({Key? key, required this.userData}) : super(key: key);
 
@@ -46,11 +47,11 @@ class editprofile extends State<EditProfile>
   final FocusNode myFocusNode = FocusNode();
 
   initData() {
-    firstName.text = widget.userData['firstName'];
-    lastName.text = widget.userData['lastName'];
-    emailField.text = widget.userData['email'];
-    phoneNumber.text = widget.userData['phone'].toString();
-    ageFieldController.text = widget.userData['birthdate'];
+    firstName.text = widget.userData.firstName;
+    lastName.text = widget.userData.lastName;
+    emailField.text = widget.userData.email;
+    phoneNumber.text = widget.userData.phone.toString();
+    ageFieldController.text = '${widget.userData.birthdate.year}-${widget.userData.birthdate.month}-${widget.userData.birthdate.day}';
   }
 
   @override
@@ -297,9 +298,7 @@ class editprofile extends State<EditProfile>
                                 fillColor:
                                 CupertinoColors.extraLightBackgroundGray,
                                 labelStyle: TextStyle(color: Colors.grey),
-                                labelText: widget.userData == ''
-                                    ? ''
-                                    : '${widget.userData['birthdate']}',
+                                labelText: 'Birthdate',
                               ),
                             ),
                           ),

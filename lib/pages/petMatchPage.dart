@@ -16,7 +16,9 @@ import '../JsonObj.dart';
 class PetMatchPage extends StatefulWidget {
   final PetPod senderPet;
   final List<PetPod> pets;
-  const PetMatchPage({Key? key, required this.pets, required this.senderPet}) : super(key: key);
+  List<MateRequest> petRequests;
+  List<MateRequest> sentRequests;
+  PetMatchPage({Key? key, required this.pets, required this.senderPet, required this.petRequests, required this.sentRequests}) : super(key: key);
 
   @override
   State<PetMatchPage> createState() => _PetMatchPageState();
@@ -37,12 +39,32 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
 
       final petView = PetMatchCard(pod: pet, sender: widget.senderPet);
       petMatches.add(petView);
-      setState(() {
-        petsReady = true;
-      });
-      animControl.forward();
     }
+    setState(() {
+      petsReady = true;
+    });
+    animControl.forward();
   }
+
+   matchRequest(String petID){
+     List<MateRequest> allList = <MateRequest>[];
+     allList.addAll(widget.petRequests);
+     allList.addAll(widget.sentRequests);
+
+     for (MateRequest m in allList){
+
+       if (m.senderPet == petID){
+         return m;
+       }else if (m.receiverPet == petID){
+         return m;
+       }
+
+     }
+
+     return MateRequest(id: "-1", senderId: 'senderId', receiverId: 'receiverId', senderPet: 'senderPet', receiverPet: 'receiverPet', status: -1);
+
+
+   }
 
   @override
   void initState() {
@@ -86,6 +108,7 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
                               fontWeight: FontWeight.w500,color: CupertinoColors.systemGrey2),
                           textAlign: TextAlign.center,
                         ),
+                        SizedBox(height: 20,),
                         ElevatedButton.icon(
                           onPressed: (){
                            BA_key.currentState?.pop(true);
@@ -112,7 +135,25 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
                     itemWidth: 230,
                     itemHeight: double.infinity,
                     itemBuilder: (BuildContext context, int index) {
-                      return  petMatches[index];
+                      MateRequest req = matchRequest(widget.pets[index].pet.id);
+                      MateItem petItem = MateItem(sender_pet: widget.pets[index], request: req);
+                      return  GestureDetector(
+                          onTap: (){
+
+                            print('the request: req');
+                            if (req.status == -1){
+                              BA_key.currentState?.pushNamed('/petProfile', arguments: [petItem, [widget.senderPet]]).then((value){
+                                if (req.status != -1){
+                                  widget.sentRequests.add(req);
+                                }
+                              });
+                            }else{
+                              BA_key.currentState?.pushNamed('/petProfile', arguments: [petItem, [widget.senderPet]]);
+                            }
+
+
+                            },
+                          child: petMatches[index]);
                       },
                     itemCount: petMatches.length,
                     layout: SwiperLayout.STACK,

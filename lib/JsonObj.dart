@@ -733,3 +733,67 @@ class Parent {
     "Name": name,
   };
 }
+
+List<MateRequest> mateRequestFromJson(String str) => List<MateRequest>.from(json.decode(str).map((x) => MateRequest.fromJson(x)));
+
+String mateRequestToJson(List<MateRequest> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
+
+MateRequest singlemMateRequestFromJson(String str) => MateRequest.fromJson(json.decode(str));
+
+String singleMateRequestToJson(MateRequest data) => json.encode(data.toJson());
+
+class MateRequest {
+  MateRequest({
+    required this.id,
+    required this.senderId,
+    required this.receiverId,
+    required this.senderPet,
+    required this.receiverPet,
+    required this.status,
+  });
+
+  String id;
+  String senderId;
+  String receiverId;
+  String senderPet;
+  String receiverPet;
+  int status;
+
+  factory MateRequest.fromJson(Map<String, dynamic> json) => MateRequest(
+    id: json["id"],
+    senderId: json["sender_id"],
+    receiverId: json["receiver_id"],
+    senderPet: json["sender_pet"],
+    receiverPet: json["receiver_pet"],
+    status: json["status"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "sender_id": senderId,
+    "receiver_id": receiverId,
+    "sender_pet": senderPet,
+    "receiver_pet": receiverPet,
+    "status": status,
+  };
+
+
+
+  petSendState(String petID){
+    if (petID == senderId){
+      return status;
+    }else{
+      return -1;
+    }
+  }
+
+  petReceiveState(String petID){
+    if (petID == receiverId){
+      return status;
+    }else{
+      return -1;
+    }
+  }
+
+}
+

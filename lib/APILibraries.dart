@@ -150,13 +150,13 @@ Future addPet(String name, dogBreed, bool isMale, String petBirthDate, String ph
   int ret = -100;
   try{
     await SupabaseCredentials.supabaseClient.from('pets').insert({
-      'name': name,
+      'name': name.capitalize(),
       'breed': dogBreed,
       'isMale': isMale ? true : false,
       'birthdate': petBirthDate,
       'photo_url': photoUrl,
       'owner_id': uid,
-      'ready': false,
+      'verified': false,
       'created_at': DateTime.now().toIso8601String(),
       'vaccines': vaccines,
       'passport': pdfUrl,
@@ -378,7 +378,7 @@ Future<String> uploadPhoto(io.File imgFile) async {
 Future<bool> fetchUserPets() async{
 
   final uid = FirebaseAuth.instance.currentUser!.uid;
-  final data = await SupabaseCredentials.supabaseClient.from('pets').select('id').eq('owner_id', uid) as List<dynamic>;
+  final data = await SupabaseCredentials.supabaseClient.from('pets').select('*').eq('owner_id', uid) as List<dynamic>;
 
   final prefs = await SharedPreferences.getInstance();
 
@@ -432,12 +432,6 @@ Future fetchResultedPets() async{
   try{
     final petList = await SupabaseCredentials.supabaseClient.from('pets').select('*').neq('owner_id', uid) as List<dynamic>;
     final pets = petProfileFromJson(jsonEncode(petList));
-    // final petOwners = List<String>.generate(pets.length, (index) {
-    //   return pets[index].ownerId;
-    // });
-    // final userLocationList = await SupabaseCredentials.supabaseClient.from("users")
-    //     .select('id,lat,long')
-    //     .in_('id', petOwners) as List<dynamic>;
     final pods = List<PetPod>.generate(pets.length, (index){
       return PetPod(pets[index], false, GeoLocation(0.0, 0.0), 1);
     });
@@ -449,10 +443,31 @@ Future fetchResultedPets() async{
 
 }
 
-Future<List<PetPod>> getPetMatch() async{
+Future<List<PetPod>> fetchRequestPets(List<String> pets) async{
+
+  try{
+
+    final resp = await SupabaseCredentials.supabaseClient.from('pets')
+        .select('*').in_('id', pets) as List<dynamic>;
+    if (resp.isNotEmpty){
+      return List<PetPod>.generate(resp.length, (index) {
+        final profile = singlePetProfileFromJson(jsonEncode(resp[index]));
+        return PetPod(profile, false, GeoLocation(0.0,0.0), 1);
+      });
+    }
+    return <PetPod>[];
+
+  }catch (e){
+    print(e);
+    return <PetPod>[];
+  }
+}
+
+Future<List<PetPod>> getPetMatch(PetProfile pet) async{
   try{
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    final petList = await SupabaseCredentials.supabaseClient.from('pets').select('*') as List<dynamic>;
+    final petList = await SupabaseCredentials.supabaseClient.from('pets')
+        .select('*').neq('owner_id', uid).neq('isMale', pet.isMale).eq('breed', pet.breed) as List<dynamic>;
     final pets = petProfileFromJson(jsonEncode(petList));
 
     final petPods = List<PetPod>.generate(pets.length, (index) => PetPod(pets[index], false, GeoLocation(0.0,0.0), 1));
@@ -484,14 +499,32 @@ Future updatePassport(String urlPath, String petId) async{
   }
   return i;
 }
-
-Future<int> sendMateRequest(String sid, String rid, String spid, String rpid) async{
-  int i = -100;
+Future<List<MateRequest>> fetchPetsRelation(String uid) async{
   try{
     final resp = await SupabaseCredentials.supabaseClient.from('mate_requests')
-        .select('id')
-        .eq('sender_pet', spid).eq('receiver_pet', rpid) as List<dynamic>;
-    if (resp.isEmpty){
+        .select('*').or('sender_id.eq.${uid},receiver_id.eq.${uid}') as List<dynamic>;
+        // .or('and(sender_pet.in.${pets},receiver_pet.eq.${spid}),and(sender_pet.eq.${spid},receiver_pet.eq.${rpid})')
+    if (resp.isNotEmpty){
+      print('resp is empty');
+      final requestItems = mateRequestFromJson(jsonEncode(resp));
+      return requestItems;
+    }else{
+      return <MateRequest>[];
+    }
+  }catch (e){
+    print(e);
+    return <MateRequest>[];
+  }
+}
+
+
+Future<MateRequest> sendMateRequest(String sid, String rid, String spid, String rpid) async{
+  int i = -100;
+  try{
+    final listOfRequests = await SupabaseCredentials.supabaseClient.from('mate_requests')
+        .select("id")
+        .or('and(sender_pet.eq.${rpid},receiver_pet.eq.${spid}),and(sender_pet.eq.${spid},receiver_pet.eq.${rpid})') as List<dynamic>;
+    if (listOfRequests.isEmpty){
       final data = await SupabaseCredentials.supabaseClient.from('mate_requests')
           .insert({
         "sender_id": sid,
@@ -499,48 +532,50 @@ Future<int> sendMateRequest(String sid, String rid, String spid, String rpid) as
         "sender_pet": spid,
         "receiver_pet": rpid,
         "status": 0
-      }).single();
+      }).select('*').single() as Map;
+      print('${data}');
       i = 200;
+      MateRequest newRequest = singlemMateRequestFromJson(jsonEncode(data));
+      return newRequest;
     }else{
-      i = 0;
+      if (listOfRequests[0]['sender_pet'] == spid){
+        return MateRequest(id: "-1", senderId: "senderId", receiverId: "receiverId", senderPet: "senderPet", receiverPet: "receiverPet", status: -3);
+      }else{
+        return MateRequest(id: "-1", senderId: "senderId", receiverId: "receiverId", senderPet: "senderPet", receiverPet: "receiverPet", status: -4);
+      }
+
     }
 
   }catch (e){
     print(e);
+    return MateRequest(id: "-1", senderId: "senderId", receiverId: "receiverId", senderPet: "senderPet", receiverPet: "receiverPet", status: -2);
   }
-  return i;
-}
-
-Future<List<MateItem>> fetchPetRequests(String uid) async{
-
-  try{
-    final data = await SupabaseCredentials.supabaseClient.from('mate_requests').select('*').eq('receiver_id', uid).neq('status', 1) as List<dynamic>;
-    late List<MateItem> pets = List.empty(growable: true);
-    for (dynamic p in data){
-      Map map = Map.from(p);
-      final pet = singlePetProfileFromJson(jsonEncode(await SupabaseCredentials.supabaseClient.from('pets').select('*').eq('id', map['sender_pet']).single()));
-      final item = MateItem(PetPod(pet, false, GeoLocation(0,0), 1), map['receiver_pet'], map['id'], map['status']);
-      pets.add(item);
-    }
-    return pets;
-  }catch (e){
-    print(e);
-  }
-return List<MateItem>.empty();
-
 
 }
 
 Future updateMateRequest(String reqID, int val) async{
   int i = -100;
   try{
-    await SupabaseCredentials.supabaseClient.from('mate_requests').update({"status": val}).eq('id', reqID);
+    final resp = await SupabaseCredentials.supabaseClient.from('mate_requests').update({"status": val}).eq('id', reqID).single() as Map;
+    print(resp);
     i = 200;
   }catch (e){
     print(e);
   }
   return i;
 }
+
+Future deleteMateRequest(String reqID) async{
+  int i = -100;
+  try{
+    await SupabaseCredentials.supabaseClient.from('mate_requests').delete().match({'id': reqID});
+    i = 200;
+  }catch (e){
+    print(e);
+  }
+  return i;
+}
+
 
 Future fetchUserData(String uid) async{
   try{
@@ -603,45 +638,56 @@ void filterPetSearch() async{
     final resp = await SupabaseCredentials.supabaseClient.from('pets')
         .select('name')
         .or("and(birthdate.gte.2020-01-01,birthdate.lte.2023-01-01)").in_('breed', ['Yorkshire Terrier']).eq('isMale', false) as List<dynamic>;
-    print(resp);
+    // print(resp);
   }catch (e){
     print(e);
   }
 }
 
-Future<Position> getUserCurrentLocation() async {
+getUserCurrentLocation() async {
+  print('accessed');
   await Geolocator.requestPermission().then((value){
   }).onError((error, stackTrace) async {
     await Geolocator.requestPermission();
     print("ERROR"+error.toString());
   });
-  final loc = await Geolocator.getCurrentPosition();
-  final prefs = await SharedPreferences.getInstance();
-  print(loc.latitude.toString() + " " + loc.longitude.toString());
-  prefs.setDouble("long", loc.longitude);
-  prefs.setDouble("lat", loc.latitude);
-  
+  print('didnt reach');
   try{
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    await SupabaseCredentials.supabaseClient.from('users').update({"long": loc.longitude, "lat": loc.latitude}).eq('id', uid);
-  }catch (e){
-    print(e);
+    final loc = await Geolocator.getCurrentPosition();
+    print('this loc: ${loc}');
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setDouble("long", loc.longitude);
+    prefs.setDouble("lat", loc.latitude);
+
+    if (loc != null){
+      try{
+        final uid = FirebaseAuth.instance.currentUser!.uid;
+        await SupabaseCredentials.supabaseClient.from('users').update({"long": loc.longitude, "lat": loc.latitude}).eq('id', uid);
+      }catch (e){
+        print('loc update err: ${e}');
+      }
+    }
+  }catch(e){
+    print('loc: $e');
   }
-  return loc;
+
+  
+
+  // return GeoLocation(loc.latitude, loc.longitude);
 }
 
 Future<String> uploadAndStorePDF(io.File pdfFile) async {
   try {
-    Reference ref =
-    FirebaseStorage.instance.ref().child('pdfs/${DateTime.now().millisecondsSinceEpoch}');
+    Reference ref = FirebaseStorage.instance.ref().child('pdfs/${DateTime.now().millisecondsSinceEpoch}');
     UploadTask uploadTask = ref.putFile(pdfFile, SettableMetadata(contentType: 'file/pdf'));
 
     TaskSnapshot snapshot = await uploadTask;
 
     String url = await snapshot.ref.getDownloadURL();
+    print('done');
     return url;
-  } catch (e) {
-    print(e);
+  } on FirebaseException catch (e) {
+    print("exception!?@: " + e.message.toString());
     return "";
   }
 }
