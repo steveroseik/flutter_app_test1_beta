@@ -373,7 +373,7 @@ class _MapsPageState extends State<MapsPage> {
                                       style:(
                                       TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize:22,
+                                        fontSize:19,
                                       )
                                       )
                                     ),
@@ -475,9 +475,7 @@ class _MapsPageState extends State<MapsPage> {
                                     ):
                                     Column(
                                      children: [
-                                       Padding(
-                                       padding: const EdgeInsets.only(bottom: 13.0),
-                                     ),
+                                     
 
                                     Container(
 
@@ -488,7 +486,6 @@ class _MapsPageState extends State<MapsPage> {
 
                                         child: TextButton(
                                             onPressed:(){
-                                              print('criteria: $criteria');
                                               showModalBottomSheet(
                                                   backgroundColor: Colors.transparent,
                                                   isScrollControlled: true,
