@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:age_calculator/age_calculator.dart';
+import 'package:sizer/sizer.dart';
 import '../FETCH_wdgts.dart';
 import '../JsonObj.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
@@ -26,14 +27,16 @@ class _petRegPageState extends State<petRegPage> {
 
   final _controller = MultiSelectController();
 
-  late DateTime petBirthDate = DateTime.now();
+  DateTime? petBirthDate;
+  DateTime tempDate = DateTime.now();
   final breedKey = GlobalKey<DropdownSearchState<Breed>>();
   final ageFieldController = TextEditingController();
   final nameField = TextEditingController();
-  bool isMale = true;
-  var photoUrl;
+  bool? isMale;
+  String? photoUrl;
   List<Gender> genders = <Gender>[];
   bool btn_clicked = false;
+  DateDuration petAge = AgeCalculator.age(DateTime.now());
 
   Breed? _selected;
   late Future<List<Breed>> bList;
@@ -44,13 +47,22 @@ class _petRegPageState extends State<petRegPage> {
   void initState() {
     super.initState();
     bList = getBreedList(0);
-    genders.add(new Gender("Male", Icons.male, false));
-    genders.add(new Gender("Female", Icons.female, false));
+    genders.add(Gender("Male", Icons.male, false));
+    genders.add(Gender("Female", Icons.female, false));
+  }
+
+  updateAgeField(DateTime value){
+    petAge = AgeCalculator.age(value);
+    ageFieldController.text = petAge.years > 1
+        ? '${petAge.years} Years'
+        '${petAge.months > 1 ? ' and ${petAge.months} Months' : petAge.months == 1 ? ' and ${petAge.months} Month' : '' }'
+        : petAge.years == 1 ? '${petAge.years} Year' '${petAge.months > 1 ? ' and ${petAge.months} Months' : petAge.months == 1 ? ' and ${petAge.months} Month' : '' }'
+        : petAge.months > 1 ? '${petAge.months} Months' : petAge.months == 1 ? '${petAge.months} Month' : ''
+    ;
   }
 
   @override
   Widget build(BuildContext context) {
-    DateDuration petAge = AgeCalculator.age(petBirthDate);
     final height = MediaQuery
         .of(context)
         .size
@@ -62,42 +74,76 @@ class _petRegPageState extends State<petRegPage> {
 
     //DatePicker Widget
     void showDatePicker() {
-      showCupertinoModalPopup(
+      showModalBottomSheet(
+          backgroundColor: Colors.transparent,
           context: context,
           builder: (BuildContext builder) {
             return Container(
+              margin: EdgeInsets.all(5.sp),
+              padding: EdgeInsets.all(10.sp),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20.sp),
+                color: Colors.white
+              ),
               height: MediaQuery
                   .of(context)
                   .copyWith()
                   .size
-                  .height * 0.25,
-              color: Colors.white,
+                  .height * 0.35,
               child: Column(
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        onPressed: (){
+                          Navigator.of(context).pop(false);
+                          if (petBirthDate != null){
+                            updateAgeField(petBirthDate!);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.0))
+                        ),
+                        child: Text('Cancel',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10.sp,
+                        ),),
+                      ),
+                      ElevatedButton(
+                        onPressed: (){
+                          Navigator.of(context).pop(true);
+                          petBirthDate = tempDate;
+                        },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.0))
+                        ),
+                        child: Text('Done',
+                          style: TextStyle(
+                            color: Colors.green.shade900,
+                            fontSize: 10.sp,
+                          ),),
+                      ),
+                    ],
+                  ),
                   Flexible(
                     flex: 2,
                     child: CupertinoDatePicker(
                       mode: CupertinoDatePickerMode.date,
                       onDateTimeChanged: (value) {
                         setState(() {
-                          if (value != null && value != petBirthDate) {
-                            petBirthDate = value;
-                            petAge = AgeCalculator.age(value);
-                            ageFieldController.text = petAge.years > 0
-                                ? petAge.years.toString() +
-                                ' Years' +
-                                (petAge.months > 0
-                                    ? ' and ' +
-                                    petAge.months.toString() +
-                                    ' Months'
-                                    : '')
-                                : (petAge.months > 0
-                                ? petAge.months.toString() + ' Months'
-                                : '');
+                          if (value != petBirthDate) {
+                            tempDate = value;
+                            updateAgeField(value);
                           }
                         });
                       },
-                      initialDateTime: DateTime.now(),
+                      initialDateTime: petBirthDate ?? DateTime.now(),
                       minimumYear: DateTime
                           .now()
                           .year - 30,
@@ -110,11 +156,18 @@ class _petRegPageState extends State<petRegPage> {
                 ],
               ),
             );
-          });
+          }).then((value) {
+            if (value == null){
+              if (petBirthDate != null){
+                updateAgeField(petBirthDate!);
+              }
+            }
+      });
     }
 
     return Scaffold(
-      appBar: init_appBar(BA_key),
+      appBar: init_appBar(homeNav_key),
+      resizeToAvoidBottomInset: false,
       body: Padding(
         padding: const EdgeInsets.all(10.0),
         child: SingleChildScrollView(
@@ -171,7 +224,7 @@ class _petRegPageState extends State<petRegPage> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 5),
                       child: TextFormField(
                         controller: nameField,
                         decoration: InputDecoration(
@@ -202,7 +255,7 @@ class _petRegPageState extends State<petRegPage> {
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 15, 0, 2.5),
+                          padding: const EdgeInsets.fromLTRB(10, 5, 0, 5),
                           child: Text(
                             'Birth date',
                             style: TextStyle(
@@ -214,7 +267,6 @@ class _petRegPageState extends State<petRegPage> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 10),
                     GestureDetector(
                       onTap: (){
                         showDatePicker();
@@ -229,20 +281,24 @@ class _petRegPageState extends State<petRegPage> {
                                 borderRadius: BorderRadius.circular(20)),
                             enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(20),
-                                borderSide: BorderSide(
+                                borderSide: const BorderSide(
                                     color: CupertinoColors
                                         .extraLightBackgroundGray)),
                             focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
+                                borderSide: const BorderSide(
                                     color: Colors.grey),
                                 borderRadius: BorderRadius.circular(20)),
                             filled: true,
                             fillColor: CupertinoColors
                                 .extraLightBackgroundGray,
                             labelStyle: TextStyle(color: Colors.grey),
+                            suffixIcon: const Icon(
+                              Icons.calendar_month_sharp,
+                              color: Colors.blueGrey,
+                            )
                           ),
                           validator: (value) {
-                            if (value!.length == 0) {
+                            if (value!.isEmpty) {
                               return "Select birthdate";
                             }
                             return null;
@@ -423,40 +479,31 @@ class _petRegPageState extends State<petRegPage> {
                               setState(() {
                                 btn_clicked = true;
                               });
-                              final dogBreed;
+                              final String dogBreed;
                               if (breedKey.currentState!.getSelectedItem != null){
                                 dogBreed = breedKey.currentState!.getSelectedItem!.name;
                               }else {
                                 dogBreed = '';
                               }
-
-                              bool genderCheck = false;
-
-                              for (Gender item in genders){
-                                if (item.isSelected){
-                                  genderCheck = true;
-                                }
-                              }
                               //check variables
                               if (dogBreed != ''
-                                  && nameField.text.length > 0
-                                  && petBirthDate != null && genderCheck){
+                                  && nameField.text.isNotEmpty
+                                  && petBirthDate != null && isMale != null){
 
-                                String petBDate = petBirthDate.year.toString() + '-' + petBirthDate.month.toString() + '-' + petBirthDate.day.toString();
                                 photoUrl = await uploadPhoto(widget.recFile);
                                 if (photoUrl != '-100'){
-
-                                  BA_key.currentState?.pushNamed('/petDocument', arguments: [nameField.text.capitalize(),
-                                                dogBreed, isMale,
-                                                petBDate,
+                                  print(photoUrl);
+                                  homeNav_key.currentState?.pushNamed('/petDocument', arguments: [nameField.text.capitalize(),
+                                                dogBreed, isMale!,
+                                                petBirthDate,
                                                 photoUrl, FirebaseAuth.instance.currentUser!.uid, _controller.getSelectedItems()]);
 
                                 }else{
-                                  showSnackbar(context, 'Photo upload issue, Try again.');
+                                  showSnackbar(context, 'Photo upload issue! Try again.');
                                 }
 
                               }else{
-                                showSnackbar(context, 'Incomplete fields');
+                                showSnackbar(context, 'Please complete all fields.');
                               }
                               setState(() {
                                 btn_clicked = false;

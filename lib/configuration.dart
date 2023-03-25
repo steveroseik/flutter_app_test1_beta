@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
@@ -5,6 +7,8 @@ import 'package:http/http.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+
+import 'FETCH_wdgts.dart';
 
 
 enum NavPages{
@@ -22,6 +26,13 @@ enum usrState{
   userAlreadyExists,
   connectionError
 }
+
+enum sliderStatus{
+  up, left, right, none
+}
+
+enum profileState { requested, pendingApproval, friend, noFriendship}
+enum requestState { pending, denied, accepted, undefined }
 
 String details = 'My job requires moving to another country. '
     'I do not have the opportunity to take the cat with me. '
@@ -68,10 +79,14 @@ String encryptString(String s) {
 
   return encrypted.base16;
 
-  // print(encrypted.base16);
-  // print('\n');
-  // print(decrypted);
+}
 
+String decryptString(String s){
+  final encrypter = encrypt.Encrypter(encrypt.AES(key32));
+
+  final decrypted = encrypter.decrypt16(s, iv: iv16);
+
+  return decrypted;
 }
 
 class SupabaseCredentials{
@@ -115,5 +130,33 @@ int getFileSize(File file){
   return sizeInKb;
 }
 
+Future<bool> notifierChange(ValueNotifier V) {
+  Completer<bool> completer = Completer();
+  V.addListener(() async {
+    completer.complete(V.value);
+  });
+  return completer.future;
+}
+
+class RequestsProvider with ChangeNotifier{
+  List<MateItem> reqItems = <MateItem>[];
+
+  get requests => reqItems;
+
+  set requestItems(List<MateItem> items){
+    reqItems = items;
+    notifyListeners();
+  }
+
+  addItems(List<MateItem> items){
+    reqItems.addAll(items);
+    notifyListeners();
+  }
+
+  removeAt(int i){
+    reqItems.removeAt(i);
+    notifyListeners();
+  }
 
 
+}

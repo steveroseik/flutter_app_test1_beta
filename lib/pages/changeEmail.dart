@@ -21,8 +21,7 @@ class _ChangeEmailState extends State<ChangeEmail> {
   final emailField = TextEditingController();
   final passField = TextEditingController();
   final passField2 = TextEditingController();
-  final Size windowSize = MediaQueryData.fromWindow(window).size;
-  late OverlayEntry loading = initLoading(context, windowSize);
+  late OverlayEntry loading = initLoading(context);
 
   @override
   void dispose() {

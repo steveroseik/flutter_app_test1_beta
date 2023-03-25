@@ -29,8 +29,8 @@ class suggestion{
 }
 
 class addBreedPage extends StatefulWidget {
-  const addBreedPage({Key? key}) : super(key: key);
-
+  bool? firstPet;
+  addBreedPage({Key? key, this.firstPet}) : super(key: key);
 
   @override
   State<addBreedPage> createState() => _addBreedPageState();
@@ -69,7 +69,10 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
       p_stat.value = 0;
       cam_Btn = true;
       setState(() {});
-      _controller.forward();
+      if (autoBreedList.isNotEmpty){
+        _controller.forward();
+      }
+
     }
 
     Future<int> analyzeImage(BuildContext context) async {
@@ -173,7 +176,7 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
     }
 
     return Scaffold(
-        appBar: init_appBar(BA_key),
+        appBar: init_appBar(homeNav_key),
         body:  Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10.0),
           child: Column(
@@ -185,7 +188,7 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
                 padding: const EdgeInsets.all(10.0),
                 alignment: Alignment.center,
                 child: Text(
-                      'Verify Your Pet',
+                      widget.firstPet == true ? 'Sign up your first pet' : 'Add your new pet',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 20,
@@ -196,7 +199,7 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
                 padding: const EdgeInsets.all(10.0),
                 alignment: Alignment.bottomCenter,
                 child: Text(
-                  'Take a clear photo of your pet',
+                  'Start by taking a clear photo of your pet',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 15,
@@ -209,7 +212,8 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
                 height: 150,
                 child: CircleAvatar(
                           radius: 100,
-                          backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                          backgroundColor: p_stat.value == -1 ? Colors.redAccent :
+                              p_stat.value == 0 ? Colors.greenAccent.shade400 : CupertinoColors.extraLightBackgroundGray,
                           child: ValueListenableBuilder<int>(
                                 valueListenable: img_src,
                               builder: (BuildContext context, int value, Widget? child){
@@ -238,9 +242,8 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
                 ),
                 onPressed: () async{
                   if (cam_Btn){
-
+                    _controller.reverse();
                     imageFile = await pickImage(context, ImageSource.gallery);
-                    // print(cam_Btn);
                     // refresh UI elements
                     setState(() {});
                     // set state of pet photo as -2 (neutral)
@@ -248,7 +251,7 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
                     // put loading widget into screen
                     isLoading();
                     OverlayState? overlay = Overlay.of(context);
-                    overlay?.insert(loading);
+                    overlay.insert(loading);
                     //disable camera button
                     cam_Btn = false;
                     // wait until image is analyzed
@@ -341,7 +344,7 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
                                   ),
                                   SizedBox(width: 5,),
                                   Expanded(
-                                    child: Text('${autoBreedList[index].pet.name}',
+                                    child: Text(autoBreedList[index].pet.name,
                                       style: TextStyle(fontWeight: FontWeight.w700, color: autoBreedList[index].isSelected ? Colors.white : Colors.black),
                                     maxLines: 2,),
                                   ),
@@ -367,9 +370,7 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
                   label: Text('Next'),
                   icon: Icon(Icons.navigate_next_outlined),
                   onPressed: () async{
-                    BA_key.currentState?.pushNamed('/pet_register', arguments: [imageFile,suggestionSelected]);
-                    // await generateRecommendations();
-                    setState((){});
+                    homeNav_key.currentState?.pushNamed('/pet_register', arguments: [imageFile,suggestionSelected]);
                   },
                 ));
           }),

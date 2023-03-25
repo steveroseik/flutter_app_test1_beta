@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:country_picker/country_picker.dart';
+import 'package:csc_picker/csc_picker.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
@@ -7,11 +9,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
+import 'package:flutter_app_test1/cacheBox.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_app_test1/verifyPhone.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:age_calculator/age_calculator.dart';
+import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import 'package:introduction_screen/introduction_screen.dart';
+import 'package:sizer/sizer.dart';
 import '../JsonObj.dart';
 import '../mainApp.dart';
 import 'package:flutter_app_test1/pages/loadingPage.dart';
@@ -19,7 +26,8 @@ import 'package:flutter_app_test1/pages/loadingPage.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 class Signup extends StatefulWidget {
-  const Signup({Key? key}) : super(key: key);
+  final CacheBox cacheBox;
+  const Signup({Key? key, required this.cacheBox}) : super(key: key);
 
   @override
   State<Signup> createState() => _SignupState();
@@ -27,23 +35,34 @@ class Signup extends StatefulWidget {
 
 class _SignupState extends State<Signup> {
   //Controllers
-  final phoneNumber = TextEditingController();
+
   final firstName = TextEditingController();
   final lastName = TextEditingController();
   final email = TextEditingController();
   final TextEditingController ageFieldController = TextEditingController();
+  final TextEditingController phoneFieldController = TextEditingController();
+  final TextEditingController codeController = TextEditingController()..text = "+20";
   GlobalKey<FormState> formRegis = GlobalKey<FormState>();
+  GlobalKey<CSCPickerState> cscKey = GlobalKey<CSCPickerState>();
   GlobalKey<DropdownSearchState> formKey =  GlobalKey<DropdownSearchState>();
+  final _introKey = GlobalKey<IntroductionScreenState>();
   final curUser = FirebaseAuth.instance.currentUser;
-  String city = 'Cairo';
+  String? city;
   String country = 'Egypt';
-  DateTime userBirthDate = DateTime.now();
+  String? state;
+  DateTime? userBirthDate;
   bool isComplete = false;
   bool isLoading = true;
+  bool? isMale;
   late usrState emailController;
   late List<String> cities;
+  UserPod? userPod;
+  List<Gender> genders = <Gender>[Gender("Male", Icons.male, false),
+                                  Gender("Female", Icons.female, false)];
+  DateTime tempDate = DateTime.now();
 
-  @override
+
+
   void initState() {
     initCities();
     userVerified();
@@ -57,44 +76,55 @@ class _SignupState extends State<Signup> {
   }
 
   void userVerified() async{
-    await FirebaseAuth.instance.currentUser?.reload();
-    final uemail = FirebaseAuth.instance.currentUser!.email.toString();
-    final uid = FirebaseAuth.instance.currentUser!.uid.toString();
+    try{
+      await FirebaseAuth.instance.currentUser?.reload();
+      final uemail = FirebaseAuth.instance.currentUser!.email.toString();
+      final uid = FirebaseAuth.instance.currentUser!.uid.toString();
 
-    emailController = await userInDb(uemail, uid);
-    setState(() {
-      isLoading = false;
-    });
-
-    switch(emailController){
-      case usrState.connectionError:
-        showSnackbar(context, 'connection time out');
-        FirebaseAuth.instance.signOut();
-        break;
-      case usrState.userAlreadyExists:
-        showSnackbar(context, 'Duplicate email.');
-        // FirebaseAuth.instance.currentUser?.delete();
-        FirebaseAuth.instance.signOut();
-        break;
-      case usrState.newUser:
-        setState((){
-          isComplete = false;
-        });
-        break;
-      case usrState.completeUser:
-        setState((){
+      if(widget.cacheBox.isUserCached(uid)){
+        setState(() {
+          userPod = widget.cacheBox.getUserInfo();
           isComplete = true;
-          // fetchUserPets();
+          isLoading = false;
         });
-        break;
+      }else{
+        List<dynamic> resp = await userInDb(uemail, uid);
+        userPod = resp[1];
+        emailController = resp[0];
+
+        switch(emailController){
+          case usrState.connectionError:
+            showSnackbar(context, 'connection time out');
+            widget.cacheBox.signOut();
+            break;
+          case usrState.userAlreadyExists:
+            showSnackbar(context, 'Duplicate email.');
+            // FirebaseAuth.instance.currentUser?.delete();
+            widget.cacheBox.signOut();
+            break;
+          case usrState.newUser:
+            isComplete = false;
+            break;
+          case usrState.completeUser:
+            widget.cacheBox.storeUser(userPod!);
+            isComplete = true;
+            break;
+        }
+
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }catch (e){
+      print('userVerifiedError: $e');
     }
+
   }
 
 
   @override
   void dispose() {
     // Clean up the controller when the widget is disposed.
-    phoneNumber.dispose();
     firstName.dispose();
     lastName.dispose();
     email.dispose();
@@ -106,38 +136,84 @@ class _SignupState extends State<Signup> {
 
   @override
   Widget build(BuildContext context) {
+
+    // Fetching user email, useless rn, should be updated when phone registration is implemented
     var userEmail = FirebaseAuth.instance.currentUser?.email;
 
     if (userEmail != null) email.text = userEmail;
 
-    final height = MediaQuery.of(context).size.height;
-    final width = MediaQuery.of(context).size.width;
 
-    void showDatePicker()
-    {
-      showCupertinoModalPopup(
+    void showDatePicker() {
+      showModalBottomSheet(
+          backgroundColor: Colors.transparent,
           context: context,
           builder: (BuildContext builder) {
             return Container(
-              height: MediaQuery.of(context).copyWith().size.height*0.25,
-              color: Colors.white,
+              margin: EdgeInsets.all(5.sp),
+              padding: EdgeInsets.all(10.sp),
+              decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20.sp),
+                  color: Colors.white
+              ),
+              height: MediaQuery
+                  .of(context)
+                  .copyWith()
+                  .size
+                  .height * 0.35,
               child: Column(
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        onPressed: (){
+                          Navigator.of(context).pop(false);
+                          if (userBirthDate != null){
+                            ageFieldController.text = '${userBirthDate!.year}-${userBirthDate!.month}-${userBirthDate!.day}';
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.0))
+                        ),
+                        child: Text('Cancel',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10.sp,
+                          ),),
+                      ),
+                      ElevatedButton(
+                        onPressed: (){
+                          Navigator.of(context).pop(true);
+                          userBirthDate = tempDate;
+                        },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.0))
+                        ),
+                        child: Text('Done',
+                          style: TextStyle(
+                            color: Colors.green.shade900,
+                            fontSize: 10.sp,
+                          ),),
+                      ),
+                    ],
+                  ),
                   Flexible(
                     flex: 2,
                     child: CupertinoDatePicker(
                       mode: CupertinoDatePickerMode.date,
                       onDateTimeChanged: (value) {
                         setState(() {
-                          if (value != null && value != userBirthDate) {
-                            userBirthDate = value;
-                            ageFieldController.text = userBirthDate.year.toString() + '-' + userBirthDate.month.toString() + '-' +userBirthDate.day.toString();
+                          if (value != userBirthDate) {
+                            tempDate = value;
+                            ageFieldController.text = '${tempDate.year}-${tempDate.month}-${tempDate.day}';
                           }
                         });
-
-
                       },
-                      initialDateTime: DateTime.now().subtract(Duration(days: 365*12)),
+                      initialDateTime: userBirthDate ?? DateTime.now().subtract(const Duration(days: 366*12)),
                       minimumYear: DateTime.now().year - 100,
                       maximumYear: DateTime.now().year - 12,
                       maximumDate: DateTime.now(),
@@ -146,417 +222,436 @@ class _SignupState extends State<Signup> {
                 ],
               ),
             );
+          }).then((value) {
+        if (value == null){
+          if (userBirthDate != null){
+            ageFieldController.text = '${userBirthDate!.year}-${userBirthDate!.month}-${userBirthDate!.day}';
           }
-      );
-
+        }
+      });
     }
 
-    return isLoading ? LoadingPage() : isComplete ? mainApp() : GestureDetector(
+    return isLoading ? LoadingPage() : isComplete ? mainApp(pod: userPod) : GestureDetector(
       onTap:(){
-        FocusScope.of(context).requestFocus(new FocusNode());
+        FocusScope.of(context).requestFocus(FocusNode());
       },
       child: Scaffold(
         body: SingleChildScrollView(
           child: Column(
               children: <Widget>[
                 Container(
-                    padding: EdgeInsets.symmetric(vertical:50),
-                    margin: EdgeInsets.symmetric(horizontal: 50),
+                    padding: EdgeInsets.fromLTRB(0, 7.h, 0, 5.h),
+                    margin: EdgeInsets.symmetric(horizontal: 5.w),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        SizedBox(height: 20),
+                        SizedBox(height: 3.h),
                         Text('FETCH',
                             style: TextStyle(
                               fontFamily: 'Roboto',
-                              fontSize: 40,
+                              fontSize: 32.sp,
                               fontWeight: FontWeight.w900,
                             )),
-                        SizedBox(height: 5),
+                        SizedBox(height: 0.5.h),
                         Text('for dog community',
                             style: TextStyle(
                               fontFamily: 'Roboto',
-                              fontSize: 12,
+                              fontSize: 10.sp,
                             ))
                       ],
                     )
                 ),
-                SizedBox(height: 30),
+                SizedBox(
+                  height: 75.h,
+                  child: IntroductionScreen(
+                    key: _introKey,
+                    pages: [
+                      PageViewModel(
+                        useScrollView: false,
+                        titleWidget: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 5.w),
+                          alignment: Alignment.bottomCenter,
+                          child: Text('Complete Your Information',
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w900,
+                              )),),
+                        bodyWidget:  Container(
+                          padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
+                                  child: TextFormField(
+                                      textInputAction: TextInputAction.next,
+                                      controller: firstName,
+                                      decoration:InputDecoration(
+                                        contentPadding: EdgeInsets.symmetric(vertical: 1.h, horizontal: 5.w),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                                        enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(20),
+                                            borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                                        focusedBorder: OutlineInputBorder(
+                                            borderSide: BorderSide(color: Colors.grey),
+                                            borderRadius: BorderRadius.circular(20)),
+                                        filled: true,
+                                        fillColor: CupertinoColors.extraLightBackgroundGray,
+                                        labelStyle: TextStyle(color: Colors.grey),
+                                        labelText: 'First name',
 
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                          child: TextFormField(
-                            controller: firstName,
-                              decoration:InputDecoration(
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                                enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                    borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
-                                focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.grey),
-                                    borderRadius: BorderRadius.circular(20)),
-                                filled: true,
-                                fillColor: CupertinoColors.extraLightBackgroundGray,
-                                labelStyle: TextStyle(color: Colors.grey),
-                                labelText: 'First name',
-
+                                      ),
+                                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                                      validator: (value){
+                                        if (value == null || RegExp(r'[^a-zA-Z]').hasMatch(value) || value.length < 3){
+                                          return 'Enter a valid name';
+                                        }else{
+                                          return null;
+                                        }
+                                      }
+                                  )
                               ),
-                              autovalidateMode: AutovalidateMode.onUserInteraction,
-                              validator: (value){
-                                if (value == null || RegExp(r'[^a-zA-Z]').hasMatch(value)){
-                                  return 'Enter a valid name';
-                                }else{
-                                  return null;
-                                }
-                              }
-                          )
-                      ),
-                      Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                          child: TextFormField(
-                            controller: lastName,
-                            decoration:InputDecoration(
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                              enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                  borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
-                              focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(20)),
-                              filled: true,
-                              fillColor: CupertinoColors.extraLightBackgroundGray,
-                              labelStyle: TextStyle(color: Colors.grey),
-                              labelText: 'Last name',
-                            ),
-                            autovalidateMode: AutovalidateMode.onUserInteraction,
-                            validator: (value){
-                              if (value == null || RegExp(r'[^a-zA-Z]').hasMatch(value)){
-                                return 'Enter a valid name';
-                              }else{
-                                return null;
-                              }
-                            }
-                          )
-                      ),
-                      Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                          child: TextFormField(
-                            controller: email,
-                            enabled: userEmail == null ? true : false,
-                            decoration:InputDecoration(
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                              enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                  borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
-                              focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(20)),
-                              filled: true,
-                              fillColor: CupertinoColors.extraLightBackgroundGray,
-                              labelStyle: TextStyle(color: Colors.grey),
-                              labelText: 'Email',
-                            ),
-                            validator: (value){
-                              if (value == null ||RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value)){
-                                return 'Enter a valid email';
-                              }else{
-                                return null;
-                              }
-                            }
-                          )
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2.5, horizontal: 10),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: ageFieldController,
-                                readOnly: true,
-                                enabled: false,
-                                decoration:InputDecoration(
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                                  enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                      borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
-                                  focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.grey),
-                                      borderRadius: BorderRadius.circular(20)),
-                                  filled: true,
-                                  fillColor: CupertinoColors.extraLightBackgroundGray,
-                                  labelStyle: TextStyle(color: Colors.grey),
-                                  labelText: 'Birthdate',
+                              Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
+                                  child: TextFormField(
+                                      textInputAction: TextInputAction.next,
+                                      controller: lastName,
+                                      decoration:InputDecoration(
+                                        contentPadding: EdgeInsets.symmetric(vertical: 1.h, horizontal: 5.w),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                                        enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(20),
+                                            borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                                        focusedBorder: OutlineInputBorder(
+                                            borderSide: BorderSide(color: Colors.grey),
+                                            borderRadius: BorderRadius.circular(20)),
+                                        filled: true,
+                                        fillColor: CupertinoColors.extraLightBackgroundGray,
+                                        labelStyle: TextStyle(color: Colors.grey),
+                                        labelText: 'Last name',
+                                      ),
+                                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                                      validator: (value){
+                                        if (value == null || RegExp(r'[^a-zA-Z]').hasMatch(value) || value.length < 3){
+                                          return 'Enter a valid name';
+                                        }else{
+                                          return null;
+                                        }
+                                      }
+                                  )
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
+                                child: InkWell(
+                                  onTap: (){
+                                    showDatePicker();
+                                  },
+                                  child: TextFormField(
+                                    controller: ageFieldController,
+                                    readOnly: true,
+                                    enabled: false,
+                                    decoration:InputDecoration(
+                                      contentPadding: EdgeInsets.symmetric(vertical: 1.h, horizontal: 5.w),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                                      enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(20),
+                                          borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                                      focusedBorder: OutlineInputBorder(
+                                          borderSide: BorderSide(color: Colors.grey),
+                                          borderRadius: BorderRadius.circular(20)),
+                                      filled: true,
+                                      fillColor: CupertinoColors.extraLightBackgroundGray,
+                                      labelStyle: TextStyle(color: Colors.grey),
+                                      labelText: 'Birthdate',
+                                    ),
+                                    validator: (value){
+                                      if (value != null && value.length > 5){
+                                        return null;
+                                      }else{
+                                        return 'Please choose your birthdate';
+                                      }
+                                    },
+                                  ),
                                 ),
-                                validator: (value){
-                                  if (value != null && value.length > 5){
-                                    return null;
-                                  }else{
-                                    return 'Please choos your birthdate';
-                                  }
-                                },
                               ),
-                            ),
-                            IconButton(
-                                color: Colors.teal.shade100,
-                                onPressed: (){
-                                  showDatePicker();
-                                },
-                                icon: Icon(Icons.calendar_month,
-                                    color: Colors.grey.shade900)),
-                          ],
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
+                                child: CSCPicker(
+                                  key: cscKey,
+                                  flagState: CountryFlag.SHOW_IN_DROP_DOWN_ONLY,
+                                  onCountryChanged: (country){
+                                    this.country = country;
+                                  },
+                                  onStateChanged: (state){
+                                    this.state = state;
+                                  },
+                                  onCityChanged: (city){
+                                    this.city = city;
+                                  },
+                                    layout: Layout.horizontal,
+                                    defaultCountry: CscCountry.Egypt,
+                                  dropdownDecoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(13.sp),
+                                    color: CupertinoColors.extraLightBackgroundGray,
+                                    border: Border.all(width: 0.5.sp, color: Colors.grey.shade400)
+                                  ),
+                                  disabledDropdownDecoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(13.sp),
+                                      color: Colors.grey,
+                                      border: Border.all(width: 0.5.sp, color: Colors.grey.shade400)
+                                  )
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
+                                child: Container(
+                                  height: 6.h,
+                                  alignment: Alignment.topLeft,
+                                  child: ListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      shrinkWrap: true,
+                                      itemCount: genders.length,
+                                      itemBuilder: (context, index) {
+                                        return InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              for (var gender in genders) {
+                                                gender.isSelected = false;
+                                              }
+                                              genders[index].isSelected = true;
+                                              if (genders[index].name == "Male"){
+                                                isMale = true;
+                                              }else{
+                                                isMale = false;
+                                              }
+                                            });
+                                          },
+                                          child: CustomRadioRound(genders[index]),
+                                        );
+                                      }),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(5.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
+                      PageViewModel(
+                        titleWidget: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 5.w),
+                          alignment: Alignment.bottomLeft,
+                          child: Text('Add Your Phone Number',
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w900,
+                              )),),
+                        bodyWidget: Column(
                           children: [
-                            // IgnorePointer(
-                            //   ignoring: true,
-                            //   child: Container(
-                            //       decoration: BoxDecoration(
-                            //           borderRadius: BorderRadius.circular(20),
-                            //           color: CupertinoColors.extraLightBackgroundGray,
-                            //           border: Border.all(color: Colors.grey.shade300)
-                            //       ),
-                            //       padding: EdgeInsets.all(5),
-                            //       margin: EdgeInsets.all(5),
-                            //       child: DropdownButton<String>(
-                            //         value: country,
-                            //         style: TextStyle(
-                            //             color: Colors.black,
-                            //             fontSize: 15
-                            //         ),
-                            //         onChanged: (String? newValue) {
-                            //           setState(() {
-                            //             country = newValue!;
-                            //           });
-                            //         },
-                            //         items: <String>['Egypt']
-                            //             .map<DropdownMenuItem<String>>((String value) {
-                            //           return DropdownMenuItem<String>(
-                            //             value: value,
-                            //             child: Padding(
-                            //               padding: EdgeInsets.symmetric(horizontal: 30),
-                            //               child: Text(value),
-                            //             ),
-                            //           );
-                            //         }).toList(),
-                            //       )
-                            //   ),
-                            // ),
-                            Expanded(
-                              child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20.0),
-                                    color: CupertinoColors.extraLightBackgroundGray,
-                                  ),
-                                  child: DropdownSearch<String>(
-                                    key: formKey,
-                                    selectedItem: city,
-                                    onChanged: (String? b) {
-                                      city = b?? "";
-                                    },
-                                    compareFn: (i1, i2) => i1 == i2,
-                                    items: cities,
-                                    itemAsString: (String b) => b,
-                                    dropdownDecoratorProps: DropDownDecoratorProps(
-                                        dropdownSearchDecoration: InputDecoration(
-                                            border: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(20.0),
-                                                borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Flexible(
+                                  flex: 1,
+                                  child: Container(
+                                    padding:EdgeInsets.fromLTRB(0, 0, 1.5.w, 0),
+                                    child: GestureDetector(
+                                      onTap: (){
+                                        showCountryPicker(
+                                          context: context,
+                                          showPhoneCode: true, // optional. Shows phone code before the country name.
+                                          onSelect: (Country country) {
+                                            codeController.text = "+${country.phoneCode}";
+                                          },
+                                          countryListTheme: CountryListThemeData(
+                                            bottomSheetHeight: 75.h,
+                                            inputDecoration: InputDecoration(
+                                              hintText: 'Search Country',
+                                              prefixIcon: const Icon(Icons.search),
+                                              border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(15.sp),
+                                              ),
                                             ),
-                                            focusedBorder: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(20),
-                                                borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)
-                                            )
-                                        )
-                                    ),
-                                    popupProps: PopupProps.modalBottomSheet(
-                                      showSearchBox: true,
-                                      fit: FlexFit.tight,
-                                      constraints: BoxConstraints.tightForFinite(height: MediaQuery.of(context).size.height * 0.7),
-                                      searchFieldProps: TextFieldProps(
-                                          decoration: InputDecoration(
-                                            hintText: 'Search city',
-                                          )),
-                                      itemBuilder: (ctx, item, isSelected) {
-                                        return Container(
-                                          padding: EdgeInsets.all(10),
-                                          child: Text(item,
-                                              textAlign: TextAlign.left,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                  fontSize: 13.5, color: Colors.black, fontWeight: FontWeight.w600)),
+
+                                          )
                                         );
                                       },
+                                      child: Padding(
+                                        padding:EdgeInsets.symmetric(vertical: 1.h),
+                                        child: TextFormField(
+                                          controller: codeController,
+                                            decoration:InputDecoration(
+                                              contentPadding: EdgeInsets.symmetric(vertical: 1.h, horizontal: 5.w),
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                                              disabledBorder: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(20),
+                                                  borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                                              focusedBorder: OutlineInputBorder(
+                                                  borderSide: BorderSide(color: Colors.grey),
+                                                  borderRadius: BorderRadius.circular(20)),
+                                              filled: true,
+                                              fillColor: CupertinoColors.extraLightBackgroundGray,
+                                              labelStyle: TextStyle(color: Colors.grey),
+                                              hintText: '+20',
+                                            ),
+                                          enabled: false,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                            ),
-                            )
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal:10.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            // Flexible(
-                            //   flex: 1,
-                            //   child: TextFormField(
-                            //     enabled: false,
-                            //     decoration:InputDecoration(
-                            //       border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                            //       enabledBorder: OutlineInputBorder(
-                            //           borderRadius: BorderRadius.circular(20),
-                            //           borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
-                            //       focusedBorder: OutlineInputBorder(
-                            //           borderSide: BorderSide(color: Colors.grey),
-                            //           borderRadius: BorderRadius.circular(20)),
-                            //       filled: true,
-                            //       fillColor: CupertinoColors.extraLightBackgroundGray,
-                            //       labelStyle: TextStyle(color: Colors.grey),
-                            //       labelText: '+20',
-                            //     ),
-                            //   ),
-                            // ),
-                            SizedBox(width: 10),
-                            Flexible(
-                              flex: 4,
-                              child: TextFormField(
-                                controller: phoneNumber,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: <TextInputFormatter>[
-                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
-                                ],
-                                decoration:InputDecoration(
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                                  enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                      borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
-                                  focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.grey),
-                                      borderRadius: BorderRadius.circular(20)),
-                                  filled: true,
-                                  fillColor: CupertinoColors.extraLightBackgroundGray,
-                                  labelStyle: TextStyle(color: Colors.grey),
-                                  labelText: 'Phone number',
                                 ),
-                                autovalidateMode: AutovalidateMode.onUserInteraction,
-                                validator: (value){
-                                  if (value == null || value.length != 10){
-                                    return "Enter a valid phone number";
-                                  }
-                                  return null;
-                                },
-                              ),
+                                Flexible(
+                                  flex: 3,
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 1.h),
+                                    child: TextFormField(
+                                      onChanged: (value){
+                                        if (value.isNotEmpty && value[0] == '0'){
+                                          phoneFieldController.text = value.replaceFirst('0', '');
+                                        }
+                                      },
+                                      keyboardType: TextInputType.phone,
+                                      controller: phoneFieldController,
+                                        decoration:InputDecoration(
+                                          contentPadding: EdgeInsets.symmetric(vertical: 1.h, horizontal: 5.w),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                                          enabledBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(20),
+                                              borderSide: BorderSide(color: CupertinoColors.extraLightBackgroundGray)),
+                                          focusedBorder: OutlineInputBorder(
+                                              borderSide: BorderSide(color: Colors.grey),
+                                              borderRadius: BorderRadius.circular(20)),
+                                          filled: true,
+                                          fillColor: CupertinoColors.extraLightBackgroundGray,
+                                          labelStyle: TextStyle(color: Colors.grey),
+                                          hintText: "1223456789",
+                                        ),
+                                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                                        validator: (value){
+                                          if (value == null || RegExp(r'[^0-9]').hasMatch(value) || value.length > 13){
+                                            return 'Enter a valid phone number';
+                                          }else{
+                                            return null;
+                                          }
+                                        }
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
+                          ],
+                        )
+                      )
+                    ],
+                    onDone: (){},
+                    overrideDone: SizedBox(
+                      height: 3.h,
+                      child: GestureDetector(
+                        onTap: ()async{
+                          bool failedToSignup = true;
+                          try{
+                            String phoneNumber = "${codeController.text}${phoneFieldController.text}";
+                            if (phoneFieldController.text.length <= 13){
+                              final ret = await checkPhoneAvailability(phoneNumber);
+                              if ( ret == 200){
+                                var resp = await addUser(curUser!.uid, email.text, phoneNumber, firstName.text,
+                                    lastName.text, country, state!, city!, userBirthDate!, isMale!);
+                                if (resp[0] == 200){
+                                  failedToSignup = false;
+                                  widget.cacheBox.storeUser(resp[1]);
+                                }else{
+                                  showSnackbar(context, 'Could not communicate with server, try again.');
+                                }
+                              }else if (ret == 0 ){
+                                showSnackbar(context, 'Could not communicate with server, try again.');
+                              }else{
+                                showSnackbar(context, 'Phone number already exists.');
+                              }
+                            }else{
+                              showSnackbar(context, 'Add your phone number first!');
+                            }
+
+                          }catch(error){
+                            showSnackbar(context, 'Problem finishing your Sign up. Try again!');
+                          }finally{
+                            if (!failedToSignup){
+                              userVerified();
+                            }
+                          }
+                        },
+                        child: Container(
+                          alignment: Alignment.centerRight,
+                          padding: EdgeInsets.fromLTRB(0, 0, 2.w, 0),
+                          child: Text("Done",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.blueGrey
+                            ),),
+                        ),
+                      ),
+                    ),
+                    overrideNext: SizedBox(
+                      height: 3.h,
+                      child: InkWell(
+                        onTap: ()async{
+                          bool grantedRegistration = true;
+
+                          if (firstName.text == "" || lastName.text == "" || country == null || userBirthDate == null || isMale == null){
+                            grantedRegistration = false;
+                          }else{
+                            final statesList = await cscKey.currentState?.getStates();
+                            if (state == null && statesList!.isNotEmpty){
+                              grantedRegistration = false;
+                            }else if(state != null){
+                              final cityList = await cscKey.currentState?.getCities();
+                              if (city == null && cityList!.isNotEmpty){
+                                grantedRegistration = false;
+                              }
+                            }
+                          }
+                          if (grantedRegistration){
+                            _introKey.currentState?.next();
+                          }else{
+                            showSnackbar(context, "Please Complete all fields");
+                          }
+
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text("Next",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.blueGrey
+                              ),),
+                            Icon(Icons.navigate_next_rounded, color: Colors.blueGrey,),
                           ],
                         ),
                       ),
-                      SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              backgroundColor: Colors.teal,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0)
-                              )
-                          ),
-                          onPressed: () async{
-
-                              bool grantedRegistration = true;
-                              if (!RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(email.text)){
-                                grantedRegistration = false;
-
-                              }else{
-                                print('good email');
-                              }
-                              if (firstName.text == ""){
-                                // first name invalid
-                                grantedRegistration = false;
-                              }else{
-                                print('good name');
-                              }
-                              if (lastName.text == ""){
-                                // last name invalid
-                                grantedRegistration = false;
-                              }else{
-                                print('good last name');
-                              }
-
-                              if (phoneNumber.text.length != 10){
-                                //invalid phone number
-                                grantedRegistration = false;
-                              }else{
-                                print('good phone');
-                              }
-
-                              if (country.isEmpty){
-                                // country not chosen
-                                grantedRegistration = false;
-                              }else{
-                                print('err5');
-                              }
-
-                              if (city.isEmpty){
-                                // city not chosen
-                                grantedRegistration = false;
-                              }
-                              if (userBirthDate.toString().isEmpty){
-                                // birthdate not selected
-                                grantedRegistration = false;
-                              }
-                              if (grantedRegistration){
-                                // successfully eligible to register
-                                //encrypt password
-                                var failedToSignup = true;
-                                try{
-                                  if (await checkPhoneAvailability(phoneNumber) == 200){
-                                    if (await checkEmailAvailability(email) == 200){
-                                      var resp = await addUser(curUser!.uid, email.text, int.parse(phoneNumber.text), firstName.text,
-                                          lastName.text, country, city, ageFieldController.text);
-                                      if (resp == 200){
-                                        failedToSignup = false;
-                                      }else{
-                                        showSnackbar(context, 'Could not communicate with server, try again.');
-                                      }
-                                    }else{
-                                      showSnackbar(context, 'Email address already exists.');
-                                    }
-
-                                  }else{
-                                    showSnackbar(context, 'Phone number already exists.');
-                                  }
-                                }catch(error){
-                                  showSnackbar(context, error.toString());
-                                }finally{
-                                 if (failedToSignup){
-                                   showSnackbar(context, 'Error in connection.');
-                                 }else{
-                                   userVerified();
-                                 }
-                                }
-                              }else{
-                                // incomplete fields
-                              }
-                          },
-                          child: Text("Sign up", textAlign: TextAlign.center),
+                    ),
+                    showSkipButton: false,
+                    showNextButton: true,
+                    freeze: true,
+                    isProgressTap: false,
+                    showBackButton: true,
+                    back: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.blueGrey),
+                    next: const Icon(Icons.arrow_forward, color: Colors.blueGrey),
+                    done: const Text("Done", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey)),
+                    dotsDecorator: DotsDecorator(
+                        size: const Size.square(10.0),
+                        activeSize: const Size(20.0, 10.0),
+                        activeColor: Colors.blueGrey,
+                        color: Colors.black26,
+                        spacing: const EdgeInsets.symmetric(horizontal: 3.0),
+                        activeShape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25.0)
                         )
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                )
+
               ],
             ),
         ),

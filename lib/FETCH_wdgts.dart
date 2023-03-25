@@ -16,15 +16,14 @@ import 'package:glassmorphism_ui/glassmorphism_ui.dart';
 import 'package:introduction_screen/introduction_screen.dart';
 import 'package:loading_indicator/loading_indicator.dart';
 import 'package:flutter/src/widgets/image.dart' as img;
-import 'package:multi_select_flutter/multi_select_flutter.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:line_awesome_flutter/line_awesome_flutter.dart';
+import 'package:sizer/sizer.dart';
+import 'draggable_card.dart';
+import 'swipe_cards.dart';
 
 import 'JsonObj.dart';
 
@@ -278,18 +277,20 @@ Widget _customDropDownView(BuildContext context, Breed? selectedItem) {
   );
 }
 
-OverlayEntry initLoading(BuildContext context, Size windowSize) {
-  Offset offs = Offset((windowSize.width / 2) - 25, windowSize.height - windowSize.height*0.15);
+OverlayEntry initLoading(BuildContext context) {
+  final bottomPadding = MediaQuery.of(context).padding.bottom;
+  final width = MediaQuery.of(context).size.width;
+  Offset offs = Offset((width / 2) - 25, bottomPadding);
   final loading = OverlayEntry(
       builder: (BuildContext context) => Positioned(
             left: offs.dx,
-            top: offs.dy,
+            bottom: bottomPadding,
             child: SizedBox(
               height: 50,
               width: 50,
               child: LoadingIndicator(
                   indicatorType: Indicator.ballPulseSync,
-                  colors: [Colors.black, Colors.teal, Colors.blueGrey]),
+                  colors: [Colors.blueGrey.shade900, Colors.blueGrey.shade300, Colors.blueGrey.shade600]),
             ),
           ));
 
@@ -318,9 +319,7 @@ class MateItem{
   
   MateItem({required this.sender_pet, this.request});
 
-  getStat(){
-    return this.request?.status ?? -1;
-  }
+  get stat => request?.status ?? requestState.undefined;
 }
 
 class CustomSelectionItem extends StatelessWidget {
@@ -389,16 +388,18 @@ class CustomRadio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15.sp)
+      ),
         color: _gender.isSelected ? Color(0xFF3B4257) : Colors.white,
         child: Container(
-          margin: new EdgeInsets.all(5.0),
+          margin: EdgeInsets.all(5.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Icon(
                 _gender.icon,
                 color: _gender.isSelected ? Colors.white : Colors.grey,
-                size: 40,
               ),
               SizedBox(width: 10),
               Padding(
@@ -406,7 +407,7 @@ class CustomRadio extends StatelessWidget {
                 child: Text(
                   _gender.name,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 9.sp,
                       color: _gender.isSelected ? Colors.white : Colors.grey),
                 ),
               )
@@ -415,7 +416,42 @@ class CustomRadio extends StatelessWidget {
         ));
   }
 }
+class CustomRadioRound extends StatelessWidget {
+  Gender _gender;
 
+  CustomRadioRound(this._gender);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+        color: _gender.isSelected ? Color(0xFF3B4257) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.sp),
+        ),
+        child: Container(
+          margin: const EdgeInsets.all(5),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Icon(
+                _gender.icon,
+                color: _gender.isSelected ? Colors.white : Colors.grey,
+              ),
+              SizedBox(width: 1.w),
+              Padding(
+                padding: EdgeInsets.fromLTRB(0,0,1.w,0),
+                child: Text(
+                  _gender.name,
+                  style: TextStyle(
+                      fontSize: 11.sp,
+                      color: _gender.isSelected ? Colors.white : Colors.grey),
+                ),
+              )
+            ],
+          ),
+        ));
+  }
+}
 class GeoLocation{
   double lat;
   double long;
@@ -433,74 +469,22 @@ class GeoLocation{
 class PetPod {
   PetProfile pet;
   bool isSelected = false;
-  GeoLocation petLocation;
+  bool hasLocation = false;
+  bool foreign = false;
   int distance = -1;
-  PetPod(this.pet, this.isSelected, this.petLocation, int controller){
-    if (controller != 0){
-      fetchLocation();
-    }
+  PetPod({required this.pet, required this.isSelected, bool? foreign, int? distance}){
+    this.foreign = foreign?? false;
+    hasLocation = (pet.location.longtitude != 0.0 && pet.location.latitude != 0.0);
   }
 
   PetPod copyWith({
     PetProfile? pet,
     bool? isSelected,
-    GeoLocation? petLocation,
+    bool? foreign,
     int? distance
   }) {
-    return PetPod(pet ?? this.pet,
-      isSelected ?? this.isSelected,
-      petLocation ?? this.petLocation,
-      distance ?? this.distance,
-    );
-  }
-
-  fetchLocation() async{
-    try{
-      final resp = await SupabaseCredentials.supabaseClient.from('users')
-          .select('lat,long')
-          .eq('id', pet.ownerId) as List<dynamic>;
-      final lat = resp[0]['lat'];
-      final long = resp[0]['long'];
-      petLocation = GeoLocation(lat,long);
-      return await calculateDistance();
-    }catch (e){
-      print(e);
-      return -1;
-    }
-  }
-
-  getDistance(){
-    return distance;
-  }
-
-  calculateDistance() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final sLat = prefs.getDouble('lat');
-      final sLong = prefs.getDouble('long');
-      if ((sLat != null && sLat != 0.0) && (sLong != null && sLong != 0.0)){
-        if (this.petLocation.Lat() > 0.0 && this.petLocation.Long() > 0.0) {
-          distance = Geolocator.distanceBetween(sLat, sLong, petLocation.Lat(), petLocation.Long()).toInt();
-        }else{
-          distance = -1;
-        }
-      } else {
-        distance = -1;
-
-      }
-      return this.distance;
-    } catch (e) {
-      print(e);
-      this.distance = -1;
-      return -1;
-    }
-  }
-
-  setLocation(GeoLocation){
-    petLocation = GeoLocation;
-  }
-  getLocation(){
-    return petLocation;
+    return PetPod(pet: pet ?? this.pet,
+      isSelected: isSelected ?? this.isSelected, foreign: foreign?? this.foreign, distance: distance?? this.distance);
   }
 
   // @override
@@ -656,38 +640,36 @@ class CustomPet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = MediaQuery.of(context).size.height;
-    final width = MediaQuery.of(context).size.width;
     return Container(
-      height: double.infinity,
-      width: width*0.22,
-      padding: EdgeInsets.all(width*height*0.00004),
-      margin: EdgeInsets.symmetric(horizontal: width*height*0.000015),
+      padding: EdgeInsets.all(10.sp),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(width*height*0.00008),
+        borderRadius: BorderRadius.circular(25.sp),
         color: pod.isSelected ? Colors.blueGrey.shade900 : CupertinoColors.extraLightBackgroundGray,
-        border: Border.all(width: 2, color:  CupertinoColors.extraLightBackgroundGray),
+        border: Border.all(width: 1, color:  pod.isSelected ? CupertinoColors.extraLightBackgroundGray : Colors.blueGrey.shade100),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: <Widget>[
-          Expanded(
+          Flexible(
+            flex: 2,
             child: CircleAvatar(
+              radius: 22.sp,
               backgroundColor: pod.isSelected ? Colors.white : Colors.blueGrey,
               child: CircleAvatar(
+                radius: 21.5.sp,
                 backgroundColor: CupertinoColors.extraLightBackgroundGray,
                 backgroundImage: NetworkImage(pod.pet.photoUrl),
               )
             ),
           ),
-          SizedBox(height: height*0.01,),
-          FittedBox(
+          Flexible(
+            flex: 1,
             child: Text(
               pod.pet.name,
               style: TextStyle(
                   fontFamily: 'Roboto',
                   fontWeight: FontWeight.w600,
-                  color: pod.isSelected ? Colors.white : Colors.blueGrey),
+                  color: pod.isSelected ? Colors.white : Colors.blueGrey, overflow: TextOverflow.fade),
             ),
           )
         ],
@@ -776,6 +758,92 @@ class PetConfirmDialog extends StatelessWidget {
 }
 
 
+class MultiPetRequestBanner extends StatefulWidget {
+  final MateItem pod;
+  final int count;
+  final PetPod receiverPet;
+
+  const MultiPetRequestBanner({Key? key, required this.pod, required this.count, required this.receiverPet}) : super(key: key);
+
+  @override
+  State<MultiPetRequestBanner> createState() => _MultiPetRequestBannerState();
+}
+
+class _MultiPetRequestBannerState extends State<MultiPetRequestBanner> {
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.of(context).size.height;
+    final width = MediaQuery.of(context).size.width;
+    return SafeArea(
+      child: Card(
+        elevation: 0,
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.all(5.0),
+          child: GlassContainer(
+            height: height * 0.09,
+            width: width,
+            blur: 10,
+            color: Colors.black.withOpacity(0.8),
+            border: Border.fromBorderSide(BorderSide.none),
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.blueGrey.shade900, Colors.black]),
+            child: Center(
+              child: ListTile(
+                leading: Stack(
+                  children: [
+                    CircleAvatar(
+                        radius: width * 0.07,
+                        backgroundColor: CupertinoColors.extraLightBackgroundGray ,
+                        child: CircleAvatar(
+                          backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                          radius: width * 0.07 - 2,
+                          backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl),
+                        )
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: CircleAvatar(
+                          radius: width * 0.035,
+                          backgroundColor: CupertinoColors.extraLightBackgroundGray ,
+                          child: CircleAvatar(
+                            backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                            radius: width * 0.035 - 2,
+                            backgroundImage: NetworkImage(widget.receiverPet.pet.photoUrl),
+                          )
+                      ),
+                    ),
+                  ],
+                ),
+                title: Text(
+                  '${widget.pod.sender_pet.pet.name} has requested ${widget.receiverPet.pet.name} to mate '
+                      'and ${widget.count} more requests.',
+                  style: TextStyle(
+                      fontWeight:
+                      FontWeight.w500,
+                      fontSize: 15,
+                      color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
 class PetRequestBanner extends StatefulWidget {
   final MateItem pod;
   final PetPod receiverPet;
@@ -796,55 +864,61 @@ class _PetRequestBannerState extends State<PetRequestBanner> {
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
     final width = MediaQuery.of(context).size.width;
-    return Padding(
-      padding: const EdgeInsets.all(5.0),
-      child: GlassContainer(
-        height: height * 0.09,
-        width: width,
-        blur: 10,
-        color: Colors.black.withOpacity(0.8),
-        border: Border.fromBorderSide(BorderSide.none),
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.blueGrey.shade900, Colors.black]),
-        child: Center(
-          child: ListTile(
-            leading: Stack(
-              children: [
-                CircleAvatar(
-                    radius: width * 0.07,
-                    backgroundColor: CupertinoColors.extraLightBackgroundGray ,
-                    child: CircleAvatar(
-                      backgroundColor: CupertinoColors.extraLightBackgroundGray,
-                      radius: width * 0.07 - 2,
-                      backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl),
-                    )
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: CircleAvatar(
-                      radius: width * 0.035,
-                      backgroundColor: CupertinoColors.extraLightBackgroundGray ,
+    return SafeArea(
+      child: Card(
+        elevation: 0,
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.all(5.0),
+          child: GlassContainer(
+            height: height * 0.09,
+            width: width,
+            blur: 10,
+            color: Colors.black.withOpacity(0.8),
+            border: Border.fromBorderSide(BorderSide.none),
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.blueGrey.shade900, Colors.black]),
+            child: Center(
+              child: ListTile(
+                leading: Stack(
+                  children: [
+                    CircleAvatar(
+                        radius: width * 0.07,
+                        backgroundColor: CupertinoColors.extraLightBackgroundGray ,
+                        child: CircleAvatar(
+                          backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                          radius: width * 0.07 - 2,
+                          backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl),
+                        )
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
                       child: CircleAvatar(
-                        backgroundColor: CupertinoColors.extraLightBackgroundGray,
-                        radius: width * 0.035 - 2,
-                        backgroundImage: NetworkImage(widget.receiverPet.pet.photoUrl),
-                      )
-                  ),
+                          radius: width * 0.035,
+                          backgroundColor: CupertinoColors.extraLightBackgroundGray ,
+                          child: CircleAvatar(
+                            backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                            radius: width * 0.035 - 2,
+                            backgroundImage: NetworkImage(widget.receiverPet.pet.photoUrl),
+                          )
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+                title: Text(
+                      '${widget.pod.sender_pet.pet.name} has requested ${widget.receiverPet.pet.name} to mate.',
+                      style: TextStyle(
+                          fontWeight:
+                          FontWeight.w500,
+                          fontSize: 15,
+                          color: Colors.white),
+                    ),
+              ),
             ),
-            title: Text(
-                  '${widget.pod.sender_pet.pet.name} has requested ${widget.receiverPet.pet.name} to mate.',
-                  style: TextStyle(
-                      fontWeight:
-                      FontWeight.w500,
-                      fontSize: 15,
-                      color: Colors.white),
-                ),
           ),
         ),
       ),
@@ -1093,7 +1167,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
                     onPressed: () async{
                       final resp = await updateMateRequest(widget.request.request!.id, 2);
                       if (resp == 200){
-                        BA_key.currentState?.pop(true);
+                        homeNav_key.currentState?.pop(true);
                       }else{
                         showSnackbar(context, "Failed to communicate with server, try again.");
                       }
@@ -1115,7 +1189,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
 
                       final resp = await updateMateRequest(widget.request.request!.id, 1);
                       if (resp == 200){
-                        BA_key.currentState?.pop(true);
+                        homeNav_key.currentState?.pop(true);
                       }else{
                         showSnackbar(context, "Failed to communicate with server, try again.");
                       }
@@ -1228,7 +1302,7 @@ AppBar init_appBarBreed(GlobalKey<NavigatorState> navKey) {
 }
 
 void showSnackbar(BuildContext context, String message) {
-  final snackBar = new SnackBar(content: new Text(message),
+  final snackBar = SnackBar(content: Text(message),
       backgroundColor: Colors.red);
 
   // Find the Scaffold in the Widget tree and use it to show a SnackBar!
@@ -1236,7 +1310,7 @@ void showSnackbar(BuildContext context, String message) {
 }
 
 void showNotification(BuildContext context, String message) {
-  final snackBar = new SnackBar(content: new Text(message, style: TextStyle(color: Colors.white)),
+  final snackBar = SnackBar(content: Text(message, style: TextStyle(color: Colors.white)),
       backgroundColor: Colors.green);
 
   // Find the Scaffold in the Widget tree and use it to show a SnackBar!
@@ -1404,33 +1478,53 @@ class _PetMatchCardState extends State<PetMatchCard> {
   String rating = "n/a";
   bool distanceLoading = true;
 
-  generateDistance() async{
-    if (widget.pod.petLocation.Lat() == 0.0){
-      distance = await widget.pod.fetchLocation();
-    }else{
-      distance  = widget.pod.getDistance();
-      if (this.mounted){
-        setState(() {
-          distanceLoading = false;
-        });
+  calculateDistance(Location first, Location second){
+    try {
+      if ((first.latitude != 0.0) && (first.longtitude != 0.0)){
+        if (second.latitude != 0.0 && second.longtitude != 0.0) {
+          distance = Geolocator.distanceBetween(first.latitude, first.longtitude, second.latitude, second.longtitude).toInt();
+        }else{
+          distance = -1;
+        }
+      } else {
+        distance = -1;
+
       }
+      return distance;
+    } catch (e) {
+      print(e);
+      distance = -1;
+      return -1;
     }
-      if (distance >= 1000){
-        distanceText = (distance/1000).toInt().toString() + " km";
-      }else if (distance != -1){
-        distanceText = distance.toInt().toString() + " m";
-      }else{
-        distanceText = "not available";
-      }
-      if (this.mounted){
-        setState(() {
-          distanceLoading = false;
-        });
-      }
-
-
-
   }
+
+  generateDistance() async {
+    calculateDistance(widget.pod.pet.location, widget.sender.pet.location);
+    if (mounted) {
+      setState(() {
+        distanceLoading = false;
+      });
+    }
+    if (distance != -1) {
+      if (distance >= 1000) {
+        distanceText = (distance / 1000).toInt().toString() + " km";
+      } else {
+        distanceText = distance.toInt().toString() + " m";
+      }
+    } else {
+      distanceText = "not available";
+    }
+  }
+
+  convertAgeToText(DateDuration petAge){
+   return petAge.years > 1
+        ? '${petAge.years} Years'
+        '${petAge.months > 1 ? ' and ${petAge.months} Months' : petAge.months == 1 ? ' and ${petAge.months} Month' : '' }'
+        : petAge.years == 1 ? '${petAge.years} Year' '${petAge.months > 1 ? ' and ${petAge.months} Months' : petAge.months == 1 ? ' and ${petAge.months} Month' : '' }'
+        : petAge.months > 1 ? '${petAge.months} Months' : petAge.months == 1 ? '${petAge.months} Month' : ''
+    ;
+  }
+
   @override
   void initState() {
     generateDistance();
@@ -1444,61 +1538,63 @@ class _PetMatchCardState extends State<PetMatchCard> {
     final width = MediaQuery.of(context).size.width;
     final petAge = AgeCalculator.dateDifference(fromDate: widget.pod.pet.birthdate, toDate: DateTime.now());
     final petVaccines = widget.pod.pet.vaccines.length/8;
-    String petText = "";
-    if (petAge.years > 0){
-      petText = petText + petAge.years.toString() + "";
-      if (petAge.months > 0){
-        petText = petText +" years, "+ petAge.months.toString() + " months";
-      }else{
-        petText = petText +" years";
-      }
-    }else{
-      if (petAge.months > 0){
-        petText = petText + petAge.months.toString() + " months";
-      }
-    }
+    String petAgeText = convertAgeToText(petAge);
     if (widget.pod.pet.rateCount > 0){
       rating = (widget.pod.pet.rateSum/widget.pod.pet.rateCount).toStringAsFixed(1) + " / 5";
     }
     return GlassContainer(
-      height: 100,
-      width: 100,
+      width: 65.w,
+      height: 45.h,
       blur: 10,
-      color: Colors.blueGrey.shade900.withOpacity(0.7),
+      color: Colors.blueGrey.shade300,
       border: Border.fromBorderSide(BorderSide.none),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(30.sp),
       shadowColor: Colors.black.withOpacity(0.2),
       child: Padding(
-        padding: const EdgeInsets.all(10.0),
+        padding: const EdgeInsets.all(1.0),
         child: Column(
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: <Widget>[
-                Center(
-                  child: Container(
-                    height: 130,
-                    width: double.infinity,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image(image: NetworkImage(widget.pod.pet.photoUrl), fit: BoxFit.cover,),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 3*height*0.005,),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(29.sp),
+                child: Image.network(
+                    widget.pod.pet.photoUrl,
+                  height: 19.85.h,
+                  width: double.infinity,
+                  loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return SizedBox(
+                      height: 19.85.h,
+                      width: double.infinity,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      ),
+                    );
+                  }, fit: BoxFit.cover),
+              ),
+            ),
+            // SizedBox(height: 1.5.h,),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-
                       Padding(
-                        padding: const EdgeInsets.all(3),
+                        padding: EdgeInsets.symmetric(horizontal: 0.5.w),
                         child: Text(
                           widget.pod.pet.name,
                           style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 13.sp,
                               fontFamily: 'Roboto',
                               fontWeight: FontWeight.w800,
                               color: Colors.white),
@@ -1507,90 +1603,123 @@ class _PetMatchCardState extends State<PetMatchCard> {
                         ),
                       ),
                       Spacer(),
-                      Icon(Icons.star_rate_rounded, color: CupertinoColors.activeOrange),
-                      Padding(
-                        padding: const EdgeInsets.all(3),
-                        child: Text(
-                          rating,
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontFamily: 'Roboto',
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white),
-                          overflow: TextOverflow.visible,
-                          textAlign: TextAlign.center,
+                      Tooltip(
+                        triggerMode: TooltipTriggerMode.tap,
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10.sp),
+                            color: Colors.blueGrey
                         ),
-                      )
-                    ],
-                  ),
-                ),
-                SizedBox(height: height*0.020,),
-                Text(
-                  widget.pod.pet.breed,
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontFamily: 'Roboto',
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white70),
-                  overflow: TextOverflow.visible,
-                  textAlign: TextAlign.center,
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(3*Checkbox.width*0.05),
-                  child: Text(petText, style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white54,
-                      fontSize: 11*width*0.0027)),
-                ),
-                SizedBox(height: height*0.02,),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      CircularPercentIndicator(
-                        radius: 13,
-                        lineWidth: 2,
-                        percent: petVaccines,
-                        backgroundColor: Colors.blueGrey.shade900,
-                        progressColor: Colors.white,
-                        center: ImageIcon(AssetImage("assets/vaccineIcon.png"), color: Colors.white, size: 15),
+                        message: !widget.pod.pet.verified ? "Pet's owner is not verified." : "Pet's owner is verified." ,
+                        child: Icon(widget.pod.pet.verified ?CupertinoIcons.checkmark_shield_fill : CupertinoIcons.exclamationmark_shield_fill,
+                            color: widget.pod.pet.verified ? Colors.teal.shade900 : Colors.deepOrange.shade900),
                       ),
-                      SizedBox(width: width*0.03,),
-                      Container(width: 20, height: 20,
-                          child: Image(image: AssetImage("assets/verifiedDocuments.png",),
-                            color: widget.pod.pet.passport == "" ? Colors.redAccent.withOpacity(0.8):
-                            Colors.green.withOpacity(0.8), fit: BoxFit.fill,)),
-                      Spacer(),
-                      Icon(widget.pod.pet.isMale ? Icons.male_rounded : Icons.female_rounded,
-                          color: widget.pod.pet.isMale ? Colors.blue : Colors.pink, size: 30,),
-                    ],
-                  ),
-                ),
-                SizedBox(height: height*0.01,),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-
-                      Icon(widget.pod.pet.verified ?Icons.verified_user_rounded : Icons.shield_outlined,
-                          color: widget.pod.pet.verified ? Colors.blue.shade300.withOpacity(0.8) : Colors.redAccent.withOpacity(0.8)),
-                      Spacer(),
-                      distanceLoading ? Padding(
-                        padding: const EdgeInsets.all(8*Checkbox.width*0.05),
-                        child: SizedBox(height: 10, width: 10, child: CircularProgressIndicator()),
-                      ) : Padding(
-                        padding: const EdgeInsets.all(8*Checkbox.width*0.05),
-                        child: Text(distanceText, style: TextStyle( fontFamily: "Poppins", fontWeight: FontWeight.w900, color: Colors.white60,
-                            fontSize: 11*width*0.0027)),
+                      SizedBox(width: 2.w,),
+                      Tooltip(
+                        enableFeedback: true,
+                        triggerMode: TooltipTriggerMode.tap,
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10.sp),
+                            color: Colors.blueGrey
+                        ),
+                        message: widget.pod.pet.passport == "" ? 'Pet has no passport.' : 'Pet has passport.' ,
+                        child: SizedBox(width: 5.w, height: 5.5.w,
+                            child: Image(image: AssetImage("assets/verifiedDocuments.png",),
+                              color: widget.pod.pet.passport == "" ? Colors.deepOrange.shade900:
+                              Colors.teal.shade900, fit: BoxFit.fill,)),
                       ),
-                      Icon(Icons.location_on_rounded, color: Colors.white60,),
                     ],
                   ),
-                )
-              ],
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 0.5.h),
+                    child: Text(
+                      petAgeText,
+                      style: TextStyle(
+                          fontSize: 10.sp,
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white),
+                      overflow: TextOverflow.visible,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
             ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+
+                  CircleAvatar(
+                      radius: 13.sp,
+                      backgroundColor: Colors.blueGrey.shade100,
+                      child: CircularPercentIndicator(
+                          radius: 13.sp,
+                          lineWidth: 3,
+                          percent: petVaccines,
+                          backgroundColor: Colors.blueGrey.shade300,
+                          progressColor: Colors.blueGrey.shade700,
+                          circularStrokeCap: CircularStrokeCap.round,
+
+                          center: ImageIcon(AssetImage("assets/vaccineIcon.png"), color: Colors.black, size: 18.sp)),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 1.w),
+                    child: Text(
+                      '${widget.pod.pet.vaccines.length} ''${(widget.pod.pet.vaccines.length > 1 ? 'vaccines' : 'vaccine')}',
+                      style: TextStyle(
+                          fontSize: 10.sp,
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white),
+                      overflow: TextOverflow.visible,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                          onPressed: (){},
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blueGrey.shade500,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15.0))),
+                          icon: Icon(Icons.info_rounded),
+                          label: Text('View full profile')
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 2.h),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(Icons.location_on_rounded, color: Colors.white60,),
+                  distanceLoading ? Padding(
+                    padding: const EdgeInsets.all(8*Checkbox.width*0.05),
+                    child: SizedBox(height: 10, width: 10, child: CircularProgressIndicator()),
+                  ) : Padding(
+                    padding: const EdgeInsets.all(8*Checkbox.width*0.05),
+                    child: Text(distanceText, style: TextStyle( fontFamily: "Poppins", fontWeight: FontWeight.w900, color: Colors.white60,
+                        fontSize: 11*width*0.0027)),
+                  ),
+                ],
+              ),
+            )
           ],
         ),
       ),
@@ -1615,29 +1744,6 @@ class _PetViewState extends State<PetView> {
   bool distanceLoading = true;
   bool tapped = false;
 
-  late Timer _timer;
-  int _start = 5;
-
-  void startTimer() {
-    const time = const Duration(seconds: 2);
-    _timer = Timer.periodic(
-      time, (Timer timer) {
-
-      if (this.mounted){
-        distance = widget.profile.getDistance();
-        if ( distance != -1){
-          generateDistance();
-          setState(() {
-            timer.cancel();
-          });
-        }else{
-        }
-      }
-
-      },
-    );
-  }
-
   generateDistance() async{
     if (distance >= 1000){
       distanceText = (distance/1000).toInt().toString() + " km";
@@ -1655,7 +1761,7 @@ class _PetViewState extends State<PetView> {
   }
   @override
   void initState(){
-    startTimer();
+    generateDistance();
     super.initState();
   }
 
@@ -1903,7 +2009,7 @@ class _PetViewState extends State<PetView> {
                             PetPod temPet = goodPets[index].copyWith(isSelected: false);
                             return InkWell(
                                 onTap: (){
-                                  BA_key.currentState?.pop(index);
+                                  homeNav_key.currentState?.pop(index);
                                 },
                                 child: CustomPet(pod: temPet));
                           }),
@@ -1946,7 +2052,7 @@ class _PetViewState extends State<PetView> {
                                 )
                             ),
                             onPressed: (){
-                              BA_key.currentState?.pop();
+                              homeNav_key.currentState?.pop();
                             }, child: Text('I understand'))
                       ],
                     ),
@@ -2127,12 +2233,12 @@ class Word {
 
 
 Future scanID() async {
-  String? imagePath;
+  String imagePath = "";
 
   try {
     //Make sure to await the call to detectEdge.
-    imagePath = await EdgeDetection.detectEdge;
-    return imagePath!;
+    await EdgeDetection.detectEdge(imagePath, canUseGallery: false);
+    return imagePath;
   } catch (e) {
     print(e);
     imagePath = '';
@@ -2195,4 +2301,47 @@ class ProfileListItem extends StatelessWidget {
       ),
     );
   }
+}
+
+
+Widget buildStamp({double angle = 0, required Color color, required String text}){
+  final HW = 100.h*100.w;
+  return Container(
+    width: 20.w,
+    height: 5.h,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(15.sp),
+      border: Border.all(color: color, width: 5)
+    ),
+    margin: EdgeInsets.all(5),
+    child: FittedBox(
+      fit: BoxFit.fitWidth,
+      child: Text(text,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ),
+  );
+
+
+}
+
+Widget buildStamps({required ValueNotifier<sliderStatus> notifier}){
+
+  return ValueListenableBuilder(
+      valueListenable: notifier,
+      builder: (BuildContext context, sliderStatus value, Widget? widget){
+        switch(value){
+          case sliderStatus.up:
+            return Container();
+          case sliderStatus.left:
+            return buildStamp(color: Colors.redAccent, text: "Nope");
+          case sliderStatus.right:
+            return buildStamp(color: Colors.redAccent, text: "Like");
+          case sliderStatus.none:
+            return Container();
+        }
+      });
 }

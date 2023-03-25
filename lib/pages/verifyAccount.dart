@@ -14,6 +14,7 @@ import '../APILibraries.dart';
 import '../JsonObj.dart';
 
 class VerifyAccountPage extends StatefulWidget {
+  // userPod is not needed anymore
   final UserPod userPod;
   const VerifyAccountPage({Key? key, required this.userPod}) : super(key: key);
 
@@ -29,8 +30,7 @@ class _VerifyAccountPageState extends State<VerifyAccountPage> {
   bool validTitle = false;
   bool validCode = false;
   bool isPressed = false;
-  final Size windowSize = MediaQueryData.fromWindow(window).size;
-  late OverlayEntry loading = initLoading(context, windowSize);
+  late OverlayEntry loading = initLoading(context);
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +62,7 @@ class _VerifyAccountPageState extends State<VerifyAccountPage> {
                                 if (!loading.mounted) {
                                   OverlayState? overlay =
                                   Overlay.of(context);
-                                  overlay?.insert(loading);
+                                  overlay.insert(loading);
                                 }
                               });
                               await parseID();
@@ -111,7 +111,7 @@ class _VerifyAccountPageState extends State<VerifyAccountPage> {
                                 if (!loading.mounted) {
                                   OverlayState? overlay =
                                   Overlay.of(context);
-                                  overlay?.insert(loading);
+                                  overlay.insert(loading);
                                 }
                               });
                               var image = await ImagePicker().pickImage(source: ImageSource.camera);
@@ -157,7 +157,7 @@ class _VerifyAccountPageState extends State<VerifyAccountPage> {
             ],
             onDone: () async{
               try{
-                await verifyUser(widget.userPod.id);
+                await verifyUser();
                 settingsNav_key.currentState?.pop(true);
               }catch (e){
                 settingsNav_key.currentState?.pop(false);

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/JsonObj.dart';
+import 'package:flutter_app_test1/cacheBox.dart';
 import 'package:flutter_app_test1/pages/EditProfile.dart';
 import 'dart:io';
 import 'package:flutter_app_test1/pages/breed.dart';
@@ -38,7 +39,7 @@ import 'FETCH_wdgts.dart';
 // This is for routes configurations across the whole application
 
 // Global keys identify each Navigator key for individual tabs in application
-GlobalKey<NavigatorState> BA_key = GlobalKey();
+GlobalKey<NavigatorState> homeNav_key = GlobalKey();
 GlobalKey<NavigatorState> rootNav_key = GlobalKey();
 GlobalKey<NavigatorState> AppNav_key = GlobalKey();
 GlobalKey<NavigatorState> UserNav_key = GlobalKey();
@@ -47,6 +48,7 @@ GlobalKey<NavigatorState> settingsNav_key = GlobalKey();
 GlobalKey<NavigatorState> explore_key = GlobalKey();
 
 class RouteGenerator {
+
   // Main Routes Generator
   static Route<dynamic> generateRoute_main(RouteSettings settings) {
     final args = settings.arguments;
@@ -60,17 +62,29 @@ class RouteGenerator {
         );
         return _errorRoute();
       case '/signup_complete':
-        return MaterialPageRoute(
-          builder: (_) => Signup(),
-        );
+        if (args is CacheBox){
+          return MaterialPageRoute(
+            builder: (_) => Signup(cacheBox: args),
+          );
+        }else{
+          return _errorRoute();
+        }
+
       case '/signupEmail':
         return MaterialPageRoute(builder: (_) => SignUpEmail());
       case '/verifyEmail':
         return MaterialPageRoute(builder: (_) => verifyEmail());
       case '/mainApp':
-        return MaterialPageRoute(
-          builder: (_) => mainApp(),
-        );
+        if (args is UserPod){
+          return MaterialPageRoute(
+            builder: (_) => mainApp(pod: args),
+          );
+        }else{
+          return MaterialPageRoute(
+            builder: (_) => mainApp(),
+          );
+        }
+
       case '/forgotPass':
         if (args is String){
           return MaterialPageRoute(builder: (_) => ForgotPass(emailPushed: args));
@@ -87,13 +101,17 @@ class RouteGenerator {
   static Route<dynamic> generateRoute_BA(RouteSettings settings) {
     // Getting arguments passed in while calling Navigator.pushNamed
     final args = settings.arguments;
-
     //for each case called, checks are applied to navigation to the correct next page
     switch (settings.name) {
       case '/':
         return MaterialPageRoute(builder: (_) => HomeBreedPage());
       case '/add_pet':
+        if (args == true){
+          print('args is boolean: ${args}');
+          return MaterialPageRoute(builder: (_) => addBreedPage(firstPet: args as bool));
+        }
         return MaterialPageRoute(builder: (_) => addBreedPage());
+
       case '/petMatch':
         if (args is List){
           return MaterialPageRoute(builder: (_) => PetMatchPage(senderPet: args[0],pets: args[1], petRequests: args[2], sentRequests: args[3],));

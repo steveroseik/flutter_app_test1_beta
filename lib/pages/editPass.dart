@@ -35,8 +35,7 @@ class editpass extends State<editPass>
 
   DateTime userBirthDate = DateTime.now();
 
-  final Size windowSize = MediaQueryData.fromWindow(window).size;
-  late OverlayEntry loading = initLoading(context, windowSize);
+  late OverlayEntry loading = initLoading(context);
 
 
   @override

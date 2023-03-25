@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:advance_pdf_viewer/advance_pdf_viewer.dart';
 import 'package:document_scanner_flutter/configs/configs.dart';
 import 'package:document_scanner_flutter/document_scanner_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
@@ -10,6 +11,11 @@ import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:path/path.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../DataPass.dart';
+import '../JsonObj.dart';
+import '../cacheBox.dart';
 
 
 class PetDocumentUpload extends StatefulWidget {
@@ -28,6 +34,7 @@ class _PetDocumentUploadState extends State<PetDocumentUpload> with TickerProvid
   bool tapped = false;
   late AnimationController _controller;
   late Animation<double> animation;
+  late CacheBox cacheBox;
 
   createPassportPDF(BuildContext context) async {
     try{
@@ -50,6 +57,20 @@ class _PetDocumentUploadState extends State<PetDocumentUpload> with TickerProvid
 
   }
 
+  Future<int> addNewPet({String? passport}) async{
+
+    final value = await addPet(widget.arguments[0],widget.arguments[1],widget.arguments[2],widget.arguments[3],
+    widget.arguments[4],widget.arguments[5],widget.arguments[6], passport?? '');
+
+    if (value[0] != 200){
+      return -100;
+    }else{
+      value[0] = await cacheBox.incrementUserPets(value[1]);
+      return value[0];
+    }
+
+  }
+
   @override
   void initState() {
     _controller = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
@@ -57,12 +78,14 @@ class _PetDocumentUploadState extends State<PetDocumentUpload> with TickerProvid
     super.initState();
   }
 
+
   @override
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
     final width = MediaQuery.of(context).size.width;
+    cacheBox = DataPassWidget.of(context);
     return Scaffold(
-      appBar: init_appBar(BA_key),
+      appBar: init_appBar(homeNav_key),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10.0),
         child: Column(
@@ -154,40 +177,34 @@ class _PetDocumentUploadState extends State<PetDocumentUpload> with TickerProvid
                               if (urlPath != ''){
                                 if (widget.arguments.length == 1){
                                   final PetPod petPassed = widget.arguments[0];
-                                  final resp = await updatePassport(urlPath, petPassed.pet.id);
-                                  if (this.mounted) {setState(() {
+                                  final resp = await updatePassport(urlPath, petPassed);
+                                  if (mounted) {setState(() {
                                     tapped = false;
                                   });}
 
                                   if (resp == 200){
-                                    BA_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
-                                  }else{
-                                    showSnackbar(context, "Failed to connect with database, Check your internet connection.");
+                                    homeNav_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
+                                  }else if (mounted){
+                                    showSnackbar(context, "Failed to add your pet document, Try again!");
                                   }
                                 }else{
-                                  int value;
-                                  try{
-                                     value = await addPet(widget.arguments[0],widget.arguments[1],widget.arguments[2],widget.arguments[3],
-                                        widget.arguments[4],widget.arguments[5],widget.arguments[6], urlPath);
 
-                                  }catch (e){
-                                    value = -110;
-                                  }
+                                  int value = await addNewPet(passport: urlPath);
 
                                   if (this.mounted) {setState(() {
                                     tapped = false;
                                   });}
                                   if (value == 200){
                                     succeeded = true;
-                                    BA_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
-                                  }else{
-                                    showSnackbar(context, "Failed to connect with database, Check your internet connection.");
+                                    homeNav_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
+                                  }else if(mounted){
+                                    showSnackbar(context, "Failed to add your pet, Try again!");
                                   }
                                 }
                               }
 
 
-                              if (!succeeded){
+                              if (!succeeded && mounted){
                                 showSnackbar(context, "Failed to upload document");
                               }
                             },
@@ -210,8 +227,8 @@ class _PetDocumentUploadState extends State<PetDocumentUpload> with TickerProvid
             setState(() {
               tapped = true;
             });
-            int value = await addPet(widget.arguments[0],widget.arguments[1],widget.arguments[2],widget.arguments[3],
-                widget.arguments[4],widget.arguments[5],widget.arguments[6], "");
+
+            int value = await addNewPet();
 
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
@@ -221,8 +238,8 @@ class _PetDocumentUploadState extends State<PetDocumentUpload> with TickerProvid
               }
             });
             if (value == 200){
-              BA_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
-            }else{
+              homeNav_key.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
+            }else if (mounted){
               showSnackbar(context, "Failed to connect with database, Check your internet connection.");
 
             }

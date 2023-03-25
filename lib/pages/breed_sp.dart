@@ -59,11 +59,8 @@ class _breedSearchPageState extends State<breedSearchPage> {
 
   initPets() async{
 
-    pets.addAll(await fetchResultedPets());
-    setState(() {
-      isLoading = false;
-    });
-
+    List<PetPod> pods = await fetchResultedPets();
+    startSorting(pods);
     breedList.addAll(await fetchBreedNameList());
   }
 
@@ -87,28 +84,25 @@ class _breedSearchPageState extends State<breedSearchPage> {
     allList.addAll(widget.petRequests);
     allList.addAll(widget.sentRequests);
 
-    for (MateRequest m in allList){
+    try{
+      return allList.firstWhere((e) {
+        return e.senderPet == petID || e.receiverPet == petID;
 
-      if (m.senderPet == petID){
-        return m;
-      }else if (m.receiverPet == petID){
-        return m;
-      }
-
+      });
+    }catch (e){
+      return null;
     }
-
-    return MateRequest(id: "-1", senderId: 'senderId', receiverId: 'receiverId', senderPet: 'senderPet', receiverPet: 'receiverPet', status: -1);
 
 
   }
 
   startSorting(List<PetPod> pods){
     sortTrials = 5;
-    const time = const Duration(seconds: 1);
+    const time = const Duration(seconds: 2);
     _sortTimer = Timer.periodic(time, (Timer time) {
       int locAvail = 0;
       for (PetPod pod in pods){
-        if (pod.getDistance() == -1){
+        if (pod.hasLocation){
           locAvail = -1;
         }
       }
@@ -118,22 +112,24 @@ class _breedSearchPageState extends State<breedSearchPage> {
         isLoading = false;
         time.cancel();
       });
+      }else{
+        if (locAvail != -1){
+          pods.sort((a,b) => a.distance
+              .compareTo(b.distance));
+          if (distanceASC) {
+            pods = pods.reversed.toList();
+          }
+          setState(() {
+            pets.addAll(pods);
+            isLoading = false;
+            time.cancel();
+          });
+        }else{
+          sortTrials--;
+        }
       }
 
-      if (locAvail != -1){
-        pods.sort((a,b) => a.distance
-            .compareTo(b.distance));
-        if (distanceASC) {
-          pods = pods.reversed.toList();
-        }
-        setState(() {
-          pets.addAll(pods);
-          isLoading = false;
-          time.cancel();
-        });
-      }else{
-          sortTrials--;
-      }
+
     });
   }
 
@@ -142,12 +138,13 @@ class _breedSearchPageState extends State<breedSearchPage> {
       pets.clear();
       isLoading = true;
     });
-    final encoded = petProfileFromJson(jsonEncode(newList));
-    final pods = List<PetPod>.generate(encoded.length, (index){
-      return PetPod(encoded[index], false, GeoLocation(0.0, 0.0), 1);
-    });
-    sortTrials = 5;
-    startSorting(pods);
+    // FIX ME ASAP
+    // final encoded = petProfileFromJson(jsonEncode(newList));
+    // final pods = List<PetPod>.generate(encoded.length, (index){
+    //   return PetPod(encoded[index], false, GeoLocation(0.0, 0.0), 1);
+    // });
+    // sortTrials = 5;
+    // startSorting(pods);
   }
 
 
@@ -394,35 +391,30 @@ class _breedSearchPageState extends State<breedSearchPage> {
                               }else{
                                 final sBreeds = breedKey.currentState!.getSelectedItems;
 
-                                if (sBreeds != null){
-                                  List<String> criteriaList = <String>[];
-                                  if (criteriaList.length > 0){
-                                    criteriaList = List<String>.generate(sBreeds.length, (index) => sBreeds[index].name);
-                                    if (gender == 2){
-                                      final resp = await SupabaseCredentials.supabaseClient.from('pets')
-                                          .select('*').in_('breed', criteriaList).gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid);
-                                      refreshResults(resp);
-                                    }else{
-                                      final isMale = gender == 0 ? true : false;
-                                      final resp = await SupabaseCredentials.supabaseClient.from('pets')
-                                          .select('*').in_('breed', criteriaList).eq('isMale', isMale).gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid);
-                                      refreshResults(resp);
-                                    }
+                                if (sBreeds.isEmpty){
+                                  if (gender == 2){
+                                    final resp = await SupabaseCredentials.supabaseClient.from('pets')
+                                        .select('*').gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid).neq('owner_id', uid);
+                                    refreshResults(resp);
                                   }else{
-                                    if (gender == 2){
-                                      final resp = await SupabaseCredentials.supabaseClient.from('pets')
-                                          .select('*').gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid).neq('owner_id', uid);
-                                      refreshResults(resp);
-                                    }else{
-                                      final isMale = gender == 0 ? true : false;
-                                      final resp = await SupabaseCredentials.supabaseClient.from('pets')
-                                          .select('*').eq('isMale', isMale).gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid).neq('owner_id', uid);
-                                      refreshResults(resp);
-                                    }
+                                    final isMale = gender == 0 ? true : false;
+                                    final resp = await SupabaseCredentials.supabaseClient.from('pets')
+                                        .select('*').eq('isMale', isMale).gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid).neq('owner_id', uid);
+                                    refreshResults(resp);
                                   }
-
                                 }else{
-                                  print('error fetching breed list.');
+                                  List<String> criteriaList = <String>[];
+                                  criteriaList = List<String>.generate(sBreeds.length, (index) => sBreeds[index].name);
+                                  if (gender == 2){
+                                    final resp = await SupabaseCredentials.supabaseClient.from('pets')
+                                        .select('*').in_('breed', criteriaList).gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid);
+                                    refreshResults(resp);
+                                  }else{
+                                    final isMale = gender == 0 ? true : false;
+                                    final resp = await SupabaseCredentials.supabaseClient.from('pets')
+                                        .select('*').in_('breed', criteriaList).eq('isMale', isMale).gt('birthdate', dateMin).lt('birthdate', dateMax).neq('owner_id', uid);
+                                    refreshResults(resp);
+                                  }
                                 }
 
                               }
@@ -474,7 +466,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
           ),
         ),
         body: Scaffold(
-          appBar: init_appBar(BA_key),
+          appBar: init_appBar(homeNav_key),
           body: isLoading ?  GridView.builder(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
@@ -494,20 +486,43 @@ class _breedSearchPageState extends State<breedSearchPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
-                          child: CircleAvatar(
+                      Container(
+                        height: 40,
+                        child: Row(
+                          children: [
+                            Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                                child: CircleAvatar(
+                                  radius: 30,
+                                ),
+                            ),
+                            Spacer(),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                                    child: Container(
+                                      height: 10,
+                                      width: width*0.15,
+                                      margin: EdgeInsets.all(5),
+                                      decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(20), color: Colors.white),
 
-                          ),
+                                    )),
+                                Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
+                                    child: Container(
+                                      height: 10,
+                                      width: width*0.1,
+                                      margin: EdgeInsets.all(5),
+                                      decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(20), color: Colors.white),
+
+                                    )),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                      Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
-                          child: Container(
-                            height: 10,
-                            width: double.infinity,
-                            margin: EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20), color: Colors.white),
-
-                          )),
+                      SizedBox(height: 20,),
                       Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
                           child: Container(
                             height: 10,
@@ -520,31 +535,13 @@ class _breedSearchPageState extends State<breedSearchPage> {
                       Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
                           child: Container(
                             height: 10,
-                            width: double.infinity,
+                            width: 50,
                             margin: EdgeInsets.all(5),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(20), color: Colors.white),
 
                           )),
                       Spacer(),
-                      Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
-                          child: Container(
-                            height: 10,
-                            width: width*0.3,
-                            margin: EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20), color: Colors.white),
-
-                          )),
-                      Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
-                          child: Container(
-                            height: 10,
-                            width: double.infinity,
-                            margin: EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20), color: Colors.white),
-
-                          )),
                       Center(
                         child: Shimmer( gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
                             child: Container(
@@ -586,13 +583,13 @@ class _breedSearchPageState extends State<breedSearchPage> {
                       MateRequest req = matchRequest(pets[index].pet.id);
                       if (req.status == -1){
                         MateItem petItem = MateItem(sender_pet: pets[index], request: req);
-                        BA_key.currentState?.pushNamed('/petProfile', arguments: [petItem, widget.ownerPets]).then((value) {
+                        homeNav_key.currentState?.pushNamed('/petProfile', arguments: [petItem, widget.ownerPets]).then((value) {
                           if (req.status != -1){
                             widget.sentRequests.add(req);
                           }
                         });
                       }else{
-                        BA_key.currentState?.pushNamed('/petProfile', arguments: [MateItem(sender_pet: pets[index], request: req), widget.ownerPets]);
+                        homeNav_key.currentState?.pushNamed('/petProfile', arguments: [MateItem(sender_pet: pets[index], request: req), widget.ownerPets]);
                       }
 
 

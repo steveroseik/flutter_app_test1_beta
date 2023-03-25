@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app_test1/DataPass.dart';
+import 'package:flutter_app_test1/cacheBox.dart';
 import 'package:glassmorphism_ui/glassmorphism_ui.dart';
 import 'package:line_awesome_flutter/line_awesome_flutter.dart';
 import 'package:flutter/cupertino.dart';
@@ -50,29 +53,22 @@ class _SettingsPageState extends State<SettingsPage> {
   late UserPod userPod;
   List<Marker> markers = <Marker>[];
   Completer<GoogleMapController> _controller = Completer();
-  bool isLoading = true;
-  initUser() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    final userData = await fetchUserData(uid);
-    userPod = userPodFromJson(jsonEncode(userData));
-    setState(() {
-      isLoading = false;
-    });
-  }
+  bool isLoading = false;
 
   Future<Position> getUserCurrentLocation() async {
     await Geolocator.requestPermission()
         .then((value) {})
         .onError((error, stackTrace) async {
       await Geolocator.requestPermission();
-      print("ERROR" + error.toString());
+      print("Geolocation error: $error");
     });
     return await Geolocator.getCurrentPosition();
   }
 
+
+
   @override
   void initState() {
-    initUser();
     super.initState();
   }
 
@@ -80,6 +76,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
     final width = MediaQuery.of(context).size.height;
+    CacheBox cacheBox = DataPassWidget.of(context);
+    userPod = cacheBox.getUserInfo();
     return Scaffold(
       appBar: init_appBar(settingsNav_key),
       backgroundColor: kAppPrimaryColor,
@@ -91,7 +89,6 @@ class _SettingsPageState extends State<SettingsPage> {
               radius: height*0.06,
               backgroundColor: CupertinoColors.extraLightBackgroundGray,
               child: CircleAvatar(
-
                 radius: height*0.06-2,
                 backgroundColor: CupertinoColors.extraLightBackgroundGray,
                 child:  isLoading || userPod.photoUrl == "" ? LayoutBuilder(builder: (context, constraint) {
@@ -218,6 +215,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 InkWell(
                   onTap: () async {
+                    print(userPod.petCount);
                     settingsNav_key.currentState?.pushNamed(
                         '/setting');
                   },
@@ -230,10 +228,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 InkWell(
                   onTap: () async{
-                    final prefs = await SharedPreferences.getInstance();
-                    prefs.clear();
-                    FirebaseAuth.instance.signOut();
-
+                    cacheBox.signOut();
                   },
                   child: ProfileListItem(
                     icon: LineAwesomeIcons.alternate_sign_out,

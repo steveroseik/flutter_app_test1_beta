@@ -5,8 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsMain extends StatelessWidget{
 
-
-
   @override
   Widget build(BuildContext context){
     return Navigator(

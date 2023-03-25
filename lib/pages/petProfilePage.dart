@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'package:advance_pdf_viewer/advance_pdf_viewer.dart';
 import 'package:age_calculator/age_calculator.dart';
 import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_app_test1/DataPass.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_multi_select_items/flutter_multi_select_items.dart';
 import 'package:geolocator/geolocator.dart';
@@ -19,9 +21,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../APILibraries.dart';
 import '../FETCH_wdgts.dart';
 import '../JsonObj.dart';
+import '../cacheBox.dart';
 import '../configuration.dart';
 import 'dart:io' show Platform;
 import 'dart:ui';
+
+
 
 class PetProfilePage extends StatefulWidget{
   MateItem pod;
@@ -43,15 +48,15 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
   late AnimationController animController;
   late Animation animation;
   late PDFDocument document;
+  late CacheBox cacheBox;
   int distance = -1;
   UserPod? ownerPod;
-  final petState = ValueNotifier<int>(-1);
+  final petState = ValueNotifier<profileState>(profileState.noFriendship);
   bool ownerVerified = false;
   bool tapped = false;
   late Timer _timer;
   int timer_counter=5;
-  final Size windowSize = MediaQueryData.fromWindow(window).size;
-  late OverlayEntry loading = initLoading(context, windowSize);
+  late OverlayEntry loading = initLoading(context);
 
 
   startTimer(){
@@ -75,7 +80,6 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
           }
          if (mounted){
            setState(() {
-
            });
          }
         }else{
@@ -87,22 +91,33 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
   }
 
   initPetState(){
-    int? state = widget.pod.request?.status;
+    requestState? state = widget.pod.request?.status;
     String? receiverPet = widget.pod.request?.receiverPet;
     print('${state}, ${receiverPet}, ${widget.pod.sender_pet.pet.name}');
 
+
     if (state != null && receiverPet != null){
-      if (state == 2){
-        petState.value = state;
-      }else if(state == 0){
-        if (receiverPet == widget.pod.sender_pet.pet.id){
-          petState.value = 1;
-        }else{
-          petState.value = 0;
-        }
+      switch(state){
+
+        case requestState.pending:
+          if (receiverPet == widget.pod.sender_pet.pet.id){
+            petState.value = profileState.requested;
+          }else{
+            petState.value = profileState.pendingApproval;
+          }
+          break;
+        case requestState.denied:
+          petState.value = profileState.noFriendship;
+          break;
+        case requestState.accepted:
+          petState.value = profileState.friend;
+          break;
+        case requestState.undefined:
+          petState.value = profileState.noFriendship;
+          break;
       }
     }else{
-      petState.value = -1;
+      petState.value = profileState.noFriendship;
     }
 
   }
@@ -171,8 +186,9 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
     final width = MediaQuery.of(context).size.width;
+    cacheBox = DataPassWidget.of(context);
     return Scaffold(
-      appBar: init_appBar(BA_key),
+      appBar: init_appBar(homeNav_key),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(10,10,10,0),
         child: Column(
@@ -209,11 +225,11 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                           ],
                         )),
                       ),
-                      ValueListenableBuilder<int>(
+                      ValueListenableBuilder<profileState>(
                           valueListenable: petState,
-                          builder: (BuildContext context, int value, Widget? widget){
+                          builder: (BuildContext context, profileState value, Widget? widget){
                             switch(value){
-                              case 0: {
+                              case profileState.pendingApproval: {
                                 return Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                   children: [
@@ -222,13 +238,13 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                                         setState(() {
                                           tapped = true;
                                         });
-                                        final resp = await updateMateRequest(this.widget.pod.request!.id, 2);
+
+                                        final resp = await updateMateRequest(this.widget.pod.request!.id, requestState.accepted.index);
                                         if (resp == 200){
-                                          this.widget.pod.request!.status = 2;
-                                          petState.value = 2;
+                                          this.widget.pod.request!.status = requestState.accepted;
+                                          petState.value = profileState.friend;
                                           setState(() {
                                           });
-
                                         }else{
                                           showSnackbar(context, "Failed to communicate with server, try again.");
                                         }
@@ -261,10 +277,10 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                                         setState(() {
                                           tapped = true;
                                         });
-                                        final resp = await deleteMateRequest(this.widget.pod.request!.id);
+                                        final resp = await updateMateRequest(this.widget.pod.request!.id, requestState.denied.index);
                                         if (resp == 200){
-                                          this.widget.pod.request!.status = -1;
-                                          petState.value = -1;
+                                          this.widget.pod.request!.status = requestState.denied;
+                                          petState.value = profileState.noFriendship;
                                           setState(() {
                                           });
                                         }else{
@@ -289,16 +305,16 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                                   ],
                                 );
                               }
-                              case 1: {
+                              case profileState.requested: {
                                 return ElevatedButton.icon(
                                   onPressed:tapped ? null :  ()async {
                                     setState(() {
                                       tapped = true;
                                     });
-                                    final resp = await deleteMateRequest(this.widget.pod.request!.id);
+                                    final resp = await updateMateRequest(this.widget.pod.request!.id, requestState.undefined.index);
                                     if (resp == 200){
-                                      this.widget.pod.request!.status = -1;
-                                      petState.value = -1;
+                                      this.widget.pod.request!.status = requestState.undefined;
+                                      petState.value = profileState.noFriendship;
                                       setState(() {
                                       });
                                     }else{
@@ -321,25 +337,25 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                                   ),),
                                 );
                               }
-                              case 2: {
+                              case profileState.friend: {
                                 return GestureDetector(
                                   onTap: tapped ? null : ()async{
                                     if (ownerPod == null){
                                       if (!loading.mounted) {
                                         OverlayState? overlay =
                                         Overlay.of(context);
-                                        overlay?.insert(loading);
+                                        overlay.insert(loading);
                                         setState(() {
 
                                         });
                                       }
+                                      // Fix
                                       try{
-                                        final resp = jsonEncode(await SupabaseCredentials.supabaseClient
-                                            .from('users')
-                                            .select('*').eq('id', this.widget.pod.sender_pet.pet.ownerId).single() as Map);
-                                        ownerPod = userPodFromJson(resp);
+                                        final resp = await FirebaseFirestore.instance.collection('users')
+                                            .doc(this.widget.pod.sender_pet.pet.ownerId).get();
+                                        ownerPod = userPodFromDoc(resp);
                                       }catch (e){
-
+                                        print('petPageError: $e');
                                       }
                                     }
                                     if(loading.mounted){
@@ -377,7 +393,7 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                                   ),
                                 );
                               }
-                              default: return ElevatedButton.icon(
+                              case profileState.noFriendship: return ElevatedButton.icon(
                                 onPressed:tapped ? null :  ()async {
                                   setState(() {
                                     tapped = true;
@@ -391,20 +407,10 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                                           this.widget.pod.sender_pet.pet.ownerId,
                                           this.widget.ownerPets[petInd].pet.id,
                                           this.widget.pod.sender_pet.pet.id);
-                                      if (newRequest.status == 0){
-                                        this.widget.pod.request!.status = newRequest.status;
-                                        this.widget.pod.request!.id = newRequest.id;
-                                        this.widget.pod.request!.receiverId = newRequest.receiverId;
-                                        this.widget.pod.request!.receiverPet = newRequest.receiverPet;
-                                        this.widget.pod.request!.senderId = newRequest.senderId;
-                                        this.widget.pod.request!.senderPet = newRequest.senderPet;
-                                        petState.value = 1;
+                                      if (newRequest != null){
+                                        this.widget.pod.request = newRequest;
+                                        petState.value = profileState.requested;
                                         showNotification(context, 'Request sent successfully');
-                                      }else if (newRequest.status  == -3){
-                                        showSnackbar(context, 'You have already sent a request.');
-                                        petState.value = 1;
-                                      }else if (newRequest.status == -4){
-                                        showSnackbar(context, 'User has sent you a request. refresh notifications.');
                                       }else{
                                         showSnackbar(context, 'Failed to send request');
                                       }
@@ -678,166 +684,168 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
     double? uLat = prefs.getDouble('lat');
     double? uLong = prefs.getDouble('long');
     int distance = -1;
-    showModalBottomSheet(
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        context: context,
-        builder: (builder){
-          final height = MediaQuery
-              .of(context)
-              .size
-              .height;
-          final width = MediaQuery
-              .of(context)
-              .size
-              .width;
-          final ownerData = ownerPod!;
-          if (uLat != null && uLong != null){
-            if (uLat > 0.0 && uLong > 0 && ownerData.lat > 0 && ownerData.long > 0 ){
-              distance = Geolocator.distanceBetween(uLat, uLong, ownerData.lat, ownerData.long).toInt();
+    if (mounted){
+      showModalBottomSheet(
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          context: context,
+          builder: (builder){
+            final height = MediaQuery
+                .of(context)
+                .size
+                .height;
+            final width = MediaQuery
+                .of(context)
+                .size
+                .width;
+            final ownerData = ownerPod!;
+            if (uLat != null && uLong != null){
+              if (uLat > 0.0 && uLong > 0 && ownerData.location.latitude > 0 && ownerData.location.longtitude > 0 ){
+                distance = Geolocator.distanceBetween(uLat, uLong, ownerData.location.latitude, ownerData.location.longtitude).toInt();
+              }
             }
-          }
-          
-          return Container(
-              height: height * 0.5,
-              child: Column(
-                children: [
-                  Container(
-                    width: width*0.8,
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(25),
-                      color: Colors.black.withOpacity(0.8)
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: width*0.05,
-                              backgroundColor: CupertinoColors.extraLightBackgroundGray,
-                              child: CircleAvatar(
-                                radius: width*0.5,
+
+            return Container(
+                height: height * 0.5,
+                child: Column(
+                  children: [
+                    Container(
+                      width: width*0.8,
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(25),
+                          color: Colors.black.withOpacity(0.8)
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: width*0.05,
                                 backgroundColor: CupertinoColors.extraLightBackgroundGray,
-                                backgroundImage: ownerData.photoUrl == "" ? null : NetworkImage(ownerData.photoUrl),
-                                child:  ownerData.photoUrl == "" ? LayoutBuilder(builder: (context, constraint) {
-                                  return Icon(Icons.account_circle_rounded, size: constraint.biggest.height);
-                                }) : null,
+                                child: CircleAvatar(
+                                  radius: width*0.5,
+                                  backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                                  backgroundImage: ownerData.photoUrl == "" ? null : NetworkImage(ownerData.photoUrl),
+                                  child:  ownerData.photoUrl == "" ? LayoutBuilder(builder: (context, constraint) {
+                                    return Icon(Icons.account_circle_rounded, size: constraint.biggest.height);
+                                  }) : null,
+                                ),
                               ),
-                            ),
-                            SizedBox(width: width*0.02,),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("${ownerData.firstName.capitalize()} ${ownerData.lastName.capitalize()}",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: width*0.04,
-                                      color: Colors.blueGrey.shade50,
-                                    )),
-                                Text("${ownerData.city.capitalize()}, ${ownerData.country.capitalize()}",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: width*0.035,
-                                      color: Colors.blueGrey.shade100,
-                                    )),
-                              ],
-                            ),
-                            Spacer(),
-                            ownerData.type == 1 ? Icon(CupertinoIcons.shield_fill, color: Colors.green,) : Icon(CupertinoIcons.exclamationmark_shield_fill, color: Colors.orange,),
-                          ],
-                        ),
+                              SizedBox(width: width*0.02,),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("${ownerData.firstName.capitalize()} ${ownerData.lastName.capitalize()}",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: width*0.04,
+                                        color: Colors.blueGrey.shade50,
+                                      )),
+                                  Text("${ownerData.city.capitalize()}, ${ownerData.country.capitalize()}",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: width*0.035,
+                                        color: Colors.blueGrey.shade100,
+                                      )),
+                                ],
+                              ),
+                              Spacer(),
+                              ownerData.type == 1 ? Icon(CupertinoIcons.shield_fill, color: Colors.green,) : Icon(CupertinoIcons.exclamationmark_shield_fill, color: Colors.orange,),
+                            ],
+                          ),
 
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  Container(
-                    width: width*0.8,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: tapped ? null : () async{
-                            setState(() {
-                              tapped = true;
-                            });
-                            ClipboardData data = ClipboardData(text: '+20${ownerData.phone}');
-                            await Clipboard.setData(data);
-                            showNotification(context, 'Copied!');
-                            setState(() {
-                              tapped = false;
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade200,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18.0)
-                              )
+                    Container(
+                      width: width*0.8,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: tapped ? null : () async{
+                              setState(() {
+                                tapped = true;
+                              });
+                              ClipboardData data = ClipboardData(text: '+20${ownerData.phone}');
+                              await Clipboard.setData(data);
+                              showNotification(context, 'Copied!');
+                              setState(() {
+                                tapped = false;
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade200,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18.0)
+                                )
+                            ),
+                            icon:  Icon(Icons.copy_rounded, color: Colors.blueGrey.shade800, size: width*0.040,),
+                            label: Text('Copy', style: TextStyle(
+                                color: Colors.blueGrey.shade800,
+                                fontSize: width*0.03
+                            ),),
                           ),
-                          icon:  Icon(Icons.copy_rounded, color: Colors.blueGrey.shade800, size: width*0.040,),
-                          label: Text('Copy', style: TextStyle(
-                              color: Colors.blueGrey.shade800,
-                              fontSize: width*0.03
-                          ),),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: tapped ? null : ()async {
-                            setState(() {
-                              tapped = true;
-                            });
-                            launchUrl(Uri.parse("tel://+20${ownerData.phone}"));
-                            setState(() {
-                              tapped = false;
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade300,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18.0)
-                              )
+                          ElevatedButton.icon(
+                            onPressed: tapped ? null : ()async {
+                              setState(() {
+                                tapped = true;
+                              });
+                              launchUrl(Uri.parse("tel://+20${ownerData.phone}"));
+                              setState(() {
+                                tapped = false;
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade300,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18.0)
+                                )
+                            ),
+                            icon:  Icon(CupertinoIcons.phone_solid, color: Colors.blueGrey.shade800, size: width*0.040,),
+                            label: Text('Phone call', style: TextStyle(
+                                color: Colors.blueGrey.shade800,
+                                fontSize: width*0.03
+                            ),),
                           ),
-                          icon:  Icon(CupertinoIcons.phone_solid, color: Colors.blueGrey.shade800, size: width*0.040,),
-                          label: Text('Phone call', style: TextStyle(
-                              color: Colors.blueGrey.shade800,
-                              fontSize: width*0.03
-                          ),),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: tapped ? null : () async{
-                            setState(() {
-                              tapped = true;
-                            });
-                            if (Platform.isAndroid){
-                              await launchUrl(Uri.parse("whatsapp://send?phone=+20${ownerData.phone}"));
-                            }else if (Platform.isIOS){
-                              await launchUrl(Uri.parse("whatsapp://send?phone=+20${ownerData.phone}"));
-                            }
-                            setState(() {
-                              tapped = false;
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade400,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18.0)
-                              )
+                          ElevatedButton.icon(
+                            onPressed: tapped ? null : () async{
+                              setState(() {
+                                tapped = true;
+                              });
+                              if (Platform.isAndroid){
+                                await launchUrl(Uri.parse("whatsapp://send?phone=+20${ownerData.phone}"));
+                              }else if (Platform.isIOS){
+                                await launchUrl(Uri.parse("whatsapp://send?phone=+20${ownerData.phone}"));
+                              }
+                              setState(() {
+                                tapped = false;
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade400,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18.0)
+                                )
+                            ),
+                            icon:  Icon(CupertinoIcons.text_bubble_fill, color: Colors.blueGrey.shade900, size: width*0.040,),
+                            label: Text('Whatsapp', style: TextStyle(
+                                color: Colors.blueGrey.shade900,
+                                fontSize: width*0.03
+                            ),),
                           ),
-                          icon:  Icon(CupertinoIcons.text_bubble_fill, color: Colors.blueGrey.shade900, size: width*0.040,),
-                          label: Text('Whatsapp', style: TextStyle(
-                              color: Colors.blueGrey.shade900,
-                              fontSize: width*0.03
-                          ),),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ));
-        }
-    ).then((value) async{
+                  ],
+                ));
+          }
+      ).then((value) async{
 
-    });
+      });
+    }
   }
   Future<int> _customSheet(BuildContext context) async{
     int resp = -1;
@@ -884,7 +892,7 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                           PetPod temPet = goodPets[index].copyWith(isSelected: false);
                           return InkWell(
                               onTap: (){
-                                BA_key.currentState?.pop(index);
+                                homeNav_key.currentState?.pop(index);
                               },
                               child: CustomPet(pod: temPet));
                         }),
@@ -927,7 +935,7 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                               )
                           ),
                           onPressed: (){
-                            BA_key.currentState?.pop();
+                            homeNav_key.currentState?.pop();
                           }, child: Text('I understand'))
                     ],
                   ),

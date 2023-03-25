@@ -134,7 +134,7 @@ class _HomePageState extends State<HomePage> {
     final width = MediaQuery.of(context).size.width;
     return GestureDetector(
         onTap:(){
-          FocusScope.of(context).requestFocus(new FocusNode());
+          FocusScope.of(context).requestFocus(FocusNode());
         },
         child:Scaffold(
             appBar: init_appBar(UserNav_key),
