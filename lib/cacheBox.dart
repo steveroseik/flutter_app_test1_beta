@@ -14,10 +14,18 @@ import 'FETCH_wdgts.dart';
 
 
 
-int petLimit = 6;
+const int petLimit = 6;
+const double decayConst = 0.00000386;
+const double baseTtl = 1.5 * 86400;
 
 List<PetBox> petBoxFromJson(String data) => List<PetBox>.from(json.decode(data).map((e) => PetBox.fromJson(e)));
 String petBoxToJson(List<PetBox> pets) => json.encode(List<dynamic>.from(pets.map((e) => e.toJson())));
+
+DateTime getTTL(DateTime lastModified){
+  final now = DateTime.now();
+  final timeSince = now.difference(lastModified);
+  return now.add(Duration(seconds: (baseTtl + (decayConst * (timeSince.inSeconds))).toInt()));
+}
 
 class PetBox{
   PetBox({
@@ -67,31 +75,6 @@ class UserBox{
 }
 
 
-// List<NotifBox> notifBoxFromJson(String data) => List<NotifBox>.from(json.decode(data).map((e) => PetBox.fromJson(e)));
-// String notifBoxToJson(List<NotifBox> pets) => json.encode(List<dynamic>.from(pets.map((e) => e.toJson())));
-//
-// class NotifBox{
-//   NotifBox({
-//     required this.request,
-//     required this.expDate
-//   });
-//
-//   MateRequest request;
-//   DateTime expDate;
-//
-//   Map<String, dynamic> toJson() =>
-//       {
-//         "expDate": expDate.millisecondsSinceEpoch,
-//         "mateRequest": request.toJson()
-//       };
-//
-//   factory NotifBox.fromJson(Map<String, dynamic> json) =>
-//     NotifBox(
-//       request: singleMateRequestFromJson(json['mateRequest']),
-//       expDate: DateTime.fromMillisecondsSinceEpoch(json['expDate']));
-//
-// }
-
 class NotifCache{
   late List<MateRequest> _sentRequests;
   late List<MateRequest> _receivedRequests;
@@ -108,6 +91,7 @@ class NotifCache{
   NotifCache(LazyBox box){
     if (box.isNotEmpty && box.keys.contains(cacheRef)){
       generateNotifications(box);
+
     }else{
       _sentRequests = <MateRequest>[];
       _receivedRequests = <MateRequest>[];
@@ -128,6 +112,27 @@ class NotifCache{
     {e.senderId == uid ? _sentRequests.add(e) : _receivedRequests.add(e);}
 
     sortAll();
+  }
+
+  store(LazyBox box){
+    removeDuplicates();
+    final encrypted = encryptString(mateRequestToJson([..._sentRequests, ..._receivedRequests]));
+    box.put(cacheRef, encrypted);
+  }
+
+  removeDuplicates(){
+    List<int> sentRemove = <int>[];
+    for (int i= 0; i< _sentRequests.length; i++){
+      int j = _receivedRequests.indexWhere((e) => e.id == _sentRequests[i].id);
+      if (j != -1){
+        if (_receivedRequests[j].lastModified.isAfter(_sentRequests[i].lastModified)){
+          sentRemove.add(i);
+        }else{
+          _receivedRequests.removeAt(j);
+        }
+      }
+    }
+    sentRemove.forEach((i) => _sentRequests.removeAt(i));
   }
 
   sortAll(){
@@ -153,36 +158,77 @@ class NotifCache{
   }
 
   addNewSent(List<MateRequest> reqs){
-    _sentRequests.addAll(reqs);
+    for (var e in reqs) {
+      int i = _sentRequests.indexWhere((r) => r.id == e.id);
+      ( i != -1) ? _sentRequests[i] = e : sentRequests.add(e);
+    }
     // for now
     return -1;
   }
 
   addNewReceived(List<MateRequest> reqs){
-    _receivedRequests.addAll(reqs);
+    for (var e in reqs) {
+      int i = _receivedRequests.indexWhere((r) => r.id == e.id);
+      ( i != -1) ? _receivedRequests[i] = e : _receivedRequests.add(e);
+    }
     return -1;
   }
+
+  remove({required String id, bool? sent}){
+    (sent?? false) ? _receivedRequests.removeWhere((e) => e.id == id) : _sentRequests.removeWhere((e) => e.id == id);
+  }
+
+  findRequestUponId(String id){
+    int i = _receivedRequests.indexWhere((e) => (e.receiverPet == id || e.senderPet == id));
+    if (i != -1) return receivedRequests[i];
+    i = _sentRequests.indexWhere((e) => (e.receiverPet == id || e.senderPet == id));
+    if (i != -1) return sentRequests[i];
+
+    return null;
+  }
+
+
+
 
 }
 
 class PetCache{
   late List<PetBox> _petList;
   late DateTime _lastFetched;
-  late Duration _ttl;
   late String _cacheRef;
   DateTime _lastQueryAt = DateTime(1990, 1, 1);
   bool cacheToDate = true;
 
   PetCache(LazyBox box, String ref){
     _cacheRef = ref;
-    generateConfigs(box);
-    if (box.isNotEmpty && box.keys.contains(ref)){
-      generatePets(box);
-    }else{
-      // first general time
-      _petList = <PetBox>[];
-      _lastFetched = DateTime(1990, 1, 1);
+    if (box.isNotEmpty) {
+      if (box.keys.contains(ref)){
+        generatePets(box);
+      }else{
+        // first general time
+        _petList = <PetBox>[];
+        _lastFetched = DateTime(1990, 1, 1);
+      }
     }
+
+  }
+
+  Future<PetProfile?> petWithId(String id) async{
+    int i = _petList.indexWhere((e) => e.pet.id == id);
+    final now = DateTime.now();
+    if (i == -1){
+      final newDoc = await getSinglePetWithId(id);
+      if (newDoc != null){
+        final newPet = singlePetProfileFromShot(newDoc.data()!, id);
+        _petList.add(PetBox(pet: newPet, expDate: getTTL(newPet.lastModified)));
+        sortPets();
+        cacheToDate = false;
+        return newPet;
+      }
+      return null;
+    }
+    if (_petList[i].expDate.isAfter(now)) await updateSingleExpired(i);
+    return _petList[i].pet;
   }
 
   lastBreedFetched(String b){
@@ -206,15 +252,15 @@ class PetCache{
     sortPets();
   }
 
-  generateConfigs(LazyBox box) async{
-    if (box.keys.contains('${_cacheRef}_config')){
-      List<dynamic> configs = await box.get('${_cacheRef}_config');
-      _ttl = configs[0];
-    }else{
-      // initial value for pet configs
-      _ttl = Duration(days: 3);
-    }
-  }
+  // generateConfigs(LazyBox box) async{
+  //   if (box.keys.contains('${_cacheRef}_config')){
+  //     List<dynamic> configs = await box.get('${_cacheRef}_config');
+  //     _ttl = configs[0];
+  //   }else{
+  //     // initial value for pet configs
+  //     _ttl = Duration(days: 3);
+  //   }
+  // }
 
   HashMap<String, int> expiredPets(){
     final now = DateTime.now();
@@ -228,6 +274,14 @@ class PetCache{
     return petMap;
   }
 
+  updateSingleExpired(int index) async{
+    final newDocs = await getPetsWithIDs([_petList[index].pet.id]);
+    if (newDocs.isNotEmpty){
+      _petList[index] = PetBox(pet: newDocs[0], expDate: getTTL(newDocs[0].lastModified));
+      cacheToDate = false;
+    }
+  }
+
   Future<bool> updateExpired() async{
     HashMap<String, int> petMap = expiredPets();
     bool success = false;
@@ -236,6 +290,7 @@ class PetCache{
         final newDocs = await getPetsWithIDs(petMap.keys.toList());
         addRetrievedPets(petMap, newDocs);
         success = true;
+        cacheToDate = false;
       }catch (e){
         print("cache Error (expiration update): $e");
         success = false;
@@ -250,7 +305,7 @@ class PetCache{
   addRetrievedPets(HashMap<String, int> index, List<PetProfile> pets){
     if (pets.isNotEmpty){
       for (var pet in pets){
-        _petList[index[pet.id]!] = PetBox(pet: pet, expDate: (pet.lastModified.add(_ttl)));
+        _petList[index[pet.id]!] = PetBox(pet: pet, expDate: getTTL(pet.lastModified));
       }
       sortPets();
       cacheToDate = false;
@@ -274,7 +329,7 @@ class PetCache{
       if (petProfiles.isNotEmpty){
         cacheToDate = false;
         return List<PetBox>.generate(petProfiles.length, (i)
-        => PetBox(pet: petProfiles[i], expDate: DateTime.now().add(_ttl)));
+        => PetBox(pet: petProfiles[i], expDate: getTTL(petProfiles[i].lastModified)));
       }
     }
     return <PetBox>[];
@@ -288,16 +343,16 @@ class PetCache{
 
     if (!cacheToDate){
       String data = petBoxToJson(_petList);
-      List<dynamic> configs = [_ttl];
+      // List<dynamic> configs = [_ttl];
       data = encryptString(data);
       box.put(_cacheRef, data);
-      box.put("${_cacheRef}_config", configs);
+      // box.put("${_cacheRef}_config", configs);
       cacheToDate = true;
     }
   }
 
   addNewPet(PetProfile pet){
-    _petList.add(PetBox(pet: pet, expDate: DateTime.now().add(_ttl)));
+    _petList.add(PetBox(pet: pet, expDate: getTTL(pet.lastModified)));
     cacheToDate = false;
   }
 
@@ -372,7 +427,6 @@ class PetCache{
 
   // add new pets fetched into cache
   updatePetCache(List<PetProfile> pets){
-   DateTime newExp = DateTime.now().add(_ttl);
    List<int> oldIndices = <int>[];
 
     for (var pet in pets){
@@ -382,10 +436,10 @@ class PetCache{
       final ind = _petList.indexWhere((element) => element.pet.id == pet.id);
       if (ind != -1){
         _petList[ind].pet = pet;
-        _petList[ind].expDate = newExp;
+        _petList[ind].expDate = getTTL(pet.lastModified);
         oldIndices.add(pets.indexOf(pet));
       }else{
-        _petList.add(PetBox(pet: pet, expDate: newExp));
+        _petList.add(PetBox(pet: pet, expDate: getTTL(pet.lastModified)));
       }
     }
     for( int index in oldIndices){
@@ -394,6 +448,8 @@ class PetCache{
 
     sortPets();
   }
+
+
 
 
   getListOfPets(List<String> petIDs) async{
@@ -411,13 +467,47 @@ class PetCache{
   }
 
   addToCache(List<PetProfile> newPets){
-    final now = DateTime.now();
-
     for ( var e in newPets){
-      _petList.add(PetBox(pet: e, expDate: now.add(_ttl)));
+      _petList.add(PetBox(pet: e, expDate: getTTL(e.lastModified)));
     }
   }
 
+}
+
+String friendsCacheToJson(Map<String, friendsCache> map){
+  List<Map<String, dynamic>> list = <Map<String, dynamic>>[];
+  for (var entry in map.entries){
+    list.add({
+      entry.key: entry.value.toJson()
+    });
+  }
+  return json.encode(list);
+}
+
+Map<String, friendsCache> friendsCacheFromJson(String data){
+  Map<String, friendsCache> map = {};
+  json.decode(data).map((e) => map[e.key] = friendsCache.fromJson(e.value));
+  return map;
+}
+
+class friendsCache{
+  DateTime expDate;
+  List<String> friends;
+
+  friendsCache(this.expDate, this.friends);
+
+  factory friendsCache.fromJson(Map<String, dynamic> data){
+    return friendsCache(
+        DateTime.fromMillisecondsSinceEpoch(data['expDate']),
+        List<String>.from(data['friends'].map((x) => x)));
+  }
+
+  toJson(){
+    return {
+      'expDate': expDate.millisecondsSinceEpoch,
+      'friends': List<dynamic>.from(friends.map((e) => e))
+    };
+  }
 }
 
 
@@ -429,6 +519,7 @@ class CacheBox{
   late NotifCache _notifCache;
   late PetCache _petCache;
   late PetCache _ownerPetCache;
+  Map<String, friendsCache> petFriends = <String, friendsCache>{};
   UserPod? _userInfo;
   late LazyBox<dynamic> _lazyBox;
   bool _cacheToDate = true;
@@ -437,6 +528,7 @@ class CacheBox{
 
     _petCache.store(_lazyBox);
     _ownerPetCache.store(_lazyBox);
+    storeFriends();
     if (!_cacheToDate){
       if (_userInfo != null){
         String data = userPodToJson(_userInfo!);
@@ -467,6 +559,11 @@ class CacheBox{
     _petCache = PetCache(_lazyBox, 'petCache');
     _ownerPetCache = PetCache(_lazyBox, 'ownerPets');
     _notifCache = NotifCache(_lazyBox);
+
+    if(_lazyBox.keys.contains('petFriends')){
+      final data = decryptString(await _lazyBox.get('petFriends'));
+      petFriends = friendsCacheFromJson(data);
+    }
     // initOwnerCache();
   }
 
@@ -491,6 +588,11 @@ class CacheBox{
     _cacheToDate = false;
     refreshPetCache();
   }
+  
+  storeFriends(){
+    _lazyBox.put('petFriends', encryptString(friendsCacheToJson(petFriends)));
+  }
+  
 
 
   refreshPetCache(){
@@ -572,14 +674,68 @@ class CacheBox{
     return <PetPod>[];
   }
 
-  addNewNotifications({required List<MateRequest> items, bool? sent}){
-    return sent?? false ? _notifCache.addNewSent(items) : _notifCache.addNewReceived(items);
+  addNewNotifications({required List<MateRequest> items}){
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    for (var e in items){
+      if (e.senderId == uid){
+        _notifCache.addNewSent([e]);
+      }else{
+        _notifCache.addNewReceived([e]);
+      }
+    }
   }
 
   getPetList(List<String> ids) async{
     return await _petCache.getListOfPets(ids);
   }
 
+  removeNotification({required String id, bool? sent}){
+    _notifCache.remove(id: id, sent: sent);
+  }
+
+  void addPetFriendList(String petId, String newId) {
+    final ttl = DateTime.now().add(const Duration(days: 1));
+    if (!petFriends.containsKey(petId)) {
+      petFriends[petId] = friendsCache(ttl, [newId]);
+    } else if (!petFriends[petId]!.friends.contains(newId)) {
+      petFriends[petId]!.friends.add(newId);
+    }
+  }
+
+  Future<List<PetProfile>> cachedFriends(List<PetPod> pods) async{
+    List<String> keys = List<String>.generate(pods.length, (index) => pods[index].pet.id);
+    List<String> ids = await fetchLatestList(keys);
+    return (ids.isNotEmpty) ? await _petCache.getListOfPets(ids) : <PetProfile>[];
+  }
+
+  Future<List<String>> fetchLatestList(List<String> keys) async{
+    List<String> nonCached = <String>[];
+    List<String> friendsList = <String>[];
+    final now = DateTime.now();
+    for (var e in keys) {
+      if (petFriends.keys.contains(e)){
+        if(petFriends[e]!.expDate.isBefore(now)){
+          friendsList.addAll(petFriends[e]!.friends);
+        }else{
+          nonCached.add(e);
+        }
+      }else{
+        nonCached.add(e);
+      }
+    }
+    final newEntries = await getPetFriendsList(nonCached);
+
+    for (var entry in newEntries.entries){
+      petFriends[entry.key] = friendsCache(now.add(const Duration(days: 1)), entry.value);
+      friendsList.addAll(entry.value);
+    }
+    return friendsList;
+
+  }
+
+  Future<PetProfile?> getPetWithId(String id) async{
+    return await _petCache.petWithId(id);
+  }
 
   get cachedSentNotif => _notifCache.sentRequests;
   get cachedReceivedNotif => _notifCache.receivedRequests;

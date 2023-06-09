@@ -7,13 +7,15 @@ import 'DataPass.dart';
 
 class BA_root extends StatelessWidget{
 
+  HeroController heroController = HeroController();
+
   @override
   Widget build(BuildContext context){
-    final cacheBox = DataPassWidget.of(context);
     return Navigator(
       key: homeNav_key,
       initialRoute: '/',
       onGenerateRoute: RouteGenerator.generateRoute_BA,
+      observers: [heroController],
     );
   }
   // MaterialApp

@@ -314,10 +314,10 @@ class selectItem {
   selectItem(this.name, this.isSelected);
 }
 class MateItem{
-  PetPod sender_pet;
+  PetPod pod;
   MateRequest? request;
   
-  MateItem({required this.sender_pet, this.request});
+  MateItem({required this.pod, this.request});
 
   get stat => request?.status ?? requestState.undefined;
 }
@@ -807,7 +807,7 @@ class _MultiPetRequestBannerState extends State<MultiPetRequestBanner> {
                         child: CircleAvatar(
                           backgroundColor: CupertinoColors.extraLightBackgroundGray,
                           radius: width * 0.07 - 2,
-                          backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl),
+                          backgroundImage: NetworkImage(widget.pod.pod.pet.photoUrl),
                         )
                     ),
                     Positioned(
@@ -826,7 +826,7 @@ class _MultiPetRequestBannerState extends State<MultiPetRequestBanner> {
                   ],
                 ),
                 title: Text(
-                  '${widget.pod.sender_pet.pet.name} has requested ${widget.receiverPet.pet.name} to mate '
+                  '${widget.pod.pod.pet.name} has requested ${widget.receiverPet.pet.name} to mate '
                       'and ${widget.count} more requests.',
                   style: TextStyle(
                       fontWeight:
@@ -891,7 +891,7 @@ class _PetRequestBannerState extends State<PetRequestBanner> {
                         child: CircleAvatar(
                           backgroundColor: CupertinoColors.extraLightBackgroundGray,
                           radius: width * 0.07 - 2,
-                          backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl),
+                          backgroundImage: NetworkImage(widget.pod.pod.pet.photoUrl),
                         )
                     ),
                     Positioned(
@@ -910,7 +910,7 @@ class _PetRequestBannerState extends State<PetRequestBanner> {
                   ],
                 ),
                 title: Text(
-                      '${widget.pod.sender_pet.pet.name} has requested ${widget.receiverPet.pet.name} to mate.',
+                      '${widget.pod.pod.pet.name} has requested ${widget.receiverPet.pet.name} to mate.',
                       style: TextStyle(
                           fontWeight:
                           FontWeight.w500,
@@ -941,7 +941,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
   Widget build(BuildContext context) {
 
     final height = MediaQuery.of(context).size.height;
-    final petAge = AgeCalculator.age(widget.request.sender_pet.pet.birthdate);
+    final petAge = AgeCalculator.age(widget.request.pod.pet.birthdate);
     String petText = (petAge == 0 ? '' : petAge.years == 1 ? "${petAge.years} yr\n" : "${petAge.years} yrs\n") +
         (petAge.months == 0 ? '' : petAge.months == 1 ? "${petAge.months} month" : "${petAge.months} months");
 
@@ -949,7 +949,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
     final vaccinesItems = List<MultiSelectCard>.generate(8, (index) {
       final key = vaccineFList.entries.elementAt(index).key;
       final value = vaccineFList.entries.elementAt(index).value;
-      return MultiSelectCard(value: key, label: value, selected: widget.request.sender_pet.pet.vaccines.contains(key) ? true : false);
+      return MultiSelectCard(value: key, label: value, selected: widget.request.pod.pet.vaccines.contains(key) ? true : false);
     });
     return ColumnSuper(innerDistance: -height/2.8 - 50,
       children: [
@@ -1004,13 +1004,13 @@ class _PetRequestCardState extends State<PetRequestCard> {
                 ],
               )
             ),
-            Text('${widget.request.sender_pet.pet.name}',
+            Text('${widget.request.pod.pet.name}',
                 style: TextStyle(
                     color: Colors.black,
                     fontSize: 17,
                     fontWeight: FontWeight.w900)),
             SizedBox(height: 5),
-            Text('${widget.request.sender_pet.pet.breed}',
+            Text('${widget.request.pod.pet.breed}',
                 style: TextStyle(
                     color: Colors.grey,
                     fontSize: 13,
@@ -1044,7 +1044,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
                             fontWeight: FontWeight.w600
                         ),),
                         Divider(),
-                        Icon(widget.request.sender_pet.pet.isMale ? Icons.male_rounded : Icons.female_rounded, color: widget.request.sender_pet.pet.isMale ? Colors.blue : Colors.pinkAccent,)
+                        Icon(widget.request.pod.pet.isMale ? Icons.male_rounded : Icons.female_rounded, color: widget.request.pod.pet.isMale ? Colors.blue : Colors.pinkAccent,)
                       ],
                     ),
                   ),
@@ -1082,7 +1082,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
                           padding: EdgeInsets.symmetric(horizontal: 20),
                           child:   Column(
                             children: [
-                              Text("${widget.request.sender_pet.pet.name}'s Vaccinations List",
+                              Text("${widget.request.pod.pet.name}'s Vaccinations List",
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
 
@@ -1139,12 +1139,12 @@ class _PetRequestCardState extends State<PetRequestCard> {
                     Flexible(
                       child: LinearPercentIndicator(
                         lineHeight: 5.0,
-                        percent: widget.request.sender_pet.pet.vaccines.length / 8,
+                        percent: widget.request.pod.pet.vaccines.length / 8,
                         barRadius: Radius.circular(20),
                         backgroundColor: CupertinoColors.extraLightBackgroundGray,
                         progressColor: Colors.black,
                         trailing: Text(
-                          '${(widget.request.sender_pet.pet.vaccines.length / 8 * 100).toInt()}%',
+                          '${(widget.request.pod.pet.vaccines.length / 8 * 100).toInt()}%',
                           style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black),
                         ),
                       ),
@@ -1212,7 +1212,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
           child: CircleAvatar(
             radius: 49,
             backgroundColor: CupertinoColors.extraLightBackgroundGray,
-            backgroundImage: NetworkImage(widget.request.sender_pet.pet.photoUrl),
+            backgroundImage: NetworkImage(widget.request.pod.pet.photoUrl),
           ),
         ),
     ],

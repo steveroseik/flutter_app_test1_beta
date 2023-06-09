@@ -16,6 +16,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:glassmorphism_ui/glassmorphism_ui.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
+import 'package:sizer/sizer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../APILibraries.dart';
@@ -58,7 +59,6 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
   int timer_counter=5;
   late OverlayEntry loading = initLoading(context);
 
-
   startTimer(){
     const interval = Duration(seconds: 1);
     _timer = Timer.periodic(interval, (timer) {
@@ -71,12 +71,12 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
 
       }else{
         timer_counter--;
-        if ( widget.pod.sender_pet.distance > -1){
-          distance = widget.pod.sender_pet.distance;
-          if (widget.pod.sender_pet.distance >= 1000){
-            distanceText = (widget.pod.sender_pet.distance/1000).toInt().toString() + " Kilometers";
+        if ( widget.pod.pod.distance > -1){
+          distance = widget.pod.pod.distance;
+          if (widget.pod.pod.distance >= 1000){
+            distanceText = (widget.pod.pod.distance/1000).toInt().toString() + " Kilometers";
           }else{
-            distanceText = (widget.pod.sender_pet.distance).toInt().toString() + " meters";
+            distanceText = (widget.pod.pod.distance).toInt().toString() + " meters";
           }
          if (mounted){
            setState(() {
@@ -93,14 +93,14 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
   initPetState(){
     requestState? state = widget.pod.request?.status;
     String? receiverPet = widget.pod.request?.receiverPet;
-    print('${state}, ${receiverPet}, ${widget.pod.sender_pet.pet.name}');
+    print('${state}, ${receiverPet}, ${widget.pod.pod.pet.name}');
 
 
     if (state != null && receiverPet != null){
       switch(state){
 
         case requestState.pending:
-          if (receiverPet == widget.pod.sender_pet.pet.id){
+          if (receiverPet == widget.pod.pod.pet.id){
             petState.value = profileState.requested;
           }else{
             petState.value = profileState.pendingApproval;
@@ -124,48 +124,48 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
   initPet() async{
 
     initPetState();
-    distance = widget.pod.sender_pet.distance;
+    distance = widget.pod.pod.distance;
     if ( distance > -1){
-      if (widget.pod.sender_pet.distance >= 1000){
-        distanceText = (widget.pod.sender_pet.distance/1000).toInt().toString() + " Kilometers";
+      if (widget.pod.pod.distance >= 1000){
+        distanceText = (widget.pod.pod.distance/1000).toInt().toString() + " Kilometers";
       }else{
-        distanceText = (widget.pod.sender_pet.distance).toInt().toString() + " meters";
+        distanceText = (widget.pod.pod.distance).toInt().toString() + " meters";
       }
     }else{
       startTimer();
     }
 
 
-    final age = AgeCalculator.age(widget.pod.sender_pet.pet.birthdate);
+    final age = AgeCalculator.age(widget.pod.pod.pet.birthdate);
     if (age.years > 1){
-      petAge += age.years.toString() + " Years\n";
+      petAge += age.years.toString() + " Years ";
     }else if (age.years == 1){
-      petAge += age.years.toString() + " Year\n";
+      petAge += age.years.toString() + " Year ";
     }
     if (age.months > 1){
       petAge += age.months.toString() + " Months";
     }else if (age.months == 1){
-      petAge += age.months.toString() + " Month\n";
+      petAge += age.months.toString() + " Month ";
     }
 
     for (MapEntry entry in vaccineFList.entries){
       final vaccine = MultiSelectCard(value: entry.key, label: entry.value,
-          selected: widget.pod.sender_pet.pet.vaccines.contains(entry.key) ? true : false);
+          selected: widget.pod.pod.pet.vaccines.contains(entry.key) ? true : false);
       items.add(vaccine);
     }
 
-    if (widget.pod.sender_pet.pet.rateCount > 0){
-      rating = (widget.pod.sender_pet.pet.rateSum/widget.pod.sender_pet.pet.rateCount).toStringAsFixed(1) + " / 5";
+    if (widget.pod.pod.pet.rateCount > 0){
+      rating = (widget.pod.pod.pet.rateSum/widget.pod.pod.pet.rateCount).toStringAsFixed(1) + " / 5";
     }
 
-    ownerVerified = widget.pod.sender_pet.pet.verified;
+    ownerVerified = widget.pod.pod.pet.verified;
     setState(() {
 
     });
   }
   initPDF() async{
-    if (widget.pod.sender_pet.pet.passport != ""){
-      document = await PDFDocument.fromURL(widget.pod.sender_pet.pet.passport);
+    if (widget.pod.pod.pet.passport != ""){
+      document = await PDFDocument.fromURL(widget.pod.pod.pet.passport);
       setState(() {
         pdfReady = true;
       });
@@ -197,89 +197,117 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 5.0),
-                        child: Text(widget.pod.sender_pet.pet.name, style: TextStyle(
-                            fontSize: width*0.06,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.blueGrey.shade900
-                        ),),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10.0),
-                        child: FittedBox(child:  Row(
-                          children: [
-                            Icon(Icons.location_pin, color: Colors.blueGrey.shade700,),
-                            Text(distance == -1 ? "" : distanceText,
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.blueGrey.shade700
-                                )),
-                          ],
-                        )),
-                      ),
-                      ValueListenableBuilder<profileState>(
-                          valueListenable: petState,
-                          builder: (BuildContext context, profileState value, Widget? widget){
-                            switch(value){
-                              case profileState.pendingApproval: {
-                                return Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    ElevatedButton.icon(
-                                      onPressed: tapped ? null : ()async {
-                                        setState(() {
-                                          tapped = true;
-                                        });
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 5.0),
+                            child: Text(widget.pod.pod.pet.name, style: TextStyle(
+                                fontSize: width*0.06,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.blueGrey.shade900
+                            ),),
+                          ),
+                          SizedBox(height: 1.h,),
+                          ValueListenableBuilder<profileState>(
+                              valueListenable: petState,
+                              builder: (BuildContext context, profileState value, Widget? widget){
+                                switch(value){
+                                  case profileState.pendingApproval: {
+                                    return Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        ElevatedButton.icon(
+                                          onPressed: tapped ? null : ()async {
+                                            setState(() {
+                                              tapped = true;
+                                            });
 
-                                        final resp = await updateMateRequest(this.widget.pod.request!.id, requestState.accepted.index);
-                                        if (resp == 200){
-                                          this.widget.pod.request!.status = requestState.accepted;
-                                          petState.value = profileState.friend;
-                                          setState(() {
-                                          });
-                                        }else{
-                                          showSnackbar(context, "Failed to communicate with server, try again.");
-                                        }
-                                        setState(() {
-                                          tapped = false;
-                                        });
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green.shade300,
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(18.0)
-                                          )
-                                      ),
-                                      icon:  Icon(CupertinoIcons.checkmark_alt, color: Colors.white, size: width*0.03,),
-                                      label: Text('Accept', style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: width*0.024
-                                      ),),
-                                    ),
-                                    // SizedBox(width: width*0.02,),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                      child: CircleAvatar(
-                                        backgroundColor: Colors.blueGrey, radius: width*0.04,
-                                        child: CircleAvatar(radius: width*0.04-1,
-                                          backgroundImage: NetworkImage(this.widget.ownerPets[0].pet.photoUrl),),),
-                                    ),
-                                    ElevatedButton.icon(
-                                      onPressed: tapped ? null : ()async {
+                                            final resp = await updateMateRequest(this.widget.pod.request!.id, requestState.accepted.index);
+                                            if (resp == 200){
+                                              this.widget.pod.request!.status = requestState.accepted;
+                                              petState.value = profileState.friend;
+                                              List<MateRequest> c = cacheBox.cachedReceivedNotif;
+                                              print(c.firstWhere((e) => e.id == this.widget.pod.request!.id).status);
+                                              addNewPetFriend(this.widget.pod.request!, cacheBox);
+                                              setState(() {
+                                              });
+                                            }else{
+                                              showSnackbar(context, "Failed to communicate with server, try again.");
+                                            }
+                                            setState(() {
+                                              tapped = false;
+                                            });
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.green.shade300,
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(18.0)
+                                              )
+                                          ),
+                                          icon:  Icon(CupertinoIcons.checkmark_alt, color: Colors.white, size: width*0.03,),
+                                          label: Text('Accept', style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: width*0.024
+                                          ),),
+                                        ),
+                                        // SizedBox(width: width*0.02,),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                          child: CircleAvatar(
+                                            backgroundColor: Colors.blueGrey, radius: width*0.04,
+                                            child: CircleAvatar(radius: width*0.04-1,
+                                              backgroundImage: NetworkImage(this.widget.ownerPets[0].pet.photoUrl),),),
+                                        ),
+                                        ElevatedButton.icon(
+                                          onPressed: tapped ? null : ()async {
+                                            setState(() {
+                                              tapped = true;
+                                            });
+                                            final resp = await updateMateRequest(this.widget.pod.request!.id, requestState.denied.index);
+                                            if (resp == 200){
+                                              this.widget.pod.request!.status = requestState.denied;
+                                              petState.value = profileState.noFriendship;
+                                              setState(() {
+                                              });
+                                            }else{
+                                              showSnackbar(context, "Failed to communicate with server, try again.");
+                                            }
+                                            setState(() {
+                                              tapped = false;
+                                            });
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(18.0)
+                                              )
+                                          ),
+                                          icon:  Icon(CupertinoIcons.xmark, color: Colors.black, size: width*0.03,),
+                                          label: Text('Decline', style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: width*0.024
+                                          ),),
+                                        ),
+                                      ],
+                                    );
+                                  }
+                                  case profileState.requested: {
+                                    return ElevatedButton.icon(
+                                      onPressed:tapped ? null :  ()async {
                                         setState(() {
                                           tapped = true;
                                         });
-                                        final resp = await updateMateRequest(this.widget.pod.request!.id, requestState.denied.index);
+                                        final resp = await updateMateRequest(this.widget.pod.request!.id, requestState.undefined.index);
                                         if (resp == 200){
-                                          this.widget.pod.request!.status = requestState.denied;
+                                          this.widget.pod.request!.status = requestState.undefined;
                                           petState.value = profileState.noFriendship;
                                           setState(() {
                                           });
@@ -291,268 +319,342 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                                         });
                                       },
                                       style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.white,
+                                          backgroundColor: Colors.blueGrey.shade800,
                                           shape: RoundedRectangleBorder(
                                               borderRadius: BorderRadius.circular(18.0)
                                           )
                                       ),
-                                      icon:  Icon(CupertinoIcons.xmark, color: Colors.black, size: width*0.03,),
-                                      label: Text('Decline', style: TextStyle(
-                                          color: Colors.black,
+                                      icon:  Icon(CupertinoIcons.heart_slash_fill, color: Colors.white, size: width*0.03,),
+                                      label: Text('Cancel Request', style: TextStyle(
+                                          color: Colors.white,
                                           fontSize: width*0.024
                                       ),),
-                                    ),
-                                  ],
-                                );
-                              }
-                              case profileState.requested: {
-                                return ElevatedButton.icon(
-                                  onPressed:tapped ? null :  ()async {
-                                    setState(() {
-                                      tapped = true;
-                                    });
-                                    final resp = await updateMateRequest(this.widget.pod.request!.id, requestState.undefined.index);
-                                    if (resp == 200){
-                                      this.widget.pod.request!.status = requestState.undefined;
-                                      petState.value = profileState.noFriendship;
-                                      setState(() {
+                                    );
+                                  }
+                                  case profileState.friend: {
+                                    return ElevatedButton(onPressed: () {
+                                      showModalBottomSheet(
+                                        backgroundColor: Colors.transparent,
+                                          context: context, builder: (_) {
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.only(topLeft: Radius.circular(25.sp), topRight: Radius.circular(25.sp)),
+                                            color: Colors.blueGrey.shade900
+                                          ),
+                                          height: 10.h,
+                                          child: Column(
+                                            children: [
+                                              SizedBox(height: 1.h),
+                                              ListTile(
+                                                onTap: (){
+                                                  // REMOVEEE
+                                                },
+                                                leading: Icon(Icons.remove_circle_rounded, color: Colors.blueGrey.shade400),
+                                                title: Text('Remove from my circle', style: TextStyle(
+                                                  color: Colors.red.shade200,
+                                                  fontWeight: FontWeight.w500
+                                                ),),
+                                              )
+                                            ],
+                                          ),
+                                        );
                                       });
-                                    }else{
-                                      showSnackbar(context, "Failed to communicate with server, try again.");
-                                    }
-                                    setState(() {
-                                      tapped = false;
-                                    });
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blueGrey.shade800,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(18.0)
-                                      )
-                                  ),
-                                  icon:  Icon(CupertinoIcons.heart_slash_fill, color: Colors.white, size: width*0.03,),
-                                  label: Text('Cancel Request', style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: width*0.024
-                                  ),),
-                                );
-                              }
-                              case profileState.friend: {
-                                return GestureDetector(
-                                  onTap: tapped ? null : ()async{
-                                    if (ownerPod == null){
-                                      if (!loading.mounted) {
-                                        OverlayState? overlay =
-                                        Overlay.of(context);
-                                        overlay.insert(loading);
-                                        setState(() {
-
-                                        });
-                                      }
-                                      // Fix
-                                      try{
-                                        final resp = await FirebaseFirestore.instance.collection('users')
-                                            .doc(this.widget.pod.sender_pet.pet.ownerId).get();
-                                        ownerPod = userPodFromDoc(resp);
-                                      }catch (e){
-                                        print('petPageError: $e');
-                                      }
-                                    }
-                                    if(loading.mounted){
-                                      loading.remove();
-                                    }
-                                    setState(() {
-
-                                    });
-                                    _ownerInfo();
-
-                                  },
-                                  child: Container(
-                                    height: height*0.054,
-                                    decoration: BoxDecoration(
-                                      border: Border.all(width: 1, color: Colors.blueGrey),
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
+                                    },
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blueGrey.shade700,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(18.0)
+                                          )
+                                      ),
                                       child: Row(
                                         children: [
-                                          Icon(Icons.circle_outlined, color: Colors.redAccent,),
-                                          SizedBox(width: width*0.015,),
-                                          Text("Owner Information",
-                                              style: TextStyle(
-                                                  fontSize: width*0.03,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.blueGrey
-                                              )),
-                                          SizedBox(width: width*0.02,),
-                                          Icon(CupertinoIcons.arrowshape_turn_up_right, size: width*0.04, color: Colors.blueGrey,)
+                                          Text('Mates', style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12.sp
+                                          ),),
+                                          SizedBox(width: 3.w),
+                                          Icon(CupertinoIcons.chevron_down, size: 10.sp)
                                         ],
                                       ),
-                                    ),
-                                  ),
-                                );
-                              }
-                              case profileState.noFriendship: return ElevatedButton.icon(
-                                onPressed:tapped ? null :  ()async {
-                                  setState(() {
-                                    tapped = true;
-                                  });
-
-                                  final petInd = await _customSheet(context);
-                                  final uid = FirebaseAuth.instance.currentUser!.uid;
-                                  if (petInd != -1){
-                                    if (uid == this.widget.ownerPets[petInd].pet.ownerId){
-                                      final newRequest = await sendMateRequest(this.widget.ownerPets[petInd].pet.ownerId,
-                                          this.widget.pod.sender_pet.pet.ownerId,
-                                          this.widget.ownerPets[petInd].pet.id,
-                                          this.widget.pod.sender_pet.pet.id);
-                                      if (newRequest != null){
-                                        this.widget.pod.request = newRequest;
-                                        petState.value = profileState.requested;
-                                        showNotification(context, 'Request sent successfully');
-                                      }else{
-                                        showSnackbar(context, 'Failed to send request');
-                                      }
-                                    }else{
-                                      showSnackbar(context, 'Unexpected behavior!');
-                                    }
+                                    );
                                   }
+                                  case profileState.noFriendship: return ElevatedButton.icon(
+                                    onPressed:tapped ? null :  ()async {
+                                      setState(() {
+                                        tapped = true;
+                                      });
 
-                                  setState(() {
-                                    tapped = false;
-                                  });
-                                },
+                                      final petInd = await _customSheet(context);
+                                      final uid = FirebaseAuth.instance.currentUser!.uid;
+                                      if (petInd != -1){
+                                        if (uid == this.widget.ownerPets[petInd].pet.ownerId){
+                                          final newRequest = await sendMateRequest(this.widget.ownerPets[petInd].pet.ownerId,
+                                              this.widget.pod.pod.pet.ownerId,
+                                              this.widget.ownerPets[petInd].pet.id,
+                                              this.widget.pod.pod.pet.id);
+                                          if (newRequest != null){
+                                            this.widget.pod.request = newRequest;
+                                            petState.value = profileState.requested;
+                                            showNotification(context, 'Request sent successfully');
+                                          }else{
+                                            showSnackbar(context, 'Failed to send request');
+                                          }
+                                        }else{
+                                          showSnackbar(context, 'Unexpected behavior!');
+                                        }
+                                      }
+
+                                      setState(() {
+                                        tapped = false;
+                                      });
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.shade300,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(18.0)
+                                        )
+                                    ),
+                                    icon:  Icon(CupertinoIcons.heart_fill, color: Colors.white, size: width*0.03,),
+                                    label: Text('Send Request', style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: width*0.024
+                                    ),),
+                                  );
+                                }
+                              }),
+                        ],
+                      ),
+                      Spacer(),
+                      ColumnSuper(
+                        innerDistance: -19,
+                        children: [
+                          CircleAvatar(
+                            radius: height*0.06,
+                            backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                            child: InkWell(
+                              onTap: (){
+                                homeNav_key.currentState?.push(
+                                    PageRouteBuilder(
+                                        opaque: true,
+                                        pageBuilder: (BuildContext context, _, __) {
+                                          return InkWell(
+                                            onTap: (){
+                                              homeNav_key.currentState?.pop();
+                                            },
+                                            child: Scaffold(
+                                              body: InteractiveViewer(
+                                                child: Center(
+                                                  child: Hero(
+                                                    tag: "petProfileTagUnique",
+                                                    child: Image.network(widget.pod.pod.pet.photoUrl),
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                          );
+                                        },
+                                      transitionsBuilder: (BuildContext context,  Animation<double> anim, Animation<double> anim2, Widget child){
+                                          return FadeTransition(
+                                              opacity: anim,
+                                              child: child);
+                                      }
+                                    )
+                                );
+                              },
+                              child: Hero(
+                                tag: 'petProfileTagUnique',
+                                child: CircleAvatar(
+                                    radius: height*0.052,
+                                    backgroundImage: NetworkImage(widget.pod.pod.pet.photoUrl)
+                                ),
+                              ),
+                            ),
+                          ),
+                          ownerVerified ? Container(
+                            decoration: BoxDecoration(
+                                color: CupertinoColors.extraLightBackgroundGray,
+                                borderRadius: BorderRadius.circular(50)
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(5.0),
+                              child: Icon(Icons.verified_user_rounded, size: 18, color: Colors.green,),
+                            ),
+                          ) :  Container(
+                            decoration: BoxDecoration(
+                                color: CupertinoColors.extraLightBackgroundGray,
+                                borderRadius: BorderRadius.circular(50)
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(5.0),
+                              child: Icon(CupertinoIcons.exclamationmark_shield_fill, size: 18, color: Colors.orange,),
+                            ),
+                          )
+                        ],
+                      ),
+                    ],
+                  ),
+                  Visibility(
+                    visible: distance == -1,
+                    child: Container(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.location_pin, color: Colors.blueGrey.shade700,),
+                          SizedBox(width: 2.w),
+                          Text(distance == -1 ? "Not available" : distanceText == '' ? 'Not available' : distanceText,
+                              style: TextStyle(
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.blueGrey.shade700
+                              )),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 1.h),
+                  ValueListenableBuilder(
+                      valueListenable: petState,
+                      builder: (BuildContext context, profileState value, Widget? widget){
+                        return Visibility(
+                            visible: value == profileState.friend,
+                            child: Container(
+                              width: double.infinity,
+                              height: 5.h,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(15.sp),
+                                gradient: LinearGradient(
+                                  colors: [Colors.greenAccent.shade700, Colors.blueGrey.shade600]
+                                )
+                              ),
+                              child: ElevatedButton.icon(onPressed: tapped ? null : () async
+                              {
+                                if (ownerPod == null) {
+                                  if (!loading.mounted) {
+                                    OverlayState? overlay =
+                                    Overlay.of(context);
+                                    overlay.insert(loading);
+                                    setState(() {
+
+                                    });
+                                  }
+                                  // Fix
+                                  try {
+                                    final resp = await FirebaseFirestore
+                                        .instance.collection('users')
+                                        .doc(
+                                        this.widget.pod.pod.pet.ownerId)
+                                        .get();
+                                    ownerPod = userPodFromDoc(resp);
+                                  } catch (e) {
+                                    print('petPageError: $e');
+                                  }
+                                }
+                                if (loading.mounted) {
+                                  loading.remove();
+                                }
+                                setState(() {
+
+                                });
+                                _ownerInfo();
+                              },
                                 style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red.shade300,
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
                                     shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(18.0)
+                                        borderRadius: BorderRadius.circular(15.sp)
                                     )
                                 ),
-                                icon:  Icon(CupertinoIcons.heart_fill, color: Colors.white, size: width*0.03,),
-                                label: Text('Send Request', style: TextStyle(
+                                icon:  Icon(Icons.account_circle_sharp),
+                                label: Text('Contact Owner', style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: width*0.024
+                                    fontSize: 10.sp
                                 ),),
-                              );
-                            }
-                          })
-                    ],
+                              ),
+                            ));
+                      }
                   ),
-                  Spacer(),
-                  ColumnSuper(
-                    innerDistance: -19,
-                    children: [
-                      CircleAvatar(
-                        radius: height*0.06,
-                        backgroundColor: CupertinoColors.extraLightBackgroundGray,
-                        child: CircleAvatar(
-                          radius: height*0.052,
-                          backgroundImage: NetworkImage(widget.pod.sender_pet.pet.photoUrl)
+                  SizedBox(height: 2.h),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 1.w),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: Wrap(
+                            spacing: 2.w,
+                            runSpacing: 2.w,
+                            alignment: WrapAlignment.center,
+                            runAlignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(2.w),
+                                decoration: BoxDecoration(
+                                    gradient: LinearGradient(colors: [Colors.blueGrey.shade300, Colors.blueGrey.shade100]),
+                                    borderRadius:
+                                    BorderRadius.circular(
+                                        20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      spreadRadius: 1,
+                                      blurRadius: 3,
+                                      offset: Offset(1, 1), // changes position of shadow
+                                    ),
+                                  ],),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(widget.pod.pod.pet.isMale ? Icons.male_rounded : Icons.female_rounded, color: widget.pod.pod.pet.isMale ? Colors.blue.shade600 : Colors.pink.shade600),
+                                    SizedBox(width: 2.w),
+                                    Text(widget.pod.pod.pet.breed, style: TextStyle(
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.blueGrey.shade700
+                                    ), maxLines: 2, overflow: TextOverflow.visible,  textAlign: TextAlign.center)
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.all(2.w),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(colors: [Colors.blueGrey.shade300, Colors.blueGrey.shade100]),
+                                  borderRadius:
+                                  BorderRadius.circular(
+                                      20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      spreadRadius: 1,
+                                      blurRadius: 3,
+                                      offset: Offset(1, 1), // changes position of shadow
+                                    ),
+                                  ],),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(CupertinoIcons.calendar_circle_fill, color: Colors.white),
+                                    SizedBox(width: 2.w),
+                                    Text(petAge, style: TextStyle(
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.blueGrey.shade700
+                                    ), maxLines: 2, overflow: TextOverflow.visible,  textAlign: TextAlign.center)
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      ownerVerified ? Container(
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.extraLightBackgroundGray,
-                          borderRadius: BorderRadius.circular(50)
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(5.0),
-                          child: Icon(Icons.verified_user_rounded, size: 18, color: Colors.green,),
-                        ),
-                      ) :  Container(
-                        decoration: BoxDecoration(
-                            color: CupertinoColors.extraLightBackgroundGray,
-                            borderRadius: BorderRadius.circular(50)
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(5.0),
-                          child: Icon(CupertinoIcons.exclamationmark_shield_fill, size: 18, color: Colors.orange,),
-                        ),
-                      )
-                    ],
+                      ],
+                    ),
                   ),
-
                 ],
               ),
             ),
-            SizedBox(height: height*0.02,),
-            Container(
-
-              height: height*0.1,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: width*0.3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Text("Breed",
-                          style: TextStyle(
-                              fontSize: width*0.028,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.blueGrey.shade500
-                          ),),
-                        SizedBox(height: height*0.008,),
-                        Text(widget.pod.sender_pet.pet.breed,
-                          style: TextStyle(
-                              fontSize: width*0.028,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.blueGrey.shade700
-                          ), maxLines: 2, overflow: TextOverflow.visible, textAlign: TextAlign.center,),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: width*0.3,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text("Gender",
-                          style: TextStyle(
-                              fontSize: width*0.028,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.blueGrey.shade500
-                          ),),
-                        SizedBox(height: height*0.008,),
-                        Text(widget.pod.sender_pet.pet.isMale ? "Male" : "Female",
-                          style: TextStyle(
-                              fontSize: width*0.028,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.blueGrey.shade700
-                          ), maxLines: 2, overflow: TextOverflow.visible,),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: width*0.3,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text("Age",
-                          style: TextStyle(
-                              fontSize: width*0.028,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.blueGrey.shade500
-                          ),),
-                        SizedBox(height: height*0.008,),
-                        Text(petAge,
-                          style: TextStyle(
-                              fontSize: width*0.028,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.blueGrey.shade700
-                          ), maxLines: 2, overflow: TextOverflow.visible,  textAlign: TextAlign.center),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ),
+            SizedBox(height: 3.h),
             Expanded(
               child: SingleChildScrollView(
                 child: Container(
@@ -857,8 +959,8 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
           List<PetPod> goodPets = <PetPod>[];
 
           for (PetPod p in widget.ownerPets) {
-            if ((p.pet.breed == widget.pod.sender_pet.pet.breed)
-                && (p.pet.isMale != widget.pod.sender_pet.pet.isMale)){
+            if ((p.pet.breed == widget.pod.pod.pet.breed)
+                && (p.pet.isMale != widget.pod.pod.pet.isMale)){
 
               goodPets.add(p);
             }

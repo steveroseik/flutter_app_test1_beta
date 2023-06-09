@@ -57,7 +57,6 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   final vacEditing = ValueNotifier<int>(0);
   final viewVaccines = ValueNotifier<int>(0);
   final cacheLoaded = ValueNotifier<bool>(false);
-  int notifCount = 0;
 
   // final multiController = List<MultiSelectController>.empty(growable: true);
   late AnimationController _controller;
@@ -68,7 +67,9 @@ class _HomeBreedPageState extends State<HomeBreedPage>
 
   List<PetPod> petPods = <PetPod>[];
 
-  List<MateItem> receivedRequestPods = <MateItem>[];
+  List<MateItem> petRequests = <MateItem>[];
+  List<MateItem> petFriends = <MateItem>[];
+  List<PetProfile> friends = <PetProfile>[];
   List<MateRequest> receivedRequests = <MateRequest>[];
   List<MateRequest> sentRequests = <MateRequest>[];
 
@@ -90,6 +91,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   late StreamSubscription requestRecieveSub;
   late StreamSubscription requestSendSub;
   late RequestsProvider requestsProvider;
+  OverlaySupportEntry? notificationEntry;
 
   @override
   void initState() {
@@ -179,28 +181,6 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   }
 
 
-  bool filterTest(MateRequest req){
-    switch (req.status) {
-      case requestState.pending:
-        notifCount++;
-        return false;
-      case requestState.accepted:
-      //load pet friend and
-      // add to friends later
-      //TODO: for now, fix later
-      return true;
-      case requestState.denied:
-        // if (sent?? false){
-        //   // delete from server
-        // }
-        return true;
-      case requestState.undefined:
-        // if (sent?? false){
-        //   // delete from server
-        // }
-        return true;
-    }
-  }
 
 
   filterNotifications({required List<MateRequest> requests, bool? sent}){
@@ -208,21 +188,25 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     for ( MateRequest m in requests) {
       switch (m.status) {
         case requestState.pending:
-          (sent?? false) ? null : notifCount++;
           pendingReqs.add(m);
           break;
         case requestState.accepted:
-        //load pet friend and
-        // add to friends later
+
+          addNewPetFriend(m, cacheBox);
+          cacheBox.removeNotification(id: m.id, sent: sent);
+          requests.remove(m);
           break;
         case requestState.denied:
-          requests.remove(m);
+
           if (sent?? false){
             // delete from server
           }
+          cacheBox.removeNotification(id: m.id, sent: sent);
+          requests.remove(m);
           break;
         case requestState.undefined:
           requests.remove(m);
+          cacheBox.removeNotification(id: m.id, sent: sent);
           if (sent?? false){
             // delete from server
           }
@@ -240,21 +224,38 @@ class _HomeBreedPageState extends State<HomeBreedPage>
       MateRequest req = receivedRequests.firstWhere((e) =>
       e.senderPet == pet.id);
       PetPod newPod = PetPod(pet: pet, isSelected: false, foreign: true);
-      newItems.add(MateItem(sender_pet: newPod, request: req));
+      newItems.add(MateItem(pod: newPod, request: req));
     }
     requestsProvider.addItems(newItems);
-    print(requestsProvider.reqItems);
     return newItems;
+  }
+
+  addNewRequestItem(MateRequest item) async{
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    PetProfile? newPet;
+    if (item.senderId == uid){
+      newPet = await cacheBox.getPetWithId(item.receiverPet);
+    }else{
+      newPet = await cacheBox.getPetWithId(item.senderPet);
+    }
+    if (newPet != null){
+      PetPod newPod = PetPod(pet: newPet, isSelected: false, foreign: true);
+      requestsProvider.addItem(MateItem(pod: newPod, request: item));
+    }
   }
 
   getPetFromID(String id){
     return petPods.firstWhere((e) => e.pet.id == id);
   }
 
+  getPetFriends() async{
+    friends = await cacheBox.cachedFriends(petPods);
+  }
+
   genRelations() async{
-    notifCount = 0;
     receivedRequests = cacheBox.cachedReceivedNotif;
     sentRequests = cacheBox.cachedSentNotif;
+    getPetFriends();
     filterNotifications(requests: receivedRequests);
     filterNotifications(requests: sentRequests, sent: true);
     try{
@@ -275,22 +276,18 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     }catch (e){
       print("genRelations Error: $e");
     }
-
     notificationsListeners();
   }
 
-  // FIX
+  // TODO: FIX
   requestDelete({required String id, bool? fromServer}) async{
     int i = receivedRequests.indexWhere((element) => element.id == id);
     if (i != -1) {
-      (receivedRequests[i].status == requestState.pending)
-          ? notifCount--
-          : null;
       receivedRequests.removeAt(i);
-      requestsProvider.removeAt(receivedRequestPods.indexWhere((e) => e.request!.id == id));
-      if (fromServer?? false) {
-        await deleteRequestFromServer(id) ? null : print('failed');
-      }
+      requestsProvider.removeWithId(id);
+    }
+    if (fromServer?? false) {
+      await deleteRequestFromServer(id) ? null : print('failed');
     }
   }
 
@@ -299,14 +296,20 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     for (MateRequest req in requests){
       switch(req.status){
         case requestState.pending:
-          newRequests.add(req);
+          // maybe needs to reflect item changes if already exists
+          if (receivedRequests.indexWhere((e) => e.id == req.id) == -1) newRequests.add(req);
           break;
         case requestState.denied:
         case requestState.undefined:
           requestDelete(id: req.id, fromServer: true);
           break;
         case requestState.accepted:
-        // TODO: add to friends.
+          if (!requestsProvider.updateRequest(req, requestState.accepted)){
+            addNewRequestItem(req);
+          }
+          // TODO: Friends are added in list from sender not receiver
+          
+          addNewPetFriend(req, cacheBox);
           break;
       }
     }
@@ -315,8 +318,8 @@ class _HomeBreedPageState extends State<HomeBreedPage>
 
   void notificationsListeners(){
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    final lastSent = Timestamp.fromDate(cacheBox.lastSentNotif);
-    final lastRec = Timestamp.fromDate(cacheBox.lastReceivedNotif);
+    Timestamp lastSent = Timestamp.fromDate(cacheBox.lastSentNotif);
+    Timestamp lastRec = Timestamp.fromDate(cacheBox.lastReceivedNotif);
     requestRecieveSub = FirebaseFirestore.instance.collection('mateRequests')
         .where('receiverId', isEqualTo: uid).where('lastModified', isGreaterThan: lastSent).snapshots().listen((data) async {
       if (data.docChanges.isNotEmpty){
@@ -336,21 +339,26 @@ class _HomeBreedPageState extends State<HomeBreedPage>
         }
         final requests = manageModifiedRequests(mateRequestFromDocs(modifiedRequests));
         if (requests.isNotEmpty){
-          // TODO: try to change newReq to on variable requests and test removal filterNotifications
-          requests.removeWhere((element) {
-            return  filterTest(element);
-          });
-          List<MateRequest> newReq = filterNotifications(requests: requests);
-          receivedRequests.addAll(newReq);
-          List<String> petIds = List<String>.generate(newReq.length, (index) => newReq[index].senderPet);
+          receivedRequests.addAll(requests);
+          List<String> petIds = List<String>.generate(requests.length, (index) => requests[index].senderPet);
           if (petIds.isNotEmpty){
             final newPets = await cacheBox.getPetList(petIds);
             List<MateItem> newItems = addRequestItems(newPets);
             if (newItems.length > 1){
-              showOverlayNotification(duration: const Duration(milliseconds: 3000), (context) => MultiPetRequestBanner(pod: newItems[0], count: newItems.length-1, receiverPet: getPetFromID(newItems[0].request!.receiverPet)));
-
+              notificationEntry = showOverlayNotification(duration: const Duration(milliseconds: 3000), (context) => GestureDetector(
+                  onTap: (){
+                    homeNav_key.currentState?.pushNamed('/petProfile', arguments: [newItems[0], petPods]);
+                    dismissNotification();
+                  },
+                  child: MultiPetRequestBanner(pod: newItems[0], count: newItems.length-1, receiverPet: getPetFromID(newItems[0].request!.receiverPet))));
             }else{
-              showOverlayNotification(duration: const Duration(milliseconds: 3000), (context) => PetRequestBanner(pod: newItems[0], receiverPet: getPetFromID(newItems[0].request!.receiverPet)));
+
+              notificationEntry = showOverlayNotification(duration: const Duration(milliseconds: 3000), (context) => GestureDetector(
+                  onTap: (){
+                    homeNav_key.currentState?.pushNamed('/petProfile', arguments: [newItems[0], petPods]);
+                    dismissNotification();
+                  },
+                  child: PetRequestBanner(pod: newItems[0], receiverPet: getPetFromID(newItems[0].request!.receiverPet))));
             }
           }
         }
@@ -359,15 +367,56 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     });
 
     requestSendSub = FirebaseFirestore.instance.collection('mateRequests')
-        .where('senderId', isEqualTo: uid).where('lastModified', isGreaterThan: lastRec).snapshots().listen((data) {
+        .where('senderId', isEqualTo: uid).where('lastModified', isGreaterThan: lastRec).snapshots().listen((data) async {
 
-      if (data.docs.isNotEmpty){
-        final requests = mateRequestFromShot(data);
-        cacheBox.addNewNotifications(items: requests, sent: true);
+      if (data.docChanges.isNotEmpty){
+
+        List<DocumentSnapshot<Map<String, dynamic>>> modifiedRequests = <DocumentSnapshot<Map<String, dynamic>>>[];
+        for (var e in data.docChanges){
+          switch(e.type){
+            case DocumentChangeType.added:
+            case DocumentChangeType.modified:
+              modifiedRequests.add(data.docs.firstWhere((x) => x.id == e.doc.id));
+              break;
+            case DocumentChangeType.removed:
+              if (receivedRequests.indexWhere((x) => x.id == e.doc.id) != -1) {
+                requestDelete(id: e.doc.id);
+              }
+              break;
+          }
+        }
+
+        for (var e in mateRequestFromDocs(modifiedRequests)){
+          if (e.status == requestState.denied) requestDelete(id: e.id, fromServer: true);
+          if (e.status == requestState.accepted) {
+            int i = sentRequests.indexWhere((x) => x.id == e.id);
+            PetProfile? pet = await cacheBox.getPetWithId(e.receiverPet);
+            if (i != -1){
+              sentRequests[i].status = requestState.accepted;
+
+              if (pet != null){
+                requestsProvider.addItem(MateItem(pod: PetPod(pet: pet, isSelected: false, foreign: true),
+                request: sentRequests[i]));
+              }
+            }else{
+              sentRequests.add(e);
+              if (pet != null){
+                requestsProvider.addItem(MateItem(pod: PetPod(pet: pet, isSelected: false, foreign: true),
+                    request: e));
+              }
+            }
+            addNewPetFriend(e, cacheBox);
+          }
+        }
+
       }
 
     });
 
+  }
+
+  updateProvider(){
+    requestsProvider.reqItems;
   }
 
 
@@ -411,6 +460,14 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     await getUserCurrentLocation();
   }
 
+  dismissNotification(){
+    if (notificationEntry != null){
+      notificationEntry!.dismiss();
+    }
+  }
+
+
+
   @override
   void dispose() {
     _controller.dispose();
@@ -425,6 +482,8 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     final height = MediaQuery.of(context).size.height;
     cacheBox = DataPassWidget.of(context);
     requestsProvider = pr.Provider.of<RequestsProvider>(context);
+    petFriends = requestsProvider.friends;
+    petRequests = requestsProvider.pendingRequests;
     cacheLoaded.value = true;
     return Scaffold(
         appBar: init_appBar(homeNav_key),
@@ -469,7 +528,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                             borderRadius: BorderRadius.circular(30.0))),
                     icon: Icon(Icons.add, size: 15),
                     onPressed: () {
-                      homeNav_key.currentState?.pushNamed('/add_pet');
+                      // homeNav_key.currentState?.pushNamed('/add_pet');
                     },
                     label: Text('New pet',
                         style: TextStyle(
@@ -987,19 +1046,14 @@ class _HomeBreedPageState extends State<HomeBreedPage>
               children: [
                 FloatingActionButton(  // Your actual Fab
                   onPressed: requestsLoading ? null : () async{
-
-                    homeNav_key.currentState?.pushNamed('/notif', arguments: [receivedRequestPods, petPods]).then((value){
-                      // refreshNotificationCount();
+                    homeNav_key.currentState?.pushNamed('/notif', arguments: [petRequests, petPods]).then((value){
+                      updateProvider();
                     });
                   },
                   child: Icon(Icons.local_fire_department_rounded, color: Colors.orange,),
                   backgroundColor: Colors.blueGrey.shade800,
                 ),
-                notifCount == 0 ? Container() : Container(             // This is your Badge
-                  child: Center(
-                    // Here you can put whatever content you want inside your Badge
-                    child: Text('${notifCount}', style: TextStyle(color: Colors.white)),
-                  ),
+                petRequests.isEmpty ? Container() : Container(             // This is your Badge
                   padding: EdgeInsets.all(3),
                   constraints: BoxConstraints(minHeight: 32, minWidth: 32),
                   decoration: BoxDecoration( // This controls the shadow
@@ -1011,6 +1065,10 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                     ],
                     borderRadius: BorderRadius.circular(16),
                     color: Colors.redAccent,  // This would be color of the Badge
+                  ),             // This is your Badge
+                  child: Center(
+                    // Here you can put whatever content you want inside your Badge
+                    child: Text('${petRequests.length}', style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ],

@@ -38,7 +38,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver{
   CacheBox cacheBox = CacheBox();
   RequestsProvider requestsProvider = RequestsProvider();
-
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);

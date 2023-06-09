@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:ffi';
-
 import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
 import 'package:card_swiper/card_swiper.dart';
 import 'package:csc_picker/model/select_status_model.dart';
@@ -14,6 +12,7 @@ import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/pages/loadingPage.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 import '../cacheBox.dart';
@@ -63,6 +62,7 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
    ValueNotifier<SlideRegion> currentRegion = ValueNotifier<SlideRegion>(SlideRegion.frozen);
 
    ValueNotifier<matchesStat> petListStat = ValueNotifier<matchesStat>(matchesStat.empty);
+   late RequestsProvider requestsProvider;
 
    final emptyMateRequest = MateRequest(id: "-1",
        senderId: 'senderId', receiverId: 'receiverId',
@@ -90,7 +90,6 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
     await for (bool v in sendStream){
       if (!v) return v;
     }
-    print('stream shutdown');
     return false;
    }
 
@@ -134,7 +133,8 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
-     cacheBox = DataPassWidget.of(context);
+    cacheBox = DataPassWidget.of(context);
+    requestsProvider = Provider.of<RequestsProvider>(context);
     return Center(
         child: Scaffold(
           appBar: init_appBar(homeNav_key),
@@ -194,7 +194,6 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
                                 },
                                 itemChanged: (item, index){
                                   if (sendBool){
-                                    print('end animation');
                                     sendBool = false;
                                     sendingRequest.add(sendBool);
                                   }
@@ -213,7 +212,6 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
 
                                 },
                                 onNewAction: (direction, index) async{
-                                  print(direction);
                                   if (!likePressed){
                                     if (direction == SlideDirection.right){
                                       sendBool = true;
@@ -221,7 +219,6 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
                                       sendRequest(_matchEngine!.currentItem!);
                                     }
                                   }else{
-                                    print('no exec');
                                     likePressed = false;
                                   }
 
@@ -427,7 +424,12 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
      int sentFind = widget.sentRequests.indexWhere((e) => (e.receiverPet == pet.id && e.senderPet == widget.senderPet.pet.id));
      int receivedFind = widget.petRequests.indexWhere((e) => (e.senderPet == pet.id && e.receiverPet == widget.senderPet.pet.id));
      if (receivedFind != -1){
-       if (widget.sentRequests[receivedFind].status == requestState.pending){
+       if (widget.petRequests[receivedFind].status == requestState.pending){
+         widget.petRequests[receivedFind].status = requestState.accepted;
+         addNewPetFriend(widget.petRequests[receivedFind], cacheBox);
+         updateMateRequest(widget.petRequests[receivedFind].id,
+             requestState.accepted.index);
+         requestsProvider.updateRequest(widget.petRequests[receivedFind], requestState.accepted);
          showSnackbar(context, "A MATCH");
          failed = false;
        }else{
@@ -441,6 +443,7 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
        if (newRequest != null){
          failed = false;
          // widget.sentRequests.add(newRequest);
+         cacheBox.addNewNotifications(items: [newRequest]);
          if (mounted) showSnackbar(context, "Request sent");
        }else{
          if (mounted) showSnackbar(context, "Failed to send request");

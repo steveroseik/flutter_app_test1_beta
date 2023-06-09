@@ -582,14 +582,14 @@ class _breedSearchPageState extends State<breedSearchPage> {
                     onTap: (){
                       MateRequest req = matchRequest(pets[index].pet.id);
                       if (req.status == -1){
-                        MateItem petItem = MateItem(sender_pet: pets[index], request: req);
+                        MateItem petItem = MateItem(pod: pets[index], request: req);
                         homeNav_key.currentState?.pushNamed('/petProfile', arguments: [petItem, widget.ownerPets]).then((value) {
                           if (req.status != -1){
                             widget.sentRequests.add(req);
                           }
                         });
                       }else{
-                        homeNav_key.currentState?.pushNamed('/petProfile', arguments: [MateItem(sender_pet: pets[index], request: req), widget.ownerPets]);
+                        homeNav_key.currentState?.pushNamed('/petProfile', arguments: [MateItem(pod: pets[index], request: req), widget.ownerPets]);
                       }
 
 

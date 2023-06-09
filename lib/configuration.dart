@@ -1,14 +1,16 @@
 import 'dart:async';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:http/http.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-
+import 'package:http/http.dart' as http;
 import 'FETCH_wdgts.dart';
+import 'JsonObj.dart';
+import 'cacheBox.dart';
 
 
 enum NavPages{
@@ -33,6 +35,7 @@ enum sliderStatus{
 
 enum profileState { requested, pendingApproval, friend, noFriendship}
 enum requestState { pending, denied, accepted, undefined }
+enum petRelation {sender, receiver, none}
 
 String details = 'My job requires moving to another country. '
     'I do not have the opportunity to take the cat with me. '
@@ -143,6 +146,10 @@ class RequestsProvider with ChangeNotifier{
 
   get requests => reqItems;
 
+  get pendingRequests => reqItems.where((item) => item.stat == requestState.pending).toList();
+
+  get friends => reqItems.where((item) => item.stat == requestState.accepted).toList();
+
   set requestItems(List<MateItem> items){
     reqItems = items;
     notifyListeners();
@@ -153,10 +160,69 @@ class RequestsProvider with ChangeNotifier{
     notifyListeners();
   }
 
+  addItem (MateItem item){
+    reqItems.add(item);
+    print('item added: ${item.pod.pet.name}');
+    notifyListeners();
+  }
+
   removeAt(int i){
     reqItems.removeAt(i);
     notifyListeners();
   }
 
+  removeWithId(String id){
+    reqItems.removeWhere((e) => e.request!.id == id);
+    notifyListeners();
+  }
 
+  findRelation(String petId1, String petId2){
+    int i = reqItems.indexWhere((e){
+      return (e.request!.senderPet == petId1 &&
+              e.request!.receiverPet == petId2) ||
+          (e.request!.senderPet == petId2 &&
+              e.request!.receiverPet == petId1);
+    });
+
+    if (i == -1){
+      return petRelation.none;
+    }else{
+      if (reqItems[i].pod.pet.id == petId1){
+        return petRelation.sender;
+      }
+      return petRelation.receiver;
+    }
+  }
+
+  updateRequest(MateRequest request, requestState s){
+    int i = reqItems.indexWhere((e) => e.request!.id == request.id);
+
+    if (i == -1 ) return false;
+
+    reqItems[i].request!.status = s;
+    notifyListeners();
+    return true;
+  }
+}
+
+Future<File> _getImageFromNetwork(String url, String fileName) async {
+  final directory = await getApplicationDocumentsDirectory();
+  final imagePath = '${directory.path}/$fileName';
+  final imageFile = File(imagePath);
+
+  if (imageFile.existsSync()) {
+    // Image already exists, return the file.
+    return imageFile;
+  } else {
+    // Image doesn't exist, download it from network and save it.
+    final response = await http.get(Uri.parse(url));
+    await imageFile.create(recursive: true);
+    await imageFile.writeAsBytes(response.bodyBytes);
+    return imageFile;
+  }
+}
+
+Future<ImageProvider> getNetworkImage(String url, String fileName) async {
+  final file = await _getImageFromNetwork(url, fileName);
+  return FileImage(file);
 }

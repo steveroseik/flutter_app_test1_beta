@@ -19,6 +19,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'FETCH_wdgts.dart';
+import 'cacheBox.dart';
 
 // Function to retry requests : retry(int, Future<>);
 typedef Future<T> FutureGenerator<T>();
@@ -475,13 +476,11 @@ Future<List<MateRequest>> fetchPetsRelation(String uid, DateTime lastFetched) as
         .where('receiverId', isEqualTo: uid).where('lastModified', isGreaterThan: ts).get();
     final resp = await Future.wait([q1, q2]);
 
-    if (resp[0].docs.isNotEmpty || resp[1].docs.isNotEmpty){
-      final requestItems = mateRequestFromShot(resp[0]);
-      requestItems.addAll(mateRequestFromShot(resp[0]));
-      return requestItems;
-    }else{
-      return <MateRequest>[];
-    }
+    List<MateRequest> requestItems = <MateRequest>[];
+    if (resp[0].docs.isNotEmpty) requestItems.addAll(mateRequestFromShot(resp[0]));
+    if (resp[1].docs.isNotEmpty) requestItems.addAll(mateRequestFromShot(resp[1]));
+
+    return requestItems;
   }catch (e){
     print("fetchPetsRelationError: $e");
     return <MateRequest>[];
@@ -690,4 +689,62 @@ Future<List<PetProfile>> getPetsWithIDs(List<String> ids) async{
   => value.expand((element) => element).toList());
 
   return newDocs;
+}
+
+Future<DocumentSnapshot<Map<String, dynamic>>?> getSinglePetWithId(String id) async{
+  try{
+    return await dB.doc(id).get();
+  }on FirebaseException catch (e){
+    return null;
+  }
+}
+
+Future<MapEntry<String, dynamic>> getSinglePetFriendList(String id) async{
+ try{
+   final doc = await dB.doc('$id/friends/ids').get();
+   return MapEntry(id, List<String>.from(doc.data()!['list'].map((x) => x)));
+ }on FirebaseException catch (e){
+   return MapEntry(id, null);
+ }
+}
+
+Future<Map<String, List<String>>> getPetFriendsList(List<String> ids) async{
+  Map<String, List<String>> resultMap = {};
+
+  await Future.wait(ids.map((id) async {
+    MapEntry<String, dynamic> entry = await getSinglePetFriendList(id);
+    if (entry.value != null) {
+      resultMap[entry.key] = List<String>.from(entry.value);
+    }
+  }));
+
+  return resultMap;
+}
+
+addNewPetFriend(MateRequest m, CacheBox box, {bool? server}){
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+  if (uid == m.senderId){
+    box.addPetFriendList(m.senderPet, m.receiverPet);
+  }else{
+    box.addPetFriendList(m.receiverPet, m.senderPet);
+  }
+
+  if (server?? false) addNewMate(m.senderPet, m.receiverPet);
+}
+
+
+addNewMate(String petId1, String petId2){
+
+  dB.collection('$petId1/friends').doc('list').set({
+    'ids': FieldValue.arrayUnion([petId2]),
+    'lastModified': FieldValue.serverTimestamp()
+  }, SetOptions(merge: true))
+      .then((value) => print('Pet added to document list'))
+      .catchError((error) => print('Failed to add pet: $error'));
+  dB.collection('$petId2/friends').doc('list').set({
+    'ids': FieldValue.arrayUnion([petId1]),
+    'lastModified': FieldValue.serverTimestamp()
+  }, SetOptions(merge: true))
+      .then((value) => print('Pet added to document list'))
+      .catchError((error) => print('Failed to add pet: $error'));
 }

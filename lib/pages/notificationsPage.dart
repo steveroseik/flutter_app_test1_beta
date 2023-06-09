@@ -1,9 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app_test1/DataPass.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:provider/provider.dart';
+
+import '../cacheBox.dart';
 
 
 
@@ -18,41 +21,26 @@ class NotificationsPage extends StatefulWidget {
 
 class _NotificationsPageState extends State<NotificationsPage> {
 
-  bool notif = true;
-  bool match = false;
-  late List<MateItem> matches;
   late RequestsProvider requestsProvider;
+  late CacheBox cacheBox;
+  List<MateItem> matches = <MateItem>[];
   List<MateItem> petRequest = <MateItem>[];
 
 
-  updateRequests(){
-    match = false;
-    notif = false;
-    setState(() {
 
-    });
-    List<MateItem> tempMatch = <MateItem>[];
-    List<MateItem> tempReq = <MateItem>[];
-    widget.requests.clear();
-    widget.requests.addAll(petRequest);
-    widget.requests.addAll(matches);
-    for (MateItem item in widget.requests){
-      if (item.request!.status == 2){
-        tempMatch.add(item);
-      }else if (item.request!.status == 0) {
-        tempReq.add(item);
-      }
+  updateRequests(int index){
+    switch(requestsProvider.reqItems[index].request!.status){
+      case requestState.denied:
+        // update server
+        requestsProvider.removeAt(index);
+        break;
+      case requestState.accepted:
+        break;
+      default: null;
     }
-    petRequest = tempReq;
-    matches = tempMatch;
-    if (matches.isNotEmpty ) match = true;
-    if (petRequest.isNotEmpty) notif = true;
-    setState(() {
-
-    });
   }
   filterMatches(){
-    for (MateItem item in widget.requests){
+    for (MateItem item in requestsProvider.reqItems){
       if (item.stat == requestState.accepted){
         matches.add(item);
       }
@@ -60,11 +48,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
         petRequest.add(item);
       }
     }
-    if (matches.isNotEmpty ) match = true;
-    if (petRequest.isNotEmpty) notif = true;
-    setState(() {
-
-    });
   }
 
   // extract pet receiver details
@@ -76,7 +59,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   void initState() {
-      // filterMatches();
       super.initState();
   }
 
@@ -86,7 +68,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
     requestsProvider = Provider.of<RequestsProvider>(context);
-    print(requestsProvider.reqItems);
+    matches = requestsProvider.friends;
+    petRequest = requestsProvider.pendingRequests;
+    cacheBox = DataPassWidget.of(context);
     return Scaffold(
       appBar: init_appBar(homeNav_key),
       body: Provider(
@@ -98,51 +82,55 @@ class _NotificationsPageState extends State<NotificationsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              !match ? Container() : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20),
-                    child: Text("Matches",
-                      style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blueGrey.shade800),),
-                  ),
-                  Container(
-                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-                    height: height*0.135,
-                    width: double.infinity,
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: matches.length,
-                          itemBuilder: (context, index){
-                            return InkWell(
-                              onTap: (){
-                                homeNav_key.currentState?.pushNamed('/petProfile', arguments: [matches[index], widget.ownerPets]);
-                              },
-                              child: Container(
-                                margin: EdgeInsets.symmetric(horizontal: 5),
-                                child: Column(
-                                  children: [
-                                    CircleAvatar(
-                                      backgroundColor: Colors.blueGrey.shade900,
-                                      radius: 34*height*0.0012,
-                                      child: CircleAvatar(
-                                        backgroundColor: CupertinoColors.extraLightBackgroundGray,
-                                        radius: 34*height*0.0012-1,
-                                        backgroundImage: NetworkImage(matches[index].sender_pet.pet.photoUrl),
-                                      ),
+              Builder(
+                builder: (context) {
+                  return matches.isEmpty ? Container() : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20),
+                        child: Text("Matches",
+                          style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blueGrey.shade800),),
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                        height: height*0.135,
+                        width: double.infinity,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: matches.length,
+                              itemBuilder: (context, index){
+                                return InkWell(
+                                  onTap: (){
+                                    homeNav_key.currentState?.pushNamed('/petProfile', arguments: [matches[index], widget.ownerPets]);
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.symmetric(horizontal: 5),
+                                    child: Column(
+                                      children: [
+                                        CircleAvatar(
+                                          backgroundColor: Colors.blueGrey.shade900,
+                                          radius: 34*height*0.0012,
+                                          child: CircleAvatar(
+                                            backgroundColor: CupertinoColors.extraLightBackgroundGray,
+                                            radius: 34*height*0.0012-1,
+                                            backgroundImage: NetworkImage(matches[index].pod.pet.photoUrl),
+                                          ),
+                                        ),
+                                        Spacer(),
+                                        FittedBox(child: Text(matches[index].pod.pet.name, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey.shade800),))
+                                      ],
                                     ),
-                                    Spacer(),
-                                    FittedBox(child: Text(matches[index].sender_pet.pet.name, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey.shade800),))
-                                  ],
-                                ),
-                              ),
-                            );
-                          }),
-                    ),
-                  ),
-                ],
+                                  ),
+                                );
+                              }),
+                        ),
+                      ),
+                    ],
+                  );
+                }
               ),
               Divider(),
               Padding(
@@ -151,34 +139,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blueGrey.shade800),),
               ),
               SizedBox(height: height*0.03,),
-              !notif ?  Center(
-                child: Text(
-                  "No new requests.",
-                  style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: width*0.04,
-                      fontWeight: FontWeight.w500,color: CupertinoColors.systemGrey2),
-                  textAlign: TextAlign.center,
-                ),
-              ) : Expanded(
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: ListView.builder(
-                      scrollDirection: Axis.vertical,
-                      itemCount: requestsProvider.reqItems.length,
-                      itemBuilder: (context, index){
-                        final PetPod petRec = fetchReceiverPet(requestsProvider.reqItems[index].request!.receiverPet);
-                        return InkWell(
-                          onTap: (){
-                            homeNav_key.currentState?.pushNamed('/petProfile', arguments: [requestsProvider.reqItems[index],[petRec]])
-                                .then((value) {
-                              updateRequests();
-                            });
-                          },
-                          child: PetRequestBanner(pod: requestsProvider.reqItems[index], receiverPet: petRec),
-                        );
-                      }),
-                ),
+              Builder(
+                builder: (context) {
+                  return petRequest.isEmpty ? Center(
+                    child: Text(
+                      "No new requests.",
+                      style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: width*0.04,
+                          fontWeight: FontWeight.w500,color: CupertinoColors.systemGrey2),
+                      textAlign: TextAlign.center,
+                    ),
+                  ) :
+                  Expanded(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: ListView.builder(
+                          scrollDirection: Axis.vertical,
+                          itemCount: petRequest.length,
+                          itemBuilder: (context, index){
+                            final PetPod petRec = fetchReceiverPet(petRequest[index].request!.receiverPet);
+                            return InkWell(
+                              onTap: (){
+                                homeNav_key.currentState?.pushNamed('/petProfile', arguments: [petRequest[index],[petRec]]);
+                              },
+                              child: PetRequestBanner(pod: petRequest[index], receiverPet: petRec),
+                            );
+                          }),
+                    ),
+                  );
+                }
               ),
             ],
           ),

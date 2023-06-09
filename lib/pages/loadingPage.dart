@@ -13,12 +13,12 @@ class _LoadingPageState extends State<LoadingPage> {
   @override
   Widget build(BuildContext context) {
     return (widget.notPage != null && widget.notPage == true) ? Image.asset(
-      "assets/loadingDog.gif",
+      "assets/loadingDog2.gif",
       fit: BoxFit.fill,
     ) : Scaffold(
       body: Center(
           child: Image.asset(
-            "assets/loadingDog.gif",
+            "assets/loadingDog2.gif",
             height: 125.0,
             width: 125.0,
           )//SpinKitFadingCube(
