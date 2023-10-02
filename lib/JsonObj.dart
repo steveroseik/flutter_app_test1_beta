@@ -32,7 +32,7 @@ class Breed {
   );
 
   Map<String, dynamic> toJson() => {
-    "id": id,
+    "_id": id,
     "name": name,
     "weight": weight,
     "height": height,
@@ -65,26 +65,32 @@ PhotoResponse photoResponseFromJson(String str) => PhotoResponse.fromJson(json.d
 String photoResponseToJson(PhotoResponse data) => json.encode(data.toJson());
 
 class PhotoResponse {
+  String id;
+  String url;
+  String subId;
+  int width;
+  int height;
+  String originalFilename;
+  int pending;
+  int approved;
+
   PhotoResponse({
     required this.id,
     required this.url,
     required this.subId,
+    required this.width,
+    required this.height,
     required this.originalFilename,
     required this.pending,
     required this.approved,
   });
 
-  String id;
-  String url;
-  String subId;
-  String originalFilename;
-  int pending;
-  int approved;
-
   factory PhotoResponse.fromJson(Map<String, dynamic> json) => PhotoResponse(
     id: json["id"],
     url: json["url"],
     subId: json["sub_id"],
+    width: json["width"],
+    height: json["height"],
     originalFilename: json["original_filename"],
     pending: json["pending"],
     approved: json["approved"],
@@ -94,6 +100,8 @@ class PhotoResponse {
     "id": id,
     "url": url,
     "sub_id": subId,
+    "width": width,
+    "height": height,
     "original_filename": originalFilename,
     "pending": pending,
     "approved": approved,
@@ -124,9 +132,9 @@ class UserAvailCheck {
   };
 }
 
-UserPod userPodFromShot(QuerySnapshot<Map<String, dynamic>> shot) => UserPod.fromShot(shot.docs.first.data(), shot.docs.first.id);
+UserPod userPodFromShot(Map<String, dynamic> shot) => UserPod.fromShot(shot);
 UserPod userPodFromJson(String data) => UserPod.fromJson(json.decode(data));
-UserPod userPodFromDoc(DocumentSnapshot<Map<String, dynamic>> doc) => UserPod.fromShot(doc.data()!, doc.id);
+UserPod userPodFromDoc(DocumentSnapshot<Map<String, dynamic>> doc) => UserPod.fromShot(doc.data()!);
 String userPodToJson(UserPod data) => json.encode(data.toJson());
 
 class UserPod {
@@ -141,10 +149,9 @@ class UserPod {
     required this.location,
     required this.city,
     required this.photoUrl,
-    required this.ts,
+    required this.createdAt,
     required this.country,
     required this.email,
-    required this.petCount,
     required this.lastModified
   });
 
@@ -158,32 +165,30 @@ class UserPod {
   Location location;
   String city;
   String photoUrl;
-  DateTime ts;
+  DateTime createdAt;
   String country;
   String email;
-  int petCount;
   DateTime lastModified;
 
-  factory UserPod.fromShot(Map<String, dynamic> json, String id) => UserPod(
-    id: id,
+  factory UserPod.fromShot(Map<String, dynamic> json) => UserPod(
+    id: json["_id"],
     lastName: json["lastName"],
     firstName: json["firstName"],
     phone: json["phone"],
     type: json["type"],
     isMale: json["isMale"],
-    birthdate: (json["birthdate"] as Timestamp).toDate(),
+    birthdate: DateTime.parse(json["birthdate"]),
     location: Location.fromJson(json["location"]),
     city: json["city"],
     photoUrl: json["photoUrl"],
-    ts: json["ts"].toDate(),
+    createdAt: DateTime.parse(json["createdAt"]),
     country: json["country"],
     email: json["email"],
-    petCount: json["petCount"],
-    lastModified: json['lastModified'].toDate()
+    lastModified: DateTime.parse(json['lastModified'])
   );
 
   factory UserPod.fromJson(Map<String, dynamic> json) => UserPod(
-      id: json['id'],
+      id: json['_id'],
       lastName: json["lastName"],
       firstName: json["firstName"],
       phone: json["phone"],
@@ -193,15 +198,14 @@ class UserPod {
       location: Location.fromJson(json["location"]),
       city: json["city"],
       photoUrl: json["photoUrl"],
-      ts: DateTime.fromMillisecondsSinceEpoch(json["ts"]),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(json["createdAt"]),
       country: json["country"],
       email: json["email"],
-      petCount: json["petCount"],
       lastModified: DateTime.fromMillisecondsSinceEpoch(json['lastModified'])
   );
 
   Map<String, dynamic> toJson() => {
-    "id": id,
+    "_id": id,
     "lastName": lastName,
     "firstName": firstName,
     "phone": phone,
@@ -211,10 +215,9 @@ class UserPod {
     "location": location.toJson(),
     "city": city,
     "photoUrl": photoUrl,
-    "ts": ts.millisecondsSinceEpoch,
+    "ts": createdAt.millisecondsSinceEpoch,
     "country": country,
     "email": email,
-    "petCount": petCount,
     "lastModified": lastModified.millisecondsSinceEpoch
 
   };
@@ -225,15 +228,14 @@ class UserPod {
     "phone": phone,
     "type": type,
     "isMale": isMale,
-    "birthdate": Timestamp.fromMillisecondsSinceEpoch(birthdate.millisecondsSinceEpoch),
+    "birthdate": birthdate,
     "location": location.toJson(),
     "city": city,
     "photoUrl": photoUrl,
-    "ts": Timestamp.fromMillisecondsSinceEpoch(ts.millisecondsSinceEpoch),
+    "ts": createdAt.millisecondsSinceEpoch,
     "country": country,
     "email": email,
-    "petCount": petCount,
-    "lastModified": Timestamp.fromMillisecondsSinceEpoch(lastModified.millisecondsSinceEpoch)
+    "lastModified": lastModified.millisecondsSinceEpoch
   };
 
   UserPod copyWith({
@@ -247,10 +249,9 @@ class UserPod {
     Location? location,
     String? city,
     String? photoUrl,
-    DateTime? ts,
+    DateTime? createdAt,
     String? country,
     String? email,
-    int? petCount,
     DateTime? lastModified
   }){
     return UserPod(id: id ?? this.id,
@@ -263,10 +264,9 @@ class UserPod {
         location: location ?? this.location,
         city: city ?? this.city,
         photoUrl: photoUrl ?? this.photoUrl,
-        ts: ts ?? this.ts,
+        createdAt: createdAt ?? this.createdAt,
         country: country ?? this.country,
         email: email ?? this.email,
-        petCount: petCount ?? this.petCount,
         lastModified: lastModified ?? this.lastModified);
   }
 
@@ -274,33 +274,32 @@ class UserPod {
 
 class Location {
   Location({
-    required this.longtitude,
+    required this.longitude,
     required this.latitude,
   });
 
-  double longtitude;
+  double longitude;
   double latitude;
 
   factory Location.fromJson(Map<String, dynamic> json) => Location(
-    longtitude: json["longtitude"],
-    latitude: json["latitude"],
+    longitude: json["long"] is int ? json['long'].toDouble() : json['long'],
+    latitude: json["lat"]is int ? json['lat'].toDouble() : json['lat'],
   );
 
   Map<String, dynamic> toJson() => {
-    "longtitude": longtitude,
-    "latitude": latitude,
+    "long": longitude,
+    "lat": latitude,
   };
 }
 
 
-List<PetProfile> petProfileFromShot(QuerySnapshot<Map<String, dynamic>> query) => List<PetProfile>.from(query.docs.map((x) => PetProfile.fromShot(x.data(), x.reference.path)));
-List<PetProfile> petProfileFromDocs(List<QueryDocumentSnapshot<Map<String, dynamic>>> query) => List<PetProfile>.from(query.map((x) => PetProfile.fromShot(x.data(), x.reference.path)));
-List<PetProfile> petProfileFromJson(String data) => List<PetProfile>.from(json.decode(data).map((e) => PetProfile.fromJson(e)));
+List<PetProfile> petProfileFromShot(List<dynamic> data) => List<PetProfile>.from(data.map((e) => PetProfile.fromShot(e)));
+List<PetProfile> petProfileFromJson(List<dynamic> data) => List<PetProfile>.from(data.map((e) => PetProfile.fromJson(e)));
 String petProfileToJson(List<PetProfile> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
 
-PetProfile singlePetProfileFromShot(Map<String, dynamic> data, String id) => PetProfile.fromShot(data, id);
+PetProfile singlePetProfileFromShot(Map<String, dynamic> data) => PetProfile.fromShot(data);
 PetProfile singlePetProfileFromJson(String data) => PetProfile.fromJson(json.decode(data));
-PetProfile singlePetProfileFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) => PetProfile.fromShot(doc.data(), doc.reference.path);
+PetProfile singlePetProfileFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) => PetProfile.fromShot(doc.data());
 String singlePetProfileToJson(PetProfile data) => json.encode(data.toJson());
 
 class PetProfile {
@@ -312,14 +311,14 @@ class PetProfile {
     required this.birthdate,
     required this.photoUrl,
     required this.ownerId,
-    required this.verified,
-    required this.ts,
+    this.type,
+    required this.createdAt,
     required this.vaccines,
     required this.rateSum,
     required this.rateCount,
     required this.passport,
     required this.lastModified,
-    required this.location
+    this.location
   });
 
   String id;
@@ -329,44 +328,44 @@ class PetProfile {
   DateTime birthdate;
   String photoUrl;
   String ownerId;
-  bool verified;
-  DateTime ts;
+  int? type;
+  DateTime createdAt;
   List<String> vaccines;
   int rateSum;
   int rateCount;
   String passport;
   DateTime lastModified;
-  Location location;
+  Location? location;
 
-  factory PetProfile.fromShot(Map<String, dynamic> json, String? id) => PetProfile(
-    id: id?? json["id"],
+  factory PetProfile.fromShot(Map<String, dynamic> json) => PetProfile(
+    id: json['_id'],
     name: json["name"],
     breed: json["breed"],
     isMale: json["isMale"],
-    birthdate: json["birthdate"].toDate(),
+    birthdate: DateTime.parse(json["birthdate"]),
     photoUrl: json["photoUrl"],
     ownerId: json["ownerId"],
-    verified: json["verified"],
-    location: Location.fromJson(json["location"]),
-    ts: json["ts"].toDate(),
+    type: json["owner"]?['type'],
+    location: json['owner'] != null ? Location.fromJson(json['owner']["location"]) : null,
+    createdAt: DateTime.parse(json["createdAt"]),
     vaccines: List<String>.from(json["vaccines"].map((x) => x)),
     rateSum: json["rateSum"],
     rateCount: json["rateCount"],
     passport: json["passport"],
-    lastModified: json['lastModified'].toDate()
+    lastModified: DateTime.parse(json['lastModified'])
   );
 
   factory PetProfile.fromJson(Map<String, dynamic> json) => PetProfile(
-    id: json["id"],
+    id: json["_id"],
     name: json["name"],
     breed: json["breed"],
     isMale: json["isMale"],
     birthdate: DateTime.fromMillisecondsSinceEpoch(json["birthdate"]),
     photoUrl: json["photoUrl"],
     ownerId: json["ownerId"],
-    verified: json["verified"],
-    location: Location.fromJson(json["location"]),
-    ts: DateTime.fromMillisecondsSinceEpoch(json["ts"]),
+    type: json['type'],
+    location: json["location"] != null ? Location.fromJson(json["location"]) : null,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(json["createdAt"]),
     vaccines: List<String>.from(json["vaccines"].map((x) => x)),
     rateSum: json["rateSum"],
     rateCount: json["rateCount"],
@@ -375,16 +374,16 @@ class PetProfile {
   );
 
   Map<String, dynamic> toJson() => {
-    "id": id,
+    "_id": id,
     "name": name,
     "breed": breed,
     "isMale": isMale,
     "birthdate": birthdate.millisecondsSinceEpoch,
     "photoUrl": photoUrl,
     "ownerId": ownerId,
-    "verified": verified,
-    "location": location.toJson(),
-    "ts": ts.millisecondsSinceEpoch,
+    "type": type,
+    "location": location?.toJson(),
+    "createdAt": createdAt.millisecondsSinceEpoch,
     "vaccines": List<dynamic>.from(vaccines.map((x) => x)),
     "rateSum": rateSum,
     "rateCount": rateCount,
@@ -396,17 +395,17 @@ class PetProfile {
     "name": name,
     "breed": breed,
     "isMale": isMale,
-    "birthdate": Timestamp.fromMillisecondsSinceEpoch(birthdate.millisecondsSinceEpoch),
+    "birthdate": birthdate,
     "photoUrl": photoUrl,
     "ownerId": ownerId,
-    "verified": verified,
-    "location": location.toJson(),
-    "ts": Timestamp.fromMillisecondsSinceEpoch(ts.millisecondsSinceEpoch),
+    "verified": type,
+    "location": location?.toJson(),
+    "createdAt": createdAt,
     "vaccines": List<dynamic>.from(vaccines.map((x) => x)),
     "rateSum": rateSum,
     "rateCount": rateCount,
     "passport": passport,
-    "lastModified": lastModified.millisecondsSinceEpoch
+    "lastModified": lastModified
   };
 }
 // To parse this JSON data, do
@@ -417,6 +416,12 @@ List<PetAnalysis> petAnalysisFromJson(String str) => List<PetAnalysis>.from(json
 String petAnalysisToJson(List<PetAnalysis> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
 
 class PetAnalysis {
+  List<Label> labels;
+  List<dynamic> moderationLabels;
+  String vendor;
+  String imageId;
+  DateTime createdAt;
+
   PetAnalysis({
     required this.labels,
     required this.moderationLabels,
@@ -424,12 +429,6 @@ class PetAnalysis {
     required this.imageId,
     required this.createdAt,
   });
-
-  List<Label> labels;
-  List<dynamic> moderationLabels;
-  String vendor;
-  String imageId;
-  DateTime createdAt;
 
   factory PetAnalysis.fromJson(Map<String, dynamic> json) => PetAnalysis(
     labels: List<Label>.from(json["labels"].map((x) => Label.fromJson(x))),
@@ -449,6 +448,11 @@ class PetAnalysis {
 }
 
 class Label {
+  String name;
+  double confidence;
+  List<Instance> instances;
+  List<Parent> parents;
+
   Label({
     required this.name,
     required this.confidence,
@@ -456,14 +460,9 @@ class Label {
     required this.parents,
   });
 
-  String name;
-  double confidence;
-  List<Instance> instances;
-  List<Parent> parents;
-
   factory Label.fromJson(Map<String, dynamic> json) => Label(
     name: json["Name"],
-    confidence: json["Confidence"].toDouble(),
+    confidence: json["Confidence"]?.toDouble(),
     instances: List<Instance>.from(json["Instances"].map((x) => Instance.fromJson(x))),
     parents: List<Parent>.from(json["Parents"].map((x) => Parent.fromJson(x))),
   );
@@ -477,17 +476,17 @@ class Label {
 }
 
 class Instance {
+  BoundingBox boundingBox;
+  double confidence;
+
   Instance({
     required this.boundingBox,
     required this.confidence,
   });
 
-  BoundingBox boundingBox;
-  double confidence;
-
   factory Instance.fromJson(Map<String, dynamic> json) => Instance(
     boundingBox: BoundingBox.fromJson(json["BoundingBox"]),
-    confidence: json["Confidence"].toDouble(),
+    confidence: json["Confidence"]?.toDouble(),
   );
 
   Map<String, dynamic> toJson() => {
@@ -497,6 +496,11 @@ class Instance {
 }
 
 class BoundingBox {
+  double width;
+  double height;
+  double left;
+  double top;
+
   BoundingBox({
     required this.width,
     required this.height,
@@ -504,16 +508,11 @@ class BoundingBox {
     required this.top,
   });
 
-  double width;
-  double height;
-  double left;
-  double top;
-
   factory BoundingBox.fromJson(Map<String, dynamic> json) => BoundingBox(
-    width: json["Width"].toDouble(),
-    height: json["Height"].toDouble(),
-    left: json["Left"].toDouble(),
-    top: json["Top"].toDouble(),
+    width: json["Width"]?.toDouble(),
+    height: json["Height"]?.toDouble(),
+    left: json["Left"]?.toDouble(),
+    top: json["Top"]?.toDouble(),
   );
 
   Map<String, dynamic> toJson() => {
@@ -525,11 +524,11 @@ class BoundingBox {
 }
 
 class Parent {
+  String name;
+
   Parent({
     required this.name,
   });
-
-  String name;
 
   factory Parent.fromJson(Map<String, dynamic> json) => Parent(
     name: json["Name"],
@@ -542,83 +541,82 @@ class Parent {
 
 
 
-List<MateRequest> mateRequestFromShot(QuerySnapshot<Map<String, dynamic>> query) => List<MateRequest>.from(query.docs.map((x) => MateRequest.fromShot(x.data(), x.id)));
-List<MateRequest> mateRequestFromDocs(List<DocumentSnapshot<Map<String, dynamic>>> docs) => List<MateRequest>.from(docs.map((x) => MateRequest.fromShot(x.data()!, x.id)));
+
+List<MateRequest> mateRequestFromShot(List<dynamic> data) => List<MateRequest>.from(data.map((e) => MateRequest.fromShot(e)));
+List<MateRequest> mateRequestFromDocs(List<DocumentSnapshot<Map<String, dynamic>>> docs) => List<MateRequest>.from(docs.map((x) => MateRequest.fromShot(x.data()!)));
 List<MateRequest> mateRequestFromJson(String data) => List<MateRequest>.from(json.decode(data).map((x) => MateRequest.fromJson(x)));
 
 
 String mateRequestToJson(List<MateRequest> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
-String mateRequestToFirebase(List<MateRequest> data) => json.encode(List<dynamic>.from(data.map((x) => x.toFirebase())));
 
-MateRequest singleMateRequestFromShot(Map<String, dynamic> data, String id) => MateRequest.fromShot(data, id);
+MateRequest singleMateRequestFromShot(Map<String, dynamic> data) => MateRequest.fromShot(data);
 MateRequest singleMateRequestFromJson(Map<String, dynamic> data) => MateRequest.fromJson(data);
 
 String singleMateRequestToJson(MateRequest data) => json.encode(data.toJson());
-String singleMateRequestToFirebase(MateRequest data) => json.encode(data.toFirebase());
 
 class MateRequest {
   MateRequest({
     required this.id,
     required this.senderId,
     required this.receiverId,
-    required this.senderPet,
-    required this.receiverPet,
+    required this.senderPetId,
+    required this.receiverPetId,
     required this.status,
-    required this.ts,
+    required this.createdAt,
     required this.lastModified,
+    this.senderPet,
+    this.receiverPet
+
   });
 
   String id;
   String senderId;
   String receiverId;
-  String senderPet;
-  String receiverPet;
+  String senderPetId;
+  String receiverPetId;
   requestState status;
-  DateTime ts;
+  DateTime createdAt;
   DateTime lastModified;
+  PetProfile? senderPet;
+  PetProfile? receiverPet;
 
-  factory MateRequest.fromShot(Map<String, dynamic> json, String id) => MateRequest(
-    id: id,
+  factory MateRequest.fromShot(Map<String, dynamic> json) => MateRequest(
+    id: json['_id'],
     senderId: json["senderId"],
     receiverId: json["receiverId"],
-    senderPet: json["senderPet"],
-    receiverPet: json["receiverPet"],
+    senderPetId: json["senderPetId"],
+    receiverPetId: json["receiverPetId"],
     status: requestState.values[json["status"]],
-    ts: json['ts'].toDate(),
-    lastModified: json['lastModified'].toDate()
+    createdAt: DateTime.parse(json['createdAt']),
+    lastModified:  DateTime.parse(json['lastModified']),
+    senderPet: json['senderPet'] != null ? singlePetProfileFromShot(json['senderPet']) : null,
+    receiverPet: json['receiverPet'] != null ? singlePetProfileFromShot(json['receiverPet']): null
   );
   factory MateRequest.fromJson(Map<String, dynamic> json) => MateRequest(
-    id: json['id'],
+    id: json['_id'],
     senderId: json["senderId"],
     receiverId: json["receiverId"],
-    senderPet: json["senderPet"],
-    receiverPet: json["receiverPet"],
+    senderPetId: json["senderPetId"],
+    receiverPetId: json["receiverPetId"],
     status: requestState.values[json["status"]],
-    ts: DateTime.fromMillisecondsSinceEpoch(json['ts']),
-    lastModified: DateTime.fromMillisecondsSinceEpoch(json['lastModified'])
+    createdAt: DateTime.fromMillisecondsSinceEpoch(json['createdAt']),
+    lastModified: DateTime.fromMillisecondsSinceEpoch(json['lastModified']),
+    senderPet: json['senderPet'] != null ? singlePetProfileFromShot(json['senderPet']) : null,
+    receiverPet: json['receiverPet'] != null ? singlePetProfileFromShot(json['receiverPet']): null
   );
 
   Map<String, dynamic> toJson() => {
-    "id": id,
-    "sender_id": senderId,
-    "receiver_id": receiverId,
-    "sender_pet": senderPet,
-    "receiver_pet": receiverPet,
-    "status": status.index,
-    "ts": ts.millisecondsSinceEpoch,
-    "lastModofied": lastModified.millisecondsSinceEpoch
-  };
-  Map<String, dynamic> toFirebase() => {
+    "_id": id,
     "senderId": senderId,
     "receiverId": receiverId,
-    "senderPet": senderPet,
-    "receiverPet": receiverPet,
+    "senderPetId": senderPetId,
+    "receiverPetId": receiverPetId,
     "status": status.index,
-    "ts": Timestamp.fromDate(ts),
-    "lastModified": Timestamp.fromDate(lastModified)
+    "createdAt": createdAt.millisecondsSinceEpoch,
+    "lastModified": lastModified.millisecondsSinceEpoch,
+    "senderPet": senderPet?.toJson(),
+    "receiverPet": receiverPet?.toJson()
   };
-
-
 
   petSendState(String petID){
     if (petID == senderId){

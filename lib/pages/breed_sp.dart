@@ -59,9 +59,9 @@ class _breedSearchPageState extends State<breedSearchPage> {
 
   initPets() async{
 
-    List<PetPod> pods = await fetchResultedPets();
-    startSorting(pods);
-    breedList.addAll(await fetchBreedNameList());
+    // List<PetPod> pods = await fetchResultedPets();
+    // startSorting(pods);
+    // breedList.addAll(await fetchBreedNameList());
   }
 
   generateDistances() async{
@@ -86,7 +86,7 @@ class _breedSearchPageState extends State<breedSearchPage> {
 
     try{
       return allList.firstWhere((e) {
-        return e.senderPet == petID || e.receiverPet == petID;
+        return e.senderPetId == petID || e.receiverPetId == petID;
 
       });
     }catch (e){
@@ -582,14 +582,13 @@ class _breedSearchPageState extends State<breedSearchPage> {
                     onTap: (){
                       MateRequest req = matchRequest(pets[index].pet.id);
                       if (req.status == -1){
-                        MateItem petItem = MateItem(pod: pets[index], request: req);
-                        homeNav_key.currentState?.pushNamed('/petProfile', arguments: [petItem, widget.ownerPets]).then((value) {
+                        homeNav_key.currentState?.pushNamed('/petProfile', arguments: [pets[index], req]).then((value) {
                           if (req.status != -1){
                             widget.sentRequests.add(req);
                           }
                         });
                       }else{
-                        homeNav_key.currentState?.pushNamed('/petProfile', arguments: [MateItem(pod: pets[index], request: req), widget.ownerPets]);
+                        homeNav_key.currentState?.pushNamed('/petProfile', arguments: [pets[index], req]);
                       }
 
 

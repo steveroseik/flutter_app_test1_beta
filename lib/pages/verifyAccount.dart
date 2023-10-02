@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
-import 'package:flutter_native_image/flutter_native_image.dart';
+// import 'package:flutter_native_image/flutter_native_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:introduction_screen/introduction_screen.dart';
@@ -207,23 +207,24 @@ class _VerifyAccountPageState extends State<VerifyAccountPage> {
     if (file.path != ''){
       int fileSize = getFileSize(file);
       File tempFile = File(file.path);
-      do{
-        if (fileSize > 2200) {
-          tempFile = await FlutterNativeImage.compressImage(tempFile.path,
-              quality: 100, percentage: 70);
-        }else if (fileSize > 1700){
-          tempFile = await FlutterNativeImage.compressImage(tempFile.path,
-              quality: 100, percentage: 80);
-        }else if (fileSize > 1200){
-          tempFile = await FlutterNativeImage.compressImage(tempFile.path,
-              quality: 100, percentage: 90);
-        }else{
-          tempFile = await FlutterNativeImage.compressImage(tempFile.path,
-              quality: 100, percentage: 95);
-        }
-        fileSize = getFileSize(tempFile);
-
-      }while( fileSize > 1024);
+      //TODO:: FIX IT
+      // do{
+      //   if (fileSize > 2200) {
+      //     tempFile = await FlutterNativeImage.compressImage(tempFile.path,
+      //         quality: 100, percentage: 70);
+      //   }else if (fileSize > 1700){
+      //     tempFile = await FlutterNativeImage.compressImage(tempFile.path,
+      //         quality: 100, percentage: 80);
+      //   }else if (fileSize > 1200){
+      //     tempFile = await FlutterNativeImage.compressImage(tempFile.path,
+      //         quality: 100, percentage: 90);
+      //   }else{
+      //     tempFile = await FlutterNativeImage.compressImage(tempFile.path,
+      //         quality: 100, percentage: 95);
+      //   }
+      //   fileSize = getFileSize(tempFile);
+      //
+      // }while( fileSize > 1024);
       print(file.path);
       print(tempFile.path);
       var bytes = File(tempFile.path).readAsBytesSync();

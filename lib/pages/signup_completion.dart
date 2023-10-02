@@ -76,46 +76,42 @@ class _SignupState extends State<Signup> {
   }
 
   void userVerified() async{
+
+    await FirebaseAuth.instance.currentUser?.reload();
+    final uemail = FirebaseAuth.instance.currentUser!.email.toString();
+    final uid = FirebaseAuth.instance.currentUser!.uid.toString();
+
+    List<dynamic> resp = await userInDb(uemail, uid);
+    userPod = resp[1];
+    emailController = resp[0];
+    final List<PetProfile> pets = resp[2];
+
+    switch(emailController){
+      case usrState.connectionError:
+        showSnackbar(context, 'connection time out');
+        widget.cacheBox.signOut();
+        break;
+      case usrState.userAlreadyExists:
+        showSnackbar(context, 'Duplicate email.');
+        FirebaseAuth.instance.currentUser?.delete();
+        widget.cacheBox.signOut();
+        break;
+      case usrState.newUser:
+        isComplete = false;
+        break;
+      case usrState.completeUser:
+        widget.cacheBox.storeUser(userPod!, pets: pets);
+        isComplete = true;
+        break;
+    }
+
+    setState(() {
+      isLoading = false;
+    });
+
     try{
-      await FirebaseAuth.instance.currentUser?.reload();
-      final uemail = FirebaseAuth.instance.currentUser!.email.toString();
-      final uid = FirebaseAuth.instance.currentUser!.uid.toString();
 
-      if(widget.cacheBox.isUserCached(uid)){
-        setState(() {
-          userPod = widget.cacheBox.getUserInfo();
-          isComplete = true;
-          isLoading = false;
-        });
-      }else{
-        List<dynamic> resp = await userInDb(uemail, uid);
-        userPod = resp[1];
-        emailController = resp[0];
-
-        switch(emailController){
-          case usrState.connectionError:
-            showSnackbar(context, 'connection time out');
-            widget.cacheBox.signOut();
-            break;
-          case usrState.userAlreadyExists:
-            showSnackbar(context, 'Duplicate email.');
-            // FirebaseAuth.instance.currentUser?.delete();
-            widget.cacheBox.signOut();
-            break;
-          case usrState.newUser:
-            isComplete = false;
-            break;
-          case usrState.completeUser:
-            widget.cacheBox.storeUser(userPod!);
-            isComplete = true;
-            break;
-        }
-
-        setState(() {
-          isLoading = false;
-        });
-      }
-    }catch (e){
+    }catch (e) {
       print('userVerifiedError: $e');
     }
 
@@ -551,6 +547,7 @@ class _SignupState extends State<Signup> {
                         onTap: ()async{
                           bool failedToSignup = true;
                           try{
+
                             String phoneNumber = "${codeController.text}${phoneFieldController.text}";
                             if (phoneFieldController.text.length <= 13){
                               final ret = await checkPhoneAvailability(phoneNumber);
@@ -564,14 +561,13 @@ class _SignupState extends State<Signup> {
                                   showSnackbar(context, 'Could not communicate with server, try again.');
                                 }
                               }else if (ret == 0 ){
-                                showSnackbar(context, 'Could not communicate with server, try again.');
+                                showSnackbar(context, '.. Could not communicate with server, try again.');
                               }else{
                                 showSnackbar(context, 'Phone number already exists.');
                               }
                             }else{
                               showSnackbar(context, 'Add your phone number first!');
                             }
-
                           }catch(error){
                             showSnackbar(context, 'Problem finishing your Sign up. Try again!');
                           }finally{
@@ -579,6 +575,7 @@ class _SignupState extends State<Signup> {
                               userVerified();
                             }
                           }
+
                         },
                         child: Container(
                           alignment: Alignment.centerRight,

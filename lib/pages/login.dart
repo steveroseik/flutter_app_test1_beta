@@ -9,6 +9,7 @@ import 'package:flutter_app_test1/JsonObj.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'package:pinput/pinput.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 import '../FETCH_wdgts.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
@@ -285,6 +286,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future SignInAuth() async {
+
+    //TODO:: MAKE IT FOR ALL OTHER SIGN IN OPTIONS
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('authToken')) prefs.remove('authToken');
 
     setState((){});
     if (!loading.mounted){

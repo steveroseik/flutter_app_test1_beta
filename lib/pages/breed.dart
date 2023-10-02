@@ -50,14 +50,13 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
     late OverlayEntry loading;
     final Size windowSize = MediaQueryData.fromWindow(window).size;
     var cam_Btn = true;
-    String analysisID = '';
     List<suggestion> autoBreedList = <suggestion>[];
     String suggestionSelected = '';
     late AnimationController _controller;
     late Animation<double> _animation;
 
 
-    generateRecommendations() async{
+    generateRecommendations(String analysisID) async{
 
       var data = await generateBreedPossibilities(analysisID);
       data = data.toSet().toList();
@@ -79,8 +78,8 @@ class _addBreedPageState extends State<addBreedPage> with TickerProviderStateMix
       try{
         final resp = await getUploadResponse(imageFile!);
         if (resp.approved == 1){
-          analysisID = resp.id;
-          generateRecommendations();
+
+          generateRecommendations(resp.id);
           return 0;
         }else{
           showSnackbar(context, "Couldn't find a dog in this photo!");

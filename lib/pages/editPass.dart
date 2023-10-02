@@ -4,15 +4,7 @@ import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
-import '../APILibraries.dart';
 
-
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_app_test1/routesGenerator.dart';
-
-import '../FETCH_wdgts.dart';
 
 class editPass extends StatefulWidget {
   final Map userData;

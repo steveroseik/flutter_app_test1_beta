@@ -1,5 +1,9 @@
 import 'dart:async';
+import 'dart:math';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart' as dd;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:http/http.dart';
@@ -11,6 +15,9 @@ import 'package:http/http.dart' as http;
 import 'FETCH_wdgts.dart';
 import 'JsonObj.dart';
 import 'cacheBox.dart';
+import 'package:pdf/pdf.dart';
+import 'package:image/image.dart' as img;
+import 'package:pdf/widgets.dart' as pw;
 
 
 enum NavPages{
@@ -29,11 +36,9 @@ enum usrState{
   connectionError
 }
 
-enum sliderStatus{
-  up, left, right, none
-}
+enum sliderStatus{ up, left, right, none }
 
-enum profileState { requested, pendingApproval, friend, noFriendship}
+enum profileState { requested, pendingApproval, friend, noFriendship, owner, undefined}
 enum requestState { pending, denied, accepted, undefined }
 enum petRelation {sender, receiver, none}
 
@@ -141,69 +146,93 @@ Future<bool> notifierChange(ValueNotifier V) {
   return completer.future;
 }
 
-class RequestsProvider with ChangeNotifier{
-  List<MateItem> reqItems = <MateItem>[];
-
-  get requests => reqItems;
-
-  get pendingRequests => reqItems.where((item) => item.stat == requestState.pending).toList();
-
-  get friends => reqItems.where((item) => item.stat == requestState.accepted).toList();
-
-  set requestItems(List<MateItem> items){
-    reqItems = items;
-    notifyListeners();
-  }
-
-  addItems(List<MateItem> items){
-    reqItems.addAll(items);
-    notifyListeners();
-  }
-
-  addItem (MateItem item){
-    reqItems.add(item);
-    print('item added: ${item.pod.pet.name}');
-    notifyListeners();
-  }
-
-  removeAt(int i){
-    reqItems.removeAt(i);
-    notifyListeners();
-  }
-
-  removeWithId(String id){
-    reqItems.removeWhere((e) => e.request!.id == id);
-    notifyListeners();
-  }
-
-  findRelation(String petId1, String petId2){
-    int i = reqItems.indexWhere((e){
-      return (e.request!.senderPet == petId1 &&
-              e.request!.receiverPet == petId2) ||
-          (e.request!.senderPet == petId2 &&
-              e.request!.receiverPet == petId1);
-    });
-
-    if (i == -1){
-      return petRelation.none;
-    }else{
-      if (reqItems[i].pod.pet.id == petId1){
-        return petRelation.sender;
+extension UniquePets on Iterable<MateRequest>{
+  Set<MateRequest> toSetWithRules() {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final resultSet = <MateRequest>{};
+    for (var element in this) {
+      if (element.senderId == uid){
+        if (!resultSet.any((e) =>
+        (e.receiverPetId == element.receiverPetId) ||
+            (e.senderPetId == element.receiverPetId))) {
+          resultSet.add(element);
+        }
+      }else{
+        if (!resultSet.any((e) =>
+        (e.receiverPetId == element.senderPetId) ||
+            (e.senderPetId == element.senderPetId))) {
+          resultSet.add(element);
+        }
       }
-      return petRelation.receiver;
+
     }
-  }
-
-  updateRequest(MateRequest request, requestState s){
-    int i = reqItems.indexWhere((e) => e.request!.id == request.id);
-
-    if (i == -1 ) return false;
-
-    reqItems[i].request!.status = s;
-    notifyListeners();
-    return true;
+    return resultSet;
   }
 }
+
+// class RequestsProvider with ChangeNotifier{
+//   List<MateItem> reqItems = <MateItem>[];
+//
+//   get requests => reqItems;
+//
+//   get pendingRequests => reqItems.where((item) => item.stat == requestState.pending).toList();
+//
+//   get friends => reqItems.where((item) => item.stat == requestState.accepted).toList();
+//
+//   set requestItems(List<MateItem> items){
+//     reqItems = items;
+//     notifyListeners();
+//   }
+//
+//   addItems(List<MateItem> items){
+//     reqItems.addAll(items);
+//     notifyListeners();
+//   }
+//
+//   addItem (MateItem item){
+//     reqItems.add(item);
+//     print('item added: ${item.item.pet.name}');
+//     notifyListeners();
+//   }
+//
+//   removeAt(int i){
+//     reqItems.removeAt(i);
+//     notifyListeners();
+//   }
+//
+//   removeWithId(String id){
+//     reqItems.removeWhere((e) => e.request!.id == id);
+//     notifyListeners();
+//   }
+//
+//   findRelation(String petId1, String petId2){
+//     int i = reqItems.indexWhere((e){
+//       return (e.request!.senderPetId == petId1 &&
+//               e.request!.receiverPetId == petId2) ||
+//           (e.request!.senderPetId == petId2 &&
+//               e.request!.receiverPetId == petId1);
+//     });
+//
+//     if (i == -1){
+//       return petRelation.none;
+//     }else{
+//       if (reqItems[i].item.pet.id == petId1){
+//         return petRelation.sender;
+//       }
+//       return petRelation.receiver;
+//     }
+//   }
+//
+//   updateRequest(MateRequest request, requestState s){
+//     int i = reqItems.indexWhere((e) => e.request!.id == request.id);
+//
+//     if (i == -1 ) return false;
+//
+//     reqItems[i].request!.status = s;
+//     notifyListeners();
+//     return true;
+//   }
+// }
 
 Future<File> _getImageFromNetwork(String url, String fileName) async {
   final directory = await getApplicationDocumentsDirectory();
@@ -226,3 +255,111 @@ Future<ImageProvider> getNetworkImage(String url, String fileName) async {
   final file = await _getImageFromNetwork(url, fileName);
   return FileImage(file);
 }
+
+Future<String?> generatePDFImages(List<String> imagePaths) async {
+  try{
+    final pdf = pw.Document();
+    final outputDir = await getApplicationDocumentsDirectory();
+
+    for (final imagePath in imagePaths) {
+      final image = img.decodeImage(File(imagePath).readAsBytesSync());
+      final pdfImage = pw.MemoryImage(
+        Uint8List.fromList(img.encodePng(image!)),
+      );
+
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) {
+            return pw.Center(
+              child: pw.Image(pdfImage),
+            );
+          },
+        ),
+      );
+    }
+
+    final pdfFilePath = '${outputDir.path}/output${Random().nextInt(100)}.pdf';
+    final file = File(pdfFilePath);
+    await file.writeAsBytes(await pdf.save());
+
+    print('PDF file generated at $pdfFilePath');
+
+    return file.path;
+  }catch (e){
+    print(e);
+    return null;
+  }
+}
+
+Future<String> getCachedPdfPathWithProgress(
+    String pdfUrl, {
+      String cacheDirectoryName = 'cached_pdfs',
+      Function(int, int)? onReceiveProgress,
+    }) async {
+  final appDocumentsDirectory = await getApplicationDocumentsDirectory();
+  final cacheDirectory = Directory('${appDocumentsDirectory.path}/$cacheDirectoryName');
+  if (!cacheDirectory.existsSync()) {
+    cacheDirectory.createSync();
+  }
+
+  final pdfFilename = pdfUrl.split('/').last;
+  final cachedPdfFile = File('${cacheDirectory.path}/$pdfFilename');
+
+  if (cachedPdfFile.existsSync()) {
+    return cachedPdfFile.path;
+  }
+
+  final dio = dd.Dio();
+  try {
+    final response = await dio.get(
+      pdfUrl,
+      options: dd.Options(
+        responseType: dd.ResponseType.bytes,
+        followRedirects: false, // To avoid following redirects for progress events.
+      ),
+      onReceiveProgress: onReceiveProgress,
+      cancelToken: dd.CancelToken(), // Create a cancel token for canceling the request.
+    );
+
+    cachedPdfFile.writeAsBytesSync(response.data);
+
+    return cachedPdfFile.path;
+  } catch (e) {
+    print('Error downloading PDF: $e');
+    return '';
+  }
+}
+
+// clear cached pdfs
+
+Future<int> clearCachedPDFs() async {
+  try {
+    // Get the temporary directory where PDF files are cached.
+    final Directory tempDir = await getTemporaryDirectory();
+
+    // List all files in the directory.
+    final List<FileSystemEntity> files = tempDir.listSync();
+
+    // Define a file extension filter (e.g., '.pdf') to target only PDF files.
+    const String pdfExtension = '.pdf';
+
+    int totalSize = 0; // Initialize total size to zero.
+
+    // Iterate through the files and delete PDF files while accumulating their sizes.
+    for (final FileSystemEntity file in files) {
+      if (file is File && file.path.endsWith(pdfExtension)) {
+        final int fileSize = await file.length();
+        await file.delete();
+        totalSize += fileSize;
+      }
+    }
+
+    print('Cached PDFs cleared successfully.');
+    return totalSize; // Return the total size of deleted files.
+  } catch (e) {
+    print('Error clearing cached PDFs: $e');
+    return -1; // Return -1 to indicate an error.
+  }
+}
+
+

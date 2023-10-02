@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:custom_info_window/custom_info_window.dart';
 import 'package:flutter/cupertino.dart';
@@ -302,7 +303,7 @@ class _CreateMeetState extends State<CreateMeet> {
                                 petPods[index].isSelected = true;
                             });
                           },
-                          child: CustomPet(pod: petPods[index]),
+                          child: CustomPet(pod: petPods[index], tag: '0',),
                         );
                       })),
               SizedBox(

@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io' as io;
 import 'dart:convert';
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app_test1/configuration.dart';
@@ -26,6 +26,8 @@ typedef Future<T> FutureGenerator<T>();
 
 final dB = FirebaseFirestore.instance;
 
+const gqlUrl = 'http://192.168.1.8:5000/graphql';//'https://o8klhba4g7.execute-api.eu-west-1.amazonaws.com/dev/graphql';
+
 int readsTotal = 0;
 
 Future<T> retry<T>(int retries, FutureGenerator aFuture) async {
@@ -42,12 +44,12 @@ Future<T> retry<T>(int retries, FutureGenerator aFuture) async {
 
 // Function returns breeds of dogs with image url
 Future<List<Breed>> getBreedList(int counter) async {
-  try {
-    final resp = await SupabaseCredentials.supabaseClient.from('breed').select('name,photoUrl') as List<dynamic>;
-    final List<Breed> bList = breedFromJson(jsonEncode(resp));
-    return bList;
 
+  try {
+    final resp = await SupabaseCredentials.supabaseClient.from('breed').select('*') as List<dynamic>;
+    return breedFromJson(jsonEncode(resp));
   } catch (e) {
+    print('getBreedList err: $e');
     return List<Breed>.empty();
   }finally{
 
@@ -59,35 +61,32 @@ Future generateBreedPossibilities(String id) async{
       'x-api-key': '7312afbd-ed2d-4fe2-b7d9-b66602ea58f7'
     };
 
-    var url = Uri.parse('https://api.thedogapi.com/v1/images/${id}/analysis');
+    var url = Uri.parse('https://api.thedogapi.com/v1/images/$id/analysis');
 
     var response = await http.get(url, headers: headers);
     final obj = petAnalysisFromJson(response.body);
 
+    final rejectedNames = ['DOG', 'MAMMAL', 'PET', 'ANIMAL',
+                        'GRASS', 'PLANT', 'PUPPY','CANINE', 'HOUND', 'TERRIER', ];
     final breeds = await getBreedList(0);
     final List<String> names = <String>[];
     final matches = <Breed>[];
     for(Label label in obj[0].labels){
-      names.add(label.name);
+      if (!rejectedNames.contains(label.name.toUpperCase())) names.add(label.name);
       for(Parent parent in label.parents){
-        names.add(parent.name);
+        if (!rejectedNames.contains(parent.name.toUpperCase())) names.add(parent.name);
+
       }
     }
-
+    print(names);
     for (Breed breed in breeds){
       for (String name in names){
         if (breed.name.toUpperCase().contains(name.toUpperCase())){
-          if (!breed.name.toUpperCase().contains('DOG')
-              && !breed.name.toUpperCase().contains('TERRIER')
-              && !breed.name.toUpperCase().contains('PET')){
-            matches.add(breed);
-          }
-
+          matches.add(breed);
         }
       }
 
     }
-
     return matches;
 
   } catch (e) {
@@ -110,7 +109,7 @@ Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
 
     var multipartFile = await http.MultipartFile.fromPath('file', imgFile.path,
         filename: basename(imgFile.path),
-        contentType: new MediaType("image", "jpeg"));
+        contentType: MediaType("image", "jpeg"));
 
     request.files.add(multipartFile);
     request.fields['sub_id'] = 'betaTest_FETCH';
@@ -118,7 +117,7 @@ Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
     var res = await request.send();
     var response = await http.Response.fromStream(res);
 
-    if (response.body != null) {
+    if (response.statusCode == 201) {
       pRes = photoResponseFromJson(response.body);
       if (pRes.approved == 1) {
         return pRes;
@@ -129,6 +128,8 @@ Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
           url: "Can't find a dog in photo",
           subId: '-11',
           originalFilename: '-11',
+          width: 0,
+          height: 0,
           pending: -1,
           approved: -1);
     }
@@ -139,6 +140,8 @@ Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
         subId: '-11',
         originalFilename: '-11',
         pending: -1,
+        width: 0,
+        height: 0,
         approved: -1);
   } catch (e) {
     return PhotoResponse(
@@ -147,70 +150,167 @@ Future<PhotoResponse> getUploadResponse(io.File imgFile) async {
         subId: '-11',
         originalFilename: '-11',
         pending: -1,
+        width: 0,
+        height: 0,
         approved: -1);
   }
 }
 
-// add pet
 
-Future addPet(String name, String dogBreed, bool isMale, DateTime petBirthDate, String photoUrl, String uid, List<dynamic> vaccines, String pdfUrl) async{
+Future<String?> generateMyToken({required SharedPreferences prefs}) async{
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return null;
+  try{
+    final headers = {
+      'Content-Type': 'application/json',
+    };
+    final body = {
+      'query': '''mutation{
+  login(userId: "$uid")
+    }''',
+    };
+
+    final response = await http.post(
+      Uri.parse(gqlUrl),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    print(response.body);
+    final data = jsonDecode(response.body);
+    if (data['data']['login']['token'] != null){
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setString('authToken', data['data']['login']['token']);
+      return data['data']['login']['token'];
+    }
+  }catch (e){
+    if (kDebugMode) print('generateMyToken error: $e');
+  }
+  return null;
+
+}
+
+Future<Map<String, dynamic>?> sendGraphQLQuery(String q) async {
+  bool retry = true;
+  final prefs = await SharedPreferences.getInstance();
+  String? token = prefs.getString('authToken');
+  if (token == null || token.isEmpty) token = await generateMyToken(prefs: prefs);
+
+  do{
+    retry = false;
+    try{
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token'
+      };
+
+      final body = {
+        'query': q,
+      };
+
+      final response = await http.post(
+        Uri.parse(gqlUrl),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      print(response.body);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        String? errMsg = data['errors']?[0]['message'];
+        if (errMsg != null && errMsg == 'jwt expired'){
+          token = await generateMyToken(prefs: prefs);
+          retry = true;
+        }else{
+          return data;
+        }
+      }else{
+        throw Exception('Status code: ${response.statusCode} \n Message: ${response.body}');
+      }
+
+    }catch (e){
+      print(q);
+      print("errr GQL: ${e.toString()}");
+      return null;
+    }
+  }while(retry);
+}
+
+
+// add pet
+Future<List<dynamic>> addPet(String name, String dogBreed, bool isMale, DateTime petBirthDate, String photoUrl, String uid, List<String> vaccines, String pdfUrl) async{
   int ret = -100;
   PetProfile? newPet;
   try{
-    final query = await dB.collection('pets/$dogBreed/dogs').add({
-      'name': name.capitalize(),
-      'breed': dogBreed,
-      'isMale': isMale,
-      'birthdate': Timestamp.fromMillisecondsSinceEpoch(petBirthDate.millisecondsSinceEpoch),
-      'photoUrl': photoUrl,
-      'ownerId': uid,
-      'verified': false,
-      'ts': FieldValue.serverTimestamp(),
-      'vaccines': vaccines,
-      'passport': pdfUrl,
-      'rateSum': 0,
-      'rateCount': 0,
-      'lastModified': FieldValue.serverTimestamp(),
-    });
-    final petData = await query.get();
-    newPet = singlePetProfileFromShot(petData.data()!, petData.reference.path);
-    ret = 200;
-  } on FirebaseException catch (error) {
-    print(error.message);
-  }catch (e) {
-    print(e);
+    final query = '''
+    mutation{
+   addPet(name: "$name", breed: "$dogBreed", ownerId: "$uid"
+   birthdate: "${petBirthDate.toIso8601String()}", 
+   isMale: $isMale,
+   vaccines: ${jsonEncode(vaccines)}, passport: "$pdfUrl", photoUrl: "$photoUrl"){
+      _id,
+      name,
+      breed,
+      isMale,
+      birthdate,
+      photoUrl,
+      ownerId,
+      createdAt,
+      lastModified,
+      vaccines,
+      rateSum,
+      rateCount,
+      passport,
+   }
+}''';
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['addPet'] != null){
+      newPet = singlePetProfileFromShot(response['data']['addPet']);
+      ret = 200;
+    }
+  } catch (error) {
+    print('addPet ERR: $error');
   }
 
   return [ret, newPet];
 }
 
+//TODO: OUTDATED
 Future incrementUserPetCount(String uid, int petCount) async{
   int ret = -100;
   try{
     await dB.collection('users').doc(uid).update({"petCount": petCount, "lastModified": FieldValue.serverTimestamp()});
     ret = 200;
-  }on FirebaseException catch (e){
-    print("incrementFunction: ${e.message}");
+  }catch (e){
+    print("incrementFunction: ${e}");
   }
   return ret;
 }
 
-Future editPet(String name, bool isMale, DateTime petBirthDate, List<dynamic> vaccines, String pid, String breed) async{
+
+
+Future editPet(String? name, bool? isMale, DateTime? petBirthDate, List<dynamic> vaccines, String pid, String? breed,
+    String? passport) async{
   int ret = -100;
   try{
 
-    await dB.collection('pets/$breed/dogs').doc(pid).update({
-      'name': name,
-      'isMale': isMale ? true : false,
-      'birthdate': petBirthDate,
-      'vaccines': vaccines,
-      'lastModified': FieldValue.serverTimestamp()
-    });
-    ret = 200;
-  } on FirebaseException catch (error) {
-    print(error.message);
-  }catch (e){
-    print(e);
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final query = '''
+    mutation{
+      editPet(
+      id: "$pid",
+      ownerId: "$uid",
+      vaccines: ${jsonEncode(vaccines)},
+      ${name != null ? 'name: "$name"': '' },
+      ${isMale != null ? 'isMale: "$isMale"': '' },
+      ${petBirthDate != null ? 'birthdate: "${petBirthDate.toIso8601String()}"' : ''}
+      ${passport != null ? 'passport: "$passport"': '' },
+      )
+    }
+    ''';
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['editPet'] == 1) ret = 200;
+  } catch (error) {
+    print(error);
   }
 
   return ret;
@@ -222,62 +322,85 @@ Future addUser(String userid, String email, String phone, String fname,
   var resp = 100;
   UserPod? newUser;
  try {
-   Map<String, dynamic> userMap = {
-     "email": email,
-     "phone": phone,
-     "firstName": fname.capitalize(),
-     "lastName": lname.capitalize(),
-     "country": country,
-     "state": state?? "",
-     "city": city?? "",
-     "isMale": isMale,
-     "birthdate": Timestamp.fromMillisecondsSinceEpoch(birthdate.millisecondsSinceEpoch),
-     "location": {"latitude": 0.0, "longtitude": 0.0},
-     "type": 0,
-     "petCount": 0,
-     "photoUrl": '',
-     "ts": FieldValue.serverTimestamp(),
-     "lastModified": FieldValue.serverTimestamp()
-   };
-   await dB.collection('users').doc(userid).set(userMap);
-   final data = await dB.collection('users').doc(userid).get();
-   newUser = userPodFromDoc(data);
-   resp = 200;
- } on FirebaseException catch (error) {
-   print("addUserError: ${error.message}");
- }catch (e){
-   print('addUser unexpected: $e');
- }
 
- return [resp, newUser];
+
+ } catch (error) {
+   print("addUserError: ${error}");
+ }
+  final query = '''
+   mutation{
+    addUser(
+       id: "$userid",
+       email: "$email",
+       phone: "$phone",
+       firstName: "${fname.capitalize()}",
+       lastName: "${lname.capitalize()}",
+       country: "$country",
+       city: "$city",
+       isMale: $isMale,
+       birthdate: "${birthdate.toIso8601String()}",
+       lat: 0.0, 
+       long: 0.0,
+       type: 0,
+       photoUrl: "",
+    )
+   }
+   ''';
+  final response = await sendGraphQLQuery(query);
+  if (response != null && response['data']['addUser'] == 'success') {
+
+    final data = await sendGraphQLQuery('''{
+       getMyUserData(id: "$userid"){
+       _id,
+       firstName,
+       lastName,
+       email,
+       birthdate,
+       isMale,
+       country,
+       city,
+       location,
+       type,
+       verified,
+       createdAt,
+       lastModified,
+       phone,
+       photoUrl,
+       }
+   }''');
+
+    newUser = userPodFromShot(data!['data']['getMyUserData']);
+
+    resp = 200;
+  }
+  //TODO: Lazem yrg3lo token w baadein ygeeb biha el data!!!!
+  return [resp, newUser];
 
 }
 
-verifyUser()async{
+
+//TODO: needs to be more secure...?
+Future<bool> verifyUser()async{
   final uid = FirebaseAuth.instance.currentUser!.uid;
   try{
-
-    upgradeUserPets(uid);
-    await dB.collection('users').doc(uid).update({'type': 1, 'lastModified': FieldValue.serverTimestamp()});
-
-  }on FirebaseException catch (e){
-    print(e.message);
-  }
-
-}
-
-
-upgradeUserPets(String uid) async{
-  try{
-    final resp = await SupabaseCredentials.supabaseClient.from('pets').select('id').eq('owner_id', uid) as List<dynamic>;
-
-    for (Map pet in resp){
-      await SupabaseCredentials.supabaseClient.from('pets').update({'verified': true}).eq('id', pet['id']);
+    final query = '''
+    mutation{
+      editUser(
+        id: "$uid",
+        verified: true
+      )
     }
-  }catch(e){
-    print(e);
-  }
+    ''';
 
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['editUser'] == 1){
+      return true;
+    }
+    return false;
+  }catch (e){
+    print(e);
+    return false;
+  }
 }
 
 
@@ -285,49 +408,67 @@ Future checkPhoneAvailability(String phoneNumber) async {
   var ret = -100;
 
   try {
-    final query = await dB.collection('users').where('phone', isEqualTo: phoneNumber).get();
-    if (query.docs.isEmpty) ret = 200;
+    final query ='''{
+      checkPhone(phone: "$phoneNumber")
+    }
+  ''';
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['checkPhone'] != null){
+      ret = response['data']['checkPhone'] as bool ? 200 : 1;
+    }else {
+      ret = 0;
+    }
   } on PostgrestException catch (error) {
-    print(error.message);
-
+    print(error);
   } catch (error) {
     print("checkPAVail: ${error}");
-    ret = 0;
-  }finally{
-    return ret;
   }
-
+  return ret;
 
 }
 
 //check if user is registered in database
 Future<List<dynamic>> userInDb(String email, String uid) async {
+  //-1 = connection error
+  // 0 = new user
+  // 1 = user already exists
+  // 2 = complete user
   usrState ret = usrState.connectionError;
   UserPod? pod;
-  try{
-   final userQuery = dB.collection('users').where("email", isEqualTo: email);
-   final response = await userQuery.get();
+  List<PetProfile> pets = <PetProfile>[];
+  final query = '''{
+    userExist(email: "$email", id: "$uid")
+    }''';
 
+  final response = await sendGraphQLQuery(query);
 
-
-   if (response.docs.isNotEmpty){
-     if (response.docs.first.id == uid){
-       pod = userPodFromShot(response);
-       ret = usrState.completeUser;
-     }else{
-       ret = usrState.userAlreadyExists;
-     }
-
-   }else{
-     ret = usrState.newUser;
-   }
-
-
-  }on FirebaseException catch (e){
-   print("exception: " + e.message.toString());
+  if (response != null && response['data']['userExist'] != null){
+    if (response['data']['userExist']['status'] != null){
+      switch(response['data']['userExist']['status']){
+        case 0: ret = usrState.newUser;
+        break;
+        case 1: ret = usrState.userAlreadyExists;
+        break;
+        case 2: ret = usrState.completeUser;
+        break;
+      }
+    }
   }
 
-  return [ret, pod];
+
+  if (ret == usrState.completeUser){
+
+    pod = userPodFromShot(response!['data']['userExist']['owner']);
+    pets = petProfileFromShot(response['data']['userExist']['pets']);
+  }
+  try{
+
+  }catch (e){
+   print("exception: $e");
+  }
+
+
+  return [ret, pod, pets];
 }
 
 Future<String> uploadPhoto(io.File imgFile) async {
@@ -377,16 +518,35 @@ Future fetchBreedNameList() async{
 Future<List<PetPod>>fetchPets(int petIndex) async{
   try{
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    final petList = await dB.collectionGroup('dogs').where('ownerId', isEqualTo: uid).get();
-    final pets = petProfileFromShot(petList);
-    var ret = List<PetPod>.generate(pets.length, (index){
-      if (petIndex == index) {
-
-        return PetPod(pet: pets[index], isSelected: true);
-      }
+    final query = '''{
+           pets(ownerId: "$uid"){
+               _id,
+                name,
+                breed,
+                isMale,
+                birthdate,
+                photoUrl,
+                ownerId,
+                createdAt,
+                lastModified,
+                vaccines,
+                rateSum,
+                rateCount,
+                passport,
+           }
+        }''';
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['pets'] != null){
+      final pets = petProfileFromShot(response['data']['pets']);
+      var ret = List<PetPod>.generate(pets.length, (index){
+        if (petIndex == index) {
+          return PetPod(pet: pets[index], isSelected: true);
+        }
         return PetPod(pet: pets[index],  isSelected: false);
-    });
-    return ret;
+      });
+      return ret;
+    }
+    return List<PetPod>.empty();
   }catch (e){
     print(e);
     return List<PetPod>.empty();
@@ -396,35 +556,54 @@ Future<List<PetPod>>fetchPets(int petIndex) async{
 Future<List<PetProfile>>fetchOwnerPets() async{
   try{
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    final petList = await dB.collectionGroup('dogs').where('ownerId', isEqualTo: uid).get();
-    final pets = petProfileFromShot(petList);
-    return pets;
+    final query = '''{
+           pets(ownerId: "$uid"){
+               _id,
+                name,
+                breed,
+                isMale,
+                birthdate,
+                photoUrl,
+                ownerId,
+                createdAt,
+                lastModified,
+                vaccines,
+                rateSum,
+                rateCount,
+                passport,
+           }
+        }''';
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['pets'] != null){
+      final pets = petProfileFromShot(response['data']['pets']);
+      return pets;
+    }
+    return List<PetProfile>.empty();
   }catch (e){
-    print(e);
+    print("fetchOwnerPets: $e");
     return List<PetProfile>.empty();
   }
 }
 
 
-// OUTDATED FUNCTION - SHOULD NOT BE USED
-Future fetchResultedPets() async{
-
-  final uid = FirebaseAuth.instance.currentUser!.uid;
-  try{
-    // incorrect path
-    final petList = await dB.collection('pets').where('ownerId', isNotEqualTo: uid).get();
-    final pets = petProfileFromShot(petList);
-    final pods = List<PetPod>.generate(pets.length, (index){
-      return PetPod(pet: pets[index],  isSelected: false, foreign: true);
-    });
-    return pods;
-  }on PlatformException catch (e){
-    print(e);
-    return <PetProfile>[];
-  }
-
-}
-
+// TODO: OUTDATED FUNCTION - SHOULD NOT BE USED
+// Future fetchResultedPets() async{
+//
+//   final uid = FirebaseAuth.instance.currentUser!.uid;
+//   try{
+//     // incorrect path
+//     final petList = await dB.collection('pets').where('ownerId', isNotEqualTo: uid).get();
+//     final pets = petProfileFromJson(petList);
+//     final pods = List<PetPod>.generate(pets.length, (index){
+//       return PetPod(pet: pets[index],  isSelected: false, foreign: true);
+//     });
+//     return pods;
+//   }on PlatformException catch (e){
+//     print(e);
+//     return <PetProfile>[];
+//   }
+//
+// }
 
 
 
@@ -432,15 +611,37 @@ Future<List<PetProfile>> fetchMatchesWithLimits(PetProfile pet, int limit, DateT
 
   try{
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    final lfetched = Timestamp.fromMillisecondsSinceEpoch(lastFetched.millisecondsSinceEpoch);
-    final petList = await dB.collection('pets/${pet.breed}/dogs')
-        .where('isMale', isEqualTo: !pet.isMale)
-        .where('lastModified', isGreaterThan: lfetched).limit(limit).get().then((value) => value.docs);
-    petList.removeWhere((element) => element.data()['ownerId'] == uid);
-    return petProfileFromDocs(petList);
+    final query = '''{
+    pets(notOwnerId: "$uid", breed: "${pet.breed}", 
+    skipTime: "${lastFetched.toIso8601String()}", limit: $limit, isMale: ${!pet.isMale}){
+        _id,
+        isMale,
+        birthdate,
+        breed,
+        createdAt,
+        rateCount,
+        rateSum,
+        photoUrl,
+        ownerId,
+        vaccines,
+        lastModified,
+        createdAt,
+        passport,
+        name,
+        owner{
+            location,
+            type
+        }
+    }
+}''';
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['pets'] != null){
+      return petProfileFromShot(response['data']['pets']);
+    }
+    return List<PetProfile>.empty();
 
-  }on FirebaseException catch (e){
-    print('petMatchWithLimit: ${e.message}');
+  }catch (e){
+    print('petMatchWithLimit: ${e}');
     return <PetProfile>[];
   }
 
@@ -455,62 +656,121 @@ Future updatePassport(String urlPath, PetPod pod) async{
   try{
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    if (pod.pet.ownerId != uid){
-      throw Exception('User not granted access');
+    if (pod.pet.ownerId != uid) throw Exception('User not granted access');
+    final query = '''mutation{
+    editPet(id: "${pod.pet.id}", passport: "$urlPath",
+    ownerId: "$uid")
+  }''';
+    final response = await sendGraphQLQuery(query);
+    if (response != null
+        && response['data']['editPet'] != null
+        &&  response['data']['editPet'] == 1){
+
+      i = 200;
     }
-
-    await dB.collection('pets/${pod.pet.breed}/dogs').doc(pod.pet.id).update({'passport': urlPath});
-
-    i = 200;
   }catch (e){
     print(e);
   }
   return i;
 }
-Future<List<MateRequest>> fetchPetsRelation(String uid, DateTime lastFetched) async{
+
+Future<List<MateRequest>> refreshMateRequests(DateTime lastSent, DateTime lastReceived) async{
   try{
-    final ts = Timestamp.fromDate(lastFetched);
-    final q1 = dB.collection('mateRequests')
-        .where('senderId', isEqualTo: uid).where('lastModified', isGreaterThan: ts).get();
-    final q2 = dB.collection('mateRequests')
-        .where('receiverId', isEqualTo: uid).where('lastModified', isGreaterThan: ts).get();
-    final resp = await Future.wait([q1, q2]);
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final query = '''{
+    mateRefresh(userId: "$uid", lastSent: "${lastSent.toIso8601String()}",
+    lastReceived: "${lastReceived.toIso8601String()}"){
+        _id,
+        senderId,
+        receiverId,
+        senderPetId,
+        receiverPetId,
+        status,
+        createdAt,
+        lastModified
+    }
+}''';
+    final response = await sendGraphQLQuery(query);
 
-    List<MateRequest> requestItems = <MateRequest>[];
-    if (resp[0].docs.isNotEmpty) requestItems.addAll(mateRequestFromShot(resp[0]));
-    if (resp[1].docs.isNotEmpty) requestItems.addAll(mateRequestFromShot(resp[1]));
+    if (response != null && response['data']['mateRefresh'] != null) {
+      return mateRequestFromShot(response['data']['mateRefresh']);
+    }
 
-    return requestItems;
+    return <MateRequest>[];
   }catch (e){
-    print("fetchPetsRelationError: $e");
+    if (kDebugMode) print('RefreshMateReq Err: $e');
+    return <MateRequest>[];
+  }
+
+}
+
+
+Future<List<MateRequest>> fetchOwnerPetRequests(String uid, DateTime lastFetched) async{
+  try{
+
+
+    final query = '''{
+    mateRequests(targetUser: "$uid", skipTime: "${lastFetched.toIso8601String()}"){
+        _id,
+        senderId,
+        receiverId,
+        senderPetId,
+        receiverPetId,
+        status,
+        createdAt,
+        lastModified
+    }
+}''';
+    final response = await sendGraphQLQuery(query);
+
+    if (response != null && response['data']['mateRequests'] != null) {
+      return mateRequestFromShot(response['data']['mateRequests']);
+    }
+
+    return <MateRequest>[];
+  }catch (e){
+    print("fetchOwnerPetRequests Error: $e");
     return <MateRequest>[];
   }
 }
 
 
 Future<MateRequest?> sendMateRequest(String sid, String rid, String spid, String rpid) async{
+  final query = '''mutation{
+    addMateRequest(
+        senderId: "$sid",
+        receiverId: "$rid",
+        senderPetId: "$spid",
+        receiverPetId: "$rpid",
+    )
+}''';
+
+  final response = await sendGraphQLQuery(query);
+
+
+  if (response != null && response['data']['error'] == null
+      && response['data']['addMateRequest'] != null) {
+    if (response['data']['addMateRequest']['acknowledged'] == true){
+
+      final reqId = response['data']['addMateRequest']['insertedId'];
+      final now = DateTime.now();
+
+      MateRequest newRequest = singleMateRequestFromShot({
+        "_id": reqId,
+        "senderId": sid,
+        "receiverId": rid,
+        "senderPetId": spid,
+        "receiverPetId": rpid,
+        "status": 0,
+        "createdAt": now.toIso8601String(),
+        "lastModified": now.toIso8601String()
+      });
+      return newRequest;
+    }
+  }
+
   try{
-    DateTime now = DateTime.now();
-    final data = await dB.collection('mateRequests').add({
-      "senderId": sid,
-      "receiverId": rid,
-      "senderPet": spid,
-      "receiverPet": rpid,
-      "status": 0,
-      "ts": Timestamp.fromDate(now),
-      "lastModified": Timestamp.fromDate(now)
-    });
-    print('Notification Sent: ${data.id}');
-    MateRequest newRequest = singleMateRequestFromShot({
-      "senderId": sid,
-      "receiverId": rid,
-      "senderPet": spid,
-      "receiverPet": rpid,
-      "status": 0,
-      "ts": Timestamp.fromDate(now),
-      "lastModified": Timestamp.fromDate(now)
-    }, data.id);
-    return newRequest;
+
 
   }catch (e){
     print(e);
@@ -519,30 +779,46 @@ Future<MateRequest?> sendMateRequest(String sid, String rid, String spid, String
 
 }
 
-Future updateMateRequest(String reqID, int val) async{
+Future<int> updateMateRequest(MateRequest req, int val) async{
   int i = -100;
-  Timestamp ts = Timestamp.fromDate(DateTime.now());
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+  if ( (req.receiverId != uid) && (req.senderId != uid)) return -200;
+
   try{
-    await dB.collection('mateRequests').doc(reqID).update({
-      'status': val,
-      'lastModified': ts
-    });
-    i = 200;
+    final query = '''mutation{
+    updateMateRequest(
+        id: "${req.id}",
+        status: $val
+    )
+}''';
+
+    final response = await sendGraphQLQuery(query);
+
+    if (response != null && response['data']['updateMateRequest'] == 1){
+      i = 200;
+    }
+
   }catch (e){
     print(e);
   }
   return i;
 }
 
-
-Future fetchUserData(String uid) async{
-  try{
-    final data = await dB.collection('users').doc(uid).get();
-    return data;
-  }catch (e){
-    print(e);
-  }
-}
+//TODO:: REMOVE [NOT USED]
+// Future fetchUserData(String uid) async{
+//   try{
+//     final query = '''{
+//     user(id: $uid){
+//         _id
+//
+//     }
+// }''';
+//     final response = await sendGraphQLQuery(query);
+//     if (response )
+//   }catch (e){
+//     print(e);
+//   }
+// }
 
 
 Future pickImage(BuildContext context, ImageSource src) async {
@@ -591,6 +867,8 @@ Future compareFacial(io.File rawImage1, io.File rawImage2) async {
    return 0;
   }
 }
+
+//TODO:: OUTDATED
 void filterPetSearch() async{
   try{
     final resp = await SupabaseCredentials.supabaseClient.from('pets')
@@ -610,15 +888,27 @@ getUserCurrentLocation() async {
   });
   try{
     final loc = await Geolocator.getCurrentPosition();
-    print('this loc: ${loc}');
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setDouble("long", loc.longitude);
-    prefs.setDouble("lat", loc.latitude);
+    print('this loc: $loc');
+    if (loc.latitude != 0.0 && loc.longitude != 0.0){
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setDouble("long", loc.longitude);
+      prefs.setDouble("lat", loc.latitude);
 
-    if (loc != null){
       try{
         final uid = FirebaseAuth.instance.currentUser!.uid;
-        await dB.collection('users').doc(uid).update({"location": {"longtitude": loc.longitude, "latitude": loc.latitude}});
+        final query = '''mutation{
+                              editUser(
+                                  id: "$uid",
+                                  long: ${loc.longitude},
+                                  lat: ${loc.latitude},
+                                )
+                              }''';
+
+        final response = await sendGraphQLQuery(query);
+
+        if (response != null && response['data']['editUser'] == 1){
+          print('location updated');
+        }
       }catch (e){
         print('loc update err: ${e}');
       }
@@ -627,22 +917,32 @@ getUserCurrentLocation() async {
     print('loc: $e');
   }
 
-  
-
   // return GeoLocation(loc.latitude, loc.longitude);
 }
 
-Future<bool> deleteRequestFromServer(String reqId) async{
+Future<bool> deleteRequestsFromServer(List<String> reqIds) async{
   try{
-    await dB.collection('mateRequests').doc(reqId).delete();
-    return true;
-  }on FirebaseException catch (e){
-    print('requestDelete Error: ${e.message}');
+      final query = '''mutation{
+                    deleteMateRequests(
+                        ids: ${jsonEncode(reqIds)}
+                    )
+                }''';
+
+      final response = await sendGraphQLQuery(query);
+      if (response != null && response['data']['deleteMateRequests'] > 1){
+        return true;
+      }
+      return false;
+
+  }catch (e){
+    print('deleteRequestsFromServer Error: ${e}');
     return false;
   }
 }
 
-Future<String> uploadAndStorePDF(io.File pdfFile) async {
+Future<String> uploadAndStorePDF(String filePath) async {
+
+  final pdfFile = io.File(filePath);
   try {
     Reference ref = FirebaseStorage.instance.ref().child('pdfs/${FieldValue.serverTimestamp()}');
     UploadTask uploadTask = ref.putFile(pdfFile, SettableMetadata(contentType: 'file/pdf'));
@@ -652,49 +952,139 @@ Future<String> uploadAndStorePDF(io.File pdfFile) async {
     String url = await snapshot.ref.getDownloadURL();
     print('done');
     return url;
-  } on FirebaseException catch (e) {
-    print("exception!?@: " + e.message.toString());
+  } catch (e) {
+    print("exception!?@: " + e.toString());
     return "";
   }
 }
 
-List<List<String>> sublistIDs(List<String> ids){
-  final length = ids.length;
-  List<List<String>> idsOf10 = <List<String>>[];
-  List<String> temp;
-  for (int i= 0; i < length ; i+= 10) {
-    temp = ids.sublist(i, min(i+10, length));
-    idsOf10.add(temp);
-  }
-  return idsOf10;
-}
-
-
-Future<List<PetProfile>> getPetData(List<String> ids) async{
+Future<List<PetProfile>> getPetsWithIDs(List<String> ids) async{
   try{
-    final g = await dB.collectionGroup('dogs').where('__name__', whereIn: ids).get();
-    return petProfileFromShot(g);
-  }on FirebaseException catch (e){
-    print('getPetData Error (${e.code}): ${e.message}');
+    final query = '''{
+    listOfPets(ids: ${jsonEncode(ids)}) {
+      _id
+      name
+      breed
+      isMale
+      birthdate
+      photoUrl
+      ownerId
+      createdAt
+      lastModified
+      vaccines
+      rateSum
+      rateCount
+      passport
+      owner{
+          location,
+          type
+      }
+    }
+  }''';
+
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['listOfPets'] != null){
+      return petProfileFromShot(response['data']['listOfPets']);
+    }
+    return <PetProfile>[];
+  }catch (e){
+    print(e);
     return <PetProfile>[];
   }
-
 }
 
-Future<List<PetProfile>> getPetsWithIDs(List<String> ids) async{
-  List<List<String>> idsOf10;
-  idsOf10 = sublistIDs(ids);
-  List<PetProfile> newDocs = await Future.wait<List<PetProfile>>(idsOf10.map((e)
-  => getPetData(e))).then((value)
-  => value.expand((element) => element).toList());
+Future<List<MateRequest>?> fetchPetsRelation(String ownerPetId, String petId) async{
 
-  return newDocs;
-}
-
-Future<DocumentSnapshot<Map<String, dynamic>>?> getSinglePetWithId(String id) async{
   try{
-    return await dB.doc(id).get();
-  }on FirebaseException catch (e){
+    final query = '''{
+    petRelation(firstPet: "$ownerPetId", secondPet: "$petId"){
+        _id,
+        senderId,
+        receiverId,
+        senderPetId,
+        receiverPetId,
+        status,
+        createdAt,
+        lastModified
+    }
+}''';
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['petRelation'] != null) {
+      return mateRequestFromShot(response['data']['petRelation']);
+    }
+    return null;
+
+  }catch (e){
+    if (kDebugMode) print('fetchPetsRealtion Error: $e');
+    return null;
+  }
+}
+
+
+Future<UserPod?> getPetOwner(String ownerId) async{
+
+  try{
+    final query = '''{
+    user(id: "$ownerId") {
+       _id,
+      firstName,
+      lastName,
+      email,
+      birthdate,
+      isMale,
+      country,
+      city,
+      location,
+      type,
+      verified,
+      createdAt,
+      lastModified,
+      phone,
+      photoUrl,
+    }
+  }''';
+
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['user'] != null){
+      return userPodFromShot(response['data']['user']);
+    }
+    return null;
+  }catch (e){
+    return null;
+  }
+}
+
+
+Future<PetProfile?> getSinglePetWithId(String id) async{
+  try{
+    final query = '''{
+    pet(ids: "$id") {
+      _id
+      name
+      breed
+      isMale
+      birthdate
+      photoUrl
+      ownerId
+      createdAt
+      lastModified
+      vaccines
+      rateSum
+      rateCount
+      passport
+      owner{
+          location,
+          type
+      }
+    }
+  }''';
+
+    final response = await sendGraphQLQuery(query);
+    if (response != null && response['data']['pet'] != null){
+      return singlePetProfileFromShot(response['data']['pet']);
+    }
+    return null;
+  }catch (e){
     return null;
   }
 }
@@ -703,7 +1093,7 @@ Future<MapEntry<String, dynamic>> getSinglePetFriendList(String id) async{
  try{
    final doc = await dB.doc('$id/friends/ids').get();
    return MapEntry(id, List<String>.from(doc.data()!['list'].map((x) => x)));
- }on FirebaseException catch (e){
+ }catch (e){
    return MapEntry(id, null);
  }
 }
@@ -721,16 +1111,16 @@ Future<Map<String, List<String>>> getPetFriendsList(List<String> ids) async{
   return resultMap;
 }
 
-addNewPetFriend(MateRequest m, CacheBox box, {bool? server}){
-  final uid = FirebaseAuth.instance.currentUser!.uid;
-  if (uid == m.senderId){
-    box.addPetFriendList(m.senderPet, m.receiverPet);
-  }else{
-    box.addPetFriendList(m.receiverPet, m.senderPet);
-  }
-
-  if (server?? false) addNewMate(m.senderPet, m.receiverPet);
-}
+// addNewPetFriend(MateRequest m, CacheBox box, {bool? server}){
+//   final uid = FirebaseAuth.instance.currentUser!.uid;
+//   if (uid == m.senderId){
+//     box.addPetFriendList(m.senderPetId, m.receiverPetId);
+//   }else{
+//     box.addPetFriendList(m.receiverPetId, m.senderPetId);
+//   }
+//
+//   if (server?? false) addNewMate(m.senderPetId, m.receiverPetId);
+// }
 
 
 addNewMate(String petId1, String petId2){

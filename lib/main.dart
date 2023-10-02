@@ -37,10 +37,10 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver{
   CacheBox cacheBox = CacheBox();
-  RequestsProvider requestsProvider = RequestsProvider();
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);
+
     super.initState();
   }
 
@@ -74,41 +74,38 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver{
   Widget build(BuildContext context) {
     return DataPassWidget(
       cacheBox: cacheBox,
-      child: Sizer(
-          builder:(context, orientation, deviceType){
-            return OverlaySupport(
-              child: ChangeNotifierProvider<RequestsProvider>(
-                create: (_) => requestsProvider,
-                child: Consumer<RequestsProvider>(
-                  builder: (BuildContext context, value, Widget? widget){
-                    return MaterialApp(
-                        home: StreamBuilder<User?>(
-                            stream: FirebaseAuth.instance.authStateChanges(),
-                            builder: (context, snapshot){
-                              if (snapshot.hasData){
-                                if (FirebaseAuth.instance.currentUser!.emailVerified){
-                                  return Signup(cacheBox: cacheBox);
-                                }else{
-                                  return verifyEmail();
-                                }
-                              }else{
-                                if (snapshot.connectionState == ConnectionState.waiting){
-                                  return LoadingPage();
-                                }else{
-                                  if(FirebaseAuth.instance.currentUser == null){
-                                    FirebaseAuth.instance.signOut();
-                                  }
-                                  return LoginWidget();
-                                }
-                              }
+      child: ChangeNotifierProvider<CacheBox>(
+        create: (context) => cacheBox,
+        child: Sizer(
+            builder:(context, orientation, deviceType){
+              return OverlaySupport(
+                child: MaterialApp(
+                    home: StreamBuilder<User?>(
+                        stream: FirebaseAuth.instance.authStateChanges(),
+                        builder: (context, snapshot){
+                          if (snapshot.hasData){
+                            if (FirebaseAuth.instance.currentUser!.emailVerified){
+                              print('accessed signup');
+                              return Signup(cacheBox: cacheBox);
+                            }else{
+                              return verifyEmail();
                             }
-                        )
-                    );
-                  },
+                          }else{
+                            if (snapshot.connectionState == ConnectionState.waiting){
+                              return LoadingPage();
+                            }else{
+                              if(FirebaseAuth.instance.currentUser == null){
+                                FirebaseAuth.instance.signOut();
+                              }
+                              return LoginWidget();
+                            }
+                          }
+                        }
+                    )
                 ),
-              ),
-            );
-          }
+              );
+            }
+        ),
       ),
     );
   }

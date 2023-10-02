@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
 import 'package:card_swiper/card_swiper.dart';
 import 'package:csc_picker/model/select_status_model.dart';
@@ -11,9 +12,7 @@ import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/pages/loadingPage.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
-import 'package:flutter_flip_card/flutter_flip_card.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 import '../cacheBox.dart';
 import '../draggable_card.dart';
@@ -27,9 +26,7 @@ enum matchesStat{empty, good, refill}
 class PetMatchPage extends StatefulWidget {
   final PetPod senderPet;
   final List<PetPod> pets;
-  List<MateRequest> petRequests;
-  List<MateRequest> sentRequests;
-  PetMatchPage({Key? key, required this.pets, required this.senderPet, required this.petRequests, required this.sentRequests}) : super(key: key);
+  PetMatchPage({Key? key, required this.pets, required this.senderPet}) : super(key: key);
 
   @override
   State<PetMatchPage> createState() => _PetMatchPageState();
@@ -49,6 +46,8 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
    late AnimationController rewindAnimation;
    late Animation animation;
    late CacheBox cacheBox;
+   late List<MateRequest> sentRequests;
+   late List<MateRequest> recRequests;
    bool miniRewind = false;
    bool rewindPressed = false;
    bool stackFinished = false;
@@ -62,11 +61,10 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
    ValueNotifier<SlideRegion> currentRegion = ValueNotifier<SlideRegion>(SlideRegion.frozen);
 
    ValueNotifier<matchesStat> petListStat = ValueNotifier<matchesStat>(matchesStat.empty);
-   late RequestsProvider requestsProvider;
 
    final emptyMateRequest = MateRequest(id: "-1",
        senderId: 'senderId', receiverId: 'receiverId',
-       senderPet: 'senderPet', receiverPet: 'receiverPet', status: requestState.undefined, ts: DateTime.now(), lastModified: DateTime.now(), );
+       senderPetId: 'senderPet', receiverPetId: 'receiverPet', status: requestState.undefined, createdAt: DateTime.now(), lastModified: DateTime.now(), );
 
 
    @override
@@ -112,6 +110,8 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
 
      visiblePetItems.removeWhere((pet) => pet.decision == Decision.liked);
 
+     visiblePetItems.forEach((e) => print((e.content as PetMatchCard).pod.pet.id));
+
      if (newPets.isNotEmpty){
 
        visiblePetItems.addAll(generateSwipeItems(newPets));
@@ -134,7 +134,8 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
     cacheBox = DataPassWidget.of(context);
-    requestsProvider = Provider.of<RequestsProvider>(context);
+    sentRequests = cacheBox.sentRequests;
+    recRequests = cacheBox.receivedRequests;
     return Center(
         child: Scaffold(
           appBar: init_appBar(homeNav_key),
@@ -146,23 +147,22 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
               children: [
                 SizedBox(height: 5.h),
                 Container(
-                  width: 55.w,
+                  margin: EdgeInsets.symmetric(horizontal: 10.w),
                   padding: EdgeInsets.all(5.sp),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(25.sp),
                     color: Colors.blueGrey.shade900
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircleAvatar(
-                        backgroundImage: NetworkImage(widget.senderPet.pet.photoUrl),
-                      ),
-                      Text("${widget.senderPet.pet.name}'s Mate Choices",
-                      style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w900,color: Colors.blueGrey.shade50),
+                      Center(
+                        child: Text("${widget.senderPet.pet.name}'s Mate Choices",
+                        style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w800,color: Colors.blueGrey.shade50),
+                          maxLines: 2,
+                        ),
                       )
                     ],
                   ),
@@ -287,69 +287,156 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
                         opacity: petListStat.value != matchesStat.empty ? 1 : 0,
                         duration: const Duration(milliseconds: 300),
                         child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: Duration(milliseconds: 200),
-                          transitionBuilder: (child ,animation) =>
-                              RotationTransition(turns: currentRegion.value ==  SlideRegion.inNopeRegion ?
-                              Tween<double>(begin: 0, end: 1).animate(animation) :
-                              Tween<double>(begin: 1, end: 0).animate(animation),
-                                  child: ScaleTransition(scale: animation, child: child)),
-                          child: currentRegion.value ==  SlideRegion.inNopeRegion  ? FloatingActionButton(
-                            key: Key('nopeBtn1'),
-                            onPressed: _nopePress,
-                            backgroundColor: Colors.redAccent,
-                            child:Icon(CupertinoIcons.xmark, color: Colors.white),
-                          ) :
-                          FloatingActionButton(
-                              key: Key('nopeBtn2'),
-                              onPressed: _nopePress,
-                              backgroundColor: Colors.white,
-                              child: Icon(CupertinoIcons.xmark, color: Colors.redAccent)
-                          ),
-                        ),
-                        AnimatedSwitcher(
-                          duration: Duration(milliseconds: 200),
-                          transitionBuilder: (child ,animation) =>
-                              RotationTransition(turns: miniRewind ? Tween<double>(begin: 0, end: 0.25).animate(animation) :
-                                  Tween<double>(begin: 0.75, end: 1).animate(animation),
-                              child: FadeTransition(opacity: animation, child: child)),
-                          child: !miniRewind ? FloatingActionButton(
-                            key: Key('RewindIcon1'),
-                            onPressed: rewindPressed ? null : _rewindPress,
-                            backgroundColor: CupertinoColors.white,
-                            child:Icon(Icons.restart_alt_rounded, color: Colors.blueGrey.shade900),
-                          ) :
-                          FloatingActionButton(
-                              key: Key('RewindIcon2'),
-                              onPressed: rewindPressed ? null :  _rewindPress,
-                              backgroundColor: Colors.blueGrey,
-                              child: Icon(Icons.restart_alt_rounded, color: Colors.white)
-                          ),
-                        ),
-                        AnimatedSwitcher(
-                          duration: Duration(milliseconds: 200),
-                          transitionBuilder: (child ,animation) =>
-                              RotationTransition(turns: currentRegion.value ==  SlideRegion.inLikeRegion ?
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            AnimatedSwitcher(
+                              key: Key('constKey1dd9323'),
+                              duration: const Duration(milliseconds: 200),
+                              transitionBuilder: (child ,animation) =>
+                                  RotationTransition(turns: currentRegion.value == SlideRegion.inNopeRegion ?
                                   Tween<double>(begin: 0, end: 1).animate(animation) :
-                              Tween<double>(begin: 1, end: 0).animate(animation),
-                                  child: ScaleTransition(scale: animation, child: child)),
-                          child: currentRegion.value ==  SlideRegion.inLikeRegion  ? FloatingActionButton(
-                            key: Key('likeBtn1'),
-                            onPressed: _likePress,
-                            backgroundColor: Colors.greenAccent,
-                            child:Icon(CupertinoIcons.heart_fill, color: Colors.white),
-                          ) :
-                          FloatingActionButton(
-                              key: Key('likeBtn2'),
-                              onPressed: _likePress,
-                              backgroundColor: Colors.white,
-                              child: Icon(CupertinoIcons.heart, color: Colors.greenAccent)
-                          ),
-                        ),
-                      ],
-                    )),
+                                  Tween<double>(begin: 1, end: 0).animate(animation),
+                                      child: ScaleTransition(scale: animation, child: child)),
+                              child: currentRegion.value == SlideRegion.inNopeRegion  ? InkWell(
+                                key: Key('nopeBtn1'),
+                                onTap: _nopePress,
+                                child: Container(
+                                  padding: EdgeInsets.all(4.w),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.red,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 3), // changes position of shadow
+                                      ),
+                                    ],
+                                  ),
+
+                                  child: const Icon(CupertinoIcons.xmark, color: Colors.white),
+                                ),
+                              ) :
+                              InkWell(
+                                key: Key('nopeBtn2'),
+                                onTap: _nopePress,
+                                child: Container(
+                                    padding: EdgeInsets.all(4.w),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          spreadRadius: 1,
+                                          blurRadius: 3,
+                                          offset: const Offset(0, 3), // changes position of shadow
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(CupertinoIcons.xmark, color: Colors.redAccent)
+                                ),
+                              ),
+                            ),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              transitionBuilder: (child ,animation) =>
+                                  RotationTransition(turns: miniRewind ? Tween<double>(begin: 0, end: 0.25).animate(animation) :
+                                  Tween<double>(begin: 0.75, end: 1).animate(animation),
+                                      child: FadeTransition(opacity: animation, child: child)),
+                              child: !miniRewind ? InkWell(
+                                key: Key('RewindIcon1'),
+                                onTap: rewindPressed ? null : _rewindPress,
+                                child: Container(
+                                  padding: EdgeInsets.all(4.w),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 3), // changes position of shadow
+                                      ),
+                                    ],
+                                  ),
+                                  child:Icon(Icons.restart_alt_rounded, color: Colors.blueGrey.shade900),
+                                ),
+                              ) :
+                              InkWell(
+                                  key: Key('RewindIcon2'),
+                                onTap: rewindPressed ? null :  _rewindPress,
+                                child: Container(
+                                    padding: EdgeInsets.all(4.w),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.blueGrey,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          spreadRadius: 1,
+                                          blurRadius: 3,
+                                          offset: const Offset(0, 3), // changes position of shadow
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(Icons.restart_alt_rounded, color: Colors.white)
+                                ),
+                              ),
+                            ),
+                            AnimatedSwitcher(
+                              key: Key('constKey272khj234'),
+                              duration: const Duration(milliseconds: 200),
+                              transitionBuilder: (child ,animation) =>
+                                  RotationTransition(turns: currentRegion.value ==  SlideRegion.inLikeRegion ?
+                                  Tween<double>(begin: 0, end: 1).animate(animation) :
+                                  Tween<double>(begin: 1, end: 0).animate(animation),
+                                      child: ScaleTransition(scale: animation, child: child)),
+                              child: currentRegion.value ==  SlideRegion.inLikeRegion  ? InkWell(
+                                key: Key('likeBtn1'),
+                                onTap: _likePress,
+                                child: Container(
+                                  padding: EdgeInsets.all(4.w),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.greenAccent,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 3), // changes position of shadow
+                                      ),
+                                    ],
+                                  ),
+                                  child:const Icon(CupertinoIcons.heart_fill, color: Colors.white),
+                                ),
+                              ) :
+                              InkWell(
+                                key: Key('likeBtn2'),
+                                onTap: _likePress,
+                                child: Container(
+                                    padding: EdgeInsets.all(4.w),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          spreadRadius: 1,
+                                          blurRadius: 3,
+                                          offset: const Offset(0, 3), // changes position of shadow
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(CupertinoIcons.heart, color: Colors.greenAccent)
+                                ),
+                              ),
+                            ),
+                          ],
+                        )),
                   ),
                 )
               ],
@@ -392,7 +479,7 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
      sendingRequest.add(sendBool);
      sendRequest(_matchEngine!.currentItem!);
      _matchEngine!.currentItem!.decision = Decision.like;
-     _matchEngine!.notifyListeners();
+     // _matchEngine!.notifyListeners();
   }
 
   void _nopePress(){
@@ -421,37 +508,39 @@ class _PetMatchPageState extends State<PetMatchPage> with TickerProviderStateMix
      });
      bool failed = true;
      final pet = (item.content as PetMatchCard).pod.pet;
-     int sentFind = widget.sentRequests.indexWhere((e) => (e.receiverPet == pet.id && e.senderPet == widget.senderPet.pet.id));
-     int receivedFind = widget.petRequests.indexWhere((e) => (e.senderPet == pet.id && e.receiverPet == widget.senderPet.pet.id));
-     if (receivedFind != -1){
-       if (widget.petRequests[receivedFind].status == requestState.pending){
-         widget.petRequests[receivedFind].status = requestState.accepted;
-         addNewPetFriend(widget.petRequests[receivedFind], cacheBox);
-         updateMateRequest(widget.petRequests[receivedFind].id,
-             requestState.accepted.index);
-         requestsProvider.updateRequest(widget.petRequests[receivedFind], requestState.accepted);
+     final state = await cacheBox.getPetState(
+         ownerPetId: widget.senderPet.pet.id, petId: pet.id);
+
+
+     if (state[0] == profileState.pendingApproval){
+       if(await cacheBox.updateMateRequest(sender: pet.id, receiver: widget.senderPet.pet.id, state: requestState.accepted)){
          showSnackbar(context, "A MATCH");
          failed = false;
        }else{
-         // do other checks
+         showSnackbar(context, "Failed to send request, try again.");
        }
-     }else if (sentFind != -1){
-       showSnackbar(context, "Already sent a request");
-     }else{
-       final uid = FirebaseAuth.instance.currentUser!.uid;
+
+     }else if (state[0] == profileState.requested){
+       showSnackbar(context, "Already sent a request, pending approval!");
+
+     }else {
+       if (state[0] == profileState.undefined){
+        await cacheBox.removeNotification(id: state[1]);
+       }
+      final uid = FirebaseAuth.instance.currentUser!.uid;
        MateRequest? newRequest = await sendMateRequest(uid, pet.ownerId, widget.senderPet.pet.id, pet.id);
        if (newRequest != null){
          failed = false;
-         // widget.sentRequests.add(newRequest);
          cacheBox.addNewNotifications(items: [newRequest]);
-         if (mounted) showSnackbar(context, "Request sent");
+         if (mounted)  showNotification(context, "Request sent successfully!");
        }else{
-         if (mounted) showSnackbar(context, "Failed to send request");
+         if (mounted) showSnackbar(context, "Failed to send request, try again.");
        }
      }
 
      await sendCompleted();
      await Future.delayed(const Duration(milliseconds: 50));
+
      if (failed){
        _rewindPress(liked: true);
      }else{

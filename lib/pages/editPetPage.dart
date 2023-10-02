@@ -477,7 +477,7 @@ class _EditPetPageState extends State<EditPetPage> {
                                       var vList = _controller.getSelectedItems().toSet().toList();
                                       int value = await editPet(nameField.text.capitalize(), isMale,
                                           petBirthDate,
-                                          vList, widget.pod.id, widget.pod.breed);
+                                          vList, widget.pod.id, widget.pod.breed, widget.pod.passport);
 
                                       if (value == 200){
                                         updatePet();

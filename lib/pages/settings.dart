@@ -215,7 +215,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 InkWell(
                   onTap: () async {
-                    print(userPod.petCount);
                     settingsNav_key.currentState?.pushNamed(
                         '/setting');
                   },

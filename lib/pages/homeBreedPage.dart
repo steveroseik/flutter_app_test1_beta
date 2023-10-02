@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:ui';
 import 'package:age_calculator/age_calculator.dart';
 import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -17,11 +18,7 @@ import 'package:flutter_app_test1/JsonObj.dart';
 import 'package:flutter_app_test1/breedAdopt_main.dart';
 import 'package:flutter_app_test1/configuration.dart';
 import 'package:flutter_app_test1/pages/editPetPage.dart';
-import 'package:flutter_app_test1/pages/loadingPage.dart';
-import 'package:glassmorphism_ui/glassmorphism_ui.dart';
-import 'package:hive/hive.dart';
-import 'package:http/http.dart';
-import 'package:infinite_carousel/infinite_carousel.dart';
+import 'package:line_awesome_flutter/line_awesome_flutter.dart';
 import 'package:ntp/ntp.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:provider/provider.dart' as pr;
@@ -45,11 +42,11 @@ class HomeBreedPage extends StatefulWidget {
 class _HomeBreedPageState extends State<HomeBreedPage>
     with TickerProviderStateMixin {
 
-  final emptyPet = PetPod(pet: PetProfile(id: '', name: '', vaccines: [],
-    ownerId: '', birthdate: DateTime.now(), breed: '',
-    isMale: false, photoUrl: '', verified: false, ts: DateTime.now(),
-    rateSum: 0, rateCount: 0, passport: "", lastModified: DateTime.now(),
-      location: Location(longtitude: 0, latitude: 0)), isSelected: true);
+  // final emptyPet = PetPod(pet: PetProfile(id: '', name: '', vaccines: [],
+  //   ownerId: '', birthdate: DateTime.now(), breed: '',
+  //   isMale: false, photoUrl: '', type: -1, createdAt: DateTime.now(),
+  //   rateSum: 0, rateCount: 0, passport: "", lastModified: DateTime.now(),
+  //     location: Location(longitude: 0, latitude: 0)), isSelected: true);
   bool tapped = false;
   bool petDataLoading = false;
   var isLoading = true;
@@ -59,125 +56,95 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   final cacheLoaded = ValueNotifier<bool>(false);
 
   // final multiController = List<MultiSelectController>.empty(growable: true);
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  late AnimationController _controller2;
-  late Animation<double> _animation2;
-
 
   List<PetPod> petPods = <PetPod>[];
 
-  List<MateItem> petRequests = <MateItem>[];
-  List<MateItem> petFriends = <MateItem>[];
+
   List<PetProfile> friends = <PetProfile>[];
-  List<MateRequest> receivedRequests = <MateRequest>[];
-  List<MateRequest> sentRequests = <MateRequest>[];
+
 
   final petIndex = ValueNotifier<int>(0);
   PetPod? selectedPet;
   final vaccineList = List<selectItem>.empty(growable: true);
   late var items = List<MultiSelectItem>.empty(growable: true);
 
-  final petItemExtent = 28.w;
+  double petItemExtent = 0;
 
   late OverlayEntry loading = initLoading(context);
   bool requestsLoading = true;
   String petAge = "";
   String petRating = "";
   late GeoLocation userLocation;
-  final scrollController = InfiniteScrollController();
+  final CarouselController scrollController = CarouselController();
   late CacheBox cacheBox;
   bool pScrollAnim = false;
   late StreamSubscription requestRecieveSub;
   late StreamSubscription requestSendSub;
-  late RequestsProvider requestsProvider;
   OverlaySupportEntry? notificationEntry;
+
+  List<MateRequest> sentRequests = [];
+  List<MateRequest> receivedRequests = [];
+  List<MateRequest> receivedPending = [];
+
 
   @override
   void initState() {
     // updateLocation();
-    runAfterCacheLoad();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
-    _controller2 = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _animation2 = CurvedAnimation(parent: _controller2, curve: Curves.easeIn);
+    petItemExtent = 50.w;
+    // _controller = AnimationController(
+    //   duration: const Duration(milliseconds: 300),
+    //   vsync: this,
+    // );
+    // _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+    // _controller2 = AnimationController(
+    //   duration: const Duration(milliseconds: 300),
+    //   vsync: this,
+    // );
+    // _animation2 = CurvedAnimation(parent: _controller2, curve: Curves.easeIn);
 
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      usrHasPets();
+      genRelations();
       // do something
       if (petPods.isNotEmpty){
         pScrollAnim = true;
-        animatePetScroll();
+        setState(() {
+          petPods[0].isSelected = true;
+          selectedPet = petPods[0];
+        });
       }
     });
-  }
-
-  runAfterCacheLoad() async{
-    if (!cacheLoaded.value){
-      await notifierChange(cacheLoaded);
-    }
-    usrHasPets();
-    genRelations();
-  }
-
-  void animatePetScroll(){
-    if (scrollController.hasClients){
-      scrollController.animateToItem(petPods.length~/2);
-    }else{
-      // fix to await when build is done
-      Future.delayed(const Duration(milliseconds: 1000)).then((value)
-      {
-        scrollController.animateTo((petItemExtent * (petPods.length-1) / 2), duration: Duration(milliseconds: 500), curve: Curves.easeIn);
-      });
-    }
-
   }
 
   // if user has no pets he is forced to add at least one pet
   usrHasPets() async {
 
-    if (!cacheBox.ownerHasPets()) {
+    await updatePets();
+    if (petPods.isEmpty){
       homeNav_key.currentState?.pushNamedAndRemoveUntil(
-          '/add_pet',(Route<dynamic> route) => false, arguments: true);
+          '/add_pet', (Route<dynamic> route) => false, arguments: true);
     }else{
-      await updatePets();
-      if (petPods.isEmpty){
-        homeNav_key.currentState?.pushNamedAndRemoveUntil(
-            '/add_pet', (Route<dynamic> route) => false, arguments: true);
+      if (mounted && petPods.isNotEmpty) {
+        setState(() {
+          isLoading = false;
+        });
+        // _controller2.forward();
+        refreshSelectedPetInfo();
+        // _controller.forward();
       }
     }
-
-    if (mounted && petPods.isNotEmpty) {
-      setState(() {
-        isLoading = false;
-      });
-      _controller2.forward();
-      refreshSelectedPetInfo();
-      _controller.forward();
-    }
-
-
   }
 
   updatePets() async {
     petPods = await cacheBox.getUserPets();
 
     if (petPods.isNotEmpty && !pScrollAnim){
-      int mean = petPods.length~/2;
-      selectedPet = petPods[mean];
-      animatePetScroll();
+      selectedPet = petPods[0];
     }
-    if (petPods.length == 1){
-      setState(() {
-        petPods[0].isSelected = true;
-      });
-    }
+    setState(() {
+      selectedPet?.isSelected = true;
+    });
   }
 
 
@@ -192,8 +159,8 @@ class _HomeBreedPageState extends State<HomeBreedPage>
           break;
         case requestState.accepted:
 
-          addNewPetFriend(m, cacheBox);
-          cacheBox.removeNotification(id: m.id, sent: sent);
+          // addNewPetFriend(m, cacheBox);
+          cacheBox.removeNotification(id: m.id);
           requests.remove(m);
           break;
         case requestState.denied:
@@ -201,12 +168,12 @@ class _HomeBreedPageState extends State<HomeBreedPage>
           if (sent?? false){
             // delete from server
           }
-          cacheBox.removeNotification(id: m.id, sent: sent);
+          cacheBox.removeNotification(id: m.id);
           requests.remove(m);
           break;
         case requestState.undefined:
           requests.remove(m);
-          cacheBox.removeNotification(id: m.id, sent: sent);
+          cacheBox.removeNotification(id: m.id);
           if (sent?? false){
             // delete from server
           }
@@ -217,31 +184,17 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     return pendingReqs;
   }
 
-  addRequestItems(List<PetProfile> pets){
-    List<MateItem> newItems = <MateItem>[];
-
-    for (PetProfile pet in pets){
-      MateRequest req = receivedRequests.firstWhere((e) =>
-      e.senderPet == pet.id);
-      PetPod newPod = PetPod(pet: pet, isSelected: false, foreign: true);
-      newItems.add(MateItem(pod: newPod, request: req));
-    }
-    requestsProvider.addItems(newItems);
-    return newItems;
-  }
-
   addNewRequestItem(MateRequest item) async{
     final uid = FirebaseAuth.instance.currentUser!.uid;
     PetProfile? newPet;
     if (item.senderId == uid){
-      newPet = await cacheBox.getPetWithId(item.receiverPet);
+      newPet = await cacheBox.getPetWithId(item.receiverPetId);
+      item.receiverPet = newPet;
     }else{
-      newPet = await cacheBox.getPetWithId(item.senderPet);
+      newPet = await cacheBox.getPetWithId(item.senderPetId);
+      item.senderPet = newPet;
     }
-    if (newPet != null){
-      PetPod newPod = PetPod(pet: newPet, isSelected: false, foreign: true);
-      requestsProvider.addItem(MateItem(pod: newPod, request: item));
-    }
+    cacheBox.addNewNotifications(items: [item]);
   }
 
   getPetFromID(String id){
@@ -253,41 +206,23 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   }
 
   genRelations() async{
-    receivedRequests = cacheBox.cachedReceivedNotif;
-    sentRequests = cacheBox.cachedSentNotif;
-    getPetFriends();
-    filterNotifications(requests: receivedRequests);
-    filterNotifications(requests: sentRequests, sent: true);
-    try{
-      if (receivedRequests.isNotEmpty){
-        final petIDs = List<String>.generate(receivedRequests.length, (index) {
-          return receivedRequests[index].senderPet;
-        });
+    //TODO:: FIX PET FRIENDS
+    // getPetFriends();
+    print('genRel: ${await cacheBox.updateMateRequests()}');
 
-        List<PetProfile> generatedPets = await cacheBox.getPetList(petIDs);
-        addRequestItems(generatedPets);
-      }
+    setState(() {
+      requestsLoading = false;
+    });
 
-      if (mounted){
-        setState(() {
-          requestsLoading = false;
-        });
-      }
-    }catch (e){
-      print("genRelations Error: $e");
-    }
-    notificationsListeners();
+    //TODO:: OUTDATED Firebase listener, replace it
+    // notificationsListeners();
   }
 
   // TODO: FIX
   requestDelete({required String id, bool? fromServer}) async{
     int i = receivedRequests.indexWhere((element) => element.id == id);
     if (i != -1) {
-      receivedRequests.removeAt(i);
-      requestsProvider.removeWithId(id);
-    }
-    if (fromServer?? false) {
-      await deleteRequestFromServer(id) ? null : print('failed');
+      cacheBox.removeNotification(id: id, fromServer: fromServer);
     }
   }
 
@@ -304,12 +239,9 @@ class _HomeBreedPageState extends State<HomeBreedPage>
           requestDelete(id: req.id, fromServer: true);
           break;
         case requestState.accepted:
-          if (!requestsProvider.updateRequest(req, requestState.accepted)){
-            addNewRequestItem(req);
-          }
+          cacheBox.updateCachedRequest(reqId: req.id, state: requestState.accepted);
           // TODO: Friends are added in list from sender not receiver
-          
-          addNewPetFriend(req, cacheBox);
+          // addNewPetFriend(req, cacheBox);
           break;
       }
     }
@@ -339,26 +271,25 @@ class _HomeBreedPageState extends State<HomeBreedPage>
         }
         final requests = manageModifiedRequests(mateRequestFromDocs(modifiedRequests));
         if (requests.isNotEmpty){
-          receivedRequests.addAll(requests);
-          List<String> petIds = List<String>.generate(requests.length, (index) => requests[index].senderPet);
+          List<String> petIds = List<String>.generate(requests.length, (index) => requests[index].senderPetId);
+          await cacheBox.getPetList(petIds);
+          cacheBox.addNewNotifications(items: requests);
           if (petIds.isNotEmpty){
-            final newPets = await cacheBox.getPetList(petIds);
-            List<MateItem> newItems = addRequestItems(newPets);
-            if (newItems.length > 1){
+            if (requests.length > 1){
               notificationEntry = showOverlayNotification(duration: const Duration(milliseconds: 3000), (context) => GestureDetector(
                   onTap: (){
-                    homeNav_key.currentState?.pushNamed('/petProfile', arguments: [newItems[0], petPods]);
+                    homeNav_key.currentState?.pushNamed('/petProfile', arguments: [PetPod(pet: requests[0].senderPet!, isSelected: false, foreign: true), requests[0]]);
                     dismissNotification();
                   },
-                  child: MultiPetRequestBanner(pod: newItems[0], count: newItems.length-1, receiverPet: getPetFromID(newItems[0].request!.receiverPet))));
+                  child: MultiPetRequestBanner(item: requests[0], count: requests.length-1, receiverPet: getPetFromID(requests[0].receiverPetId))));
             }else{
 
               notificationEntry = showOverlayNotification(duration: const Duration(milliseconds: 3000), (context) => GestureDetector(
                   onTap: (){
-                    homeNav_key.currentState?.pushNamed('/petProfile', arguments: [newItems[0], petPods]);
+                    homeNav_key.currentState?.pushNamed('/petProfile', arguments: [PetPod(pet: requests[0].senderPet!, isSelected: false, foreign: true), requests[0]]);
                     dismissNotification();
                   },
-                  child: PetRequestBanner(pod: newItems[0], receiverPet: getPetFromID(newItems[0].request!.receiverPet))));
+                  child: PetRequestBanner(request: requests[0], heroTag: '${requests[0].id}${Random().nextInt(40)}',)));
             }
           }
         }
@@ -390,22 +321,20 @@ class _HomeBreedPageState extends State<HomeBreedPage>
           if (e.status == requestState.denied) requestDelete(id: e.id, fromServer: true);
           if (e.status == requestState.accepted) {
             int i = sentRequests.indexWhere((x) => x.id == e.id);
-            PetProfile? pet = await cacheBox.getPetWithId(e.receiverPet);
+            PetProfile? pet = await cacheBox.getPetWithId(e.receiverPetId);
             if (i != -1){
               sentRequests[i].status = requestState.accepted;
 
-              if (pet != null){
-                requestsProvider.addItem(MateItem(pod: PetPod(pet: pet, isSelected: false, foreign: true),
-                request: sentRequests[i]));
+              if (pet != null && sentRequests[i].receiverPet == null){
+                sentRequests[i].receiverPet = pet;
               }
             }else{
-              sentRequests.add(e);
               if (pet != null){
-                requestsProvider.addItem(MateItem(pod: PetPod(pet: pet, isSelected: false, foreign: true),
-                    request: e));
+               e.receiverPet = pet;
               }
+              cacheBox.addNewNotifications(items: [e]);
             }
-            addNewPetFriend(e, cacheBox);
+            // addNewPetFriend(e, cacheBox);
           }
         }
 
@@ -414,11 +343,6 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     });
 
   }
-
-  updateProvider(){
-    requestsProvider.reqItems;
-  }
-
 
   refreshSelectedPetInfo(){
     final age = AgeCalculator.dateDifference(fromDate: selectedPet!.pet.birthdate, toDate: DateTime.now());
@@ -470,7 +394,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
 
   @override
   void dispose() {
-    _controller.dispose();
+    // _controller.dispose();
     vacEditing.dispose();
     viewVaccines.dispose();
     super.dispose();
@@ -480,15 +404,14 @@ class _HomeBreedPageState extends State<HomeBreedPage>
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
-    cacheBox = DataPassWidget.of(context);
-    requestsProvider = pr.Provider.of<RequestsProvider>(context);
-    petFriends = requestsProvider.friends;
-    petRequests = requestsProvider.pendingRequests;
+    cacheBox = context.watch<CacheBox>();
+    sentRequests = cacheBox.sentRequests;
+    receivedRequests = cacheBox.receivedRequests;
+    receivedPending = receivedRequests.where((e) => e.status == requestState.pending).toList();
     cacheLoaded.value = true;
     return Scaffold(
         appBar: init_appBar(homeNav_key),
-        body: Padding(
-          padding: EdgeInsets.all(8.0),
+        body: SingleChildScrollView(
           child: Column(
             children: [
               SizedBox(height: 20),
@@ -497,7 +420,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Container(width: width*0.2, height: height*0.04, child: Shimmer(
+                    Container(width: 20.w, height: 4.h, child: Shimmer(
                       gradient: LinearGradient(colors: [Colors.white, Colors.grey]),
                       child: Container(
                         decoration: BoxDecoration(
@@ -508,48 +431,50 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                     ),),
                   ],
                 ),
-              ) : Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text('Your Pets',
+              ) : Padding(
+                padding:EdgeInsets.symmetric(horizontal: 5.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Text('Your Pets',
                         style: TextStyle(
                           fontFamily: 'Roboto',
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
                         )),
-                  ),
-                  Spacer(),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueGrey.shade900,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0))),
-                    icon: Icon(Icons.add, size: 15),
-                    onPressed: () {
-                      // homeNav_key.currentState?.pushNamed('/add_pet');
-                    },
-                    label: Text('New pet',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600)),
-                  ),
-                ],
+                    Spacer(),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey.shade900,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30.0))),
+                      icon: Icon(Icons.add, size: 15),
+                      onPressed: () {
+                        homeNav_key.currentState?.pushNamed('/add_pet');
+                      },
+                      label: Text('New pet',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
               ),
               isLoading ? Container(
                 height: height*0.135,
                 child: ShimmerOwnerPetCard(),
-              ) : Container(
-                height: 15.h,
-                child: InfiniteCarousel.builder(
-                  itemCount: petPods.length,
-                  controller: scrollController,
-                  itemExtent: petItemExtent,
-                  anchor: 1,
-                  velocityFactor: 1,
-                  onIndexChanged: (index) {
+              ) : CarouselSlider.builder(
+                itemCount: petPods.length,
+                carouselController: scrollController,
+                options: CarouselOptions(
+                  height: 35.h,
+                  viewportFraction: 0.6,
+                  animateToClosest: true,
+                  enlargeFactor: 0.4,
+                  enableInfiniteScroll: false,
+                  enlargeCenterPage: true,
+                  onPageChanged: (index, carousel){
                     for (int i= 0; i < petPods.length; i++){
                       if (i == index){
                         petPods[i].isSelected = true;
@@ -561,55 +486,36 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                     petIndex.value = index;
                     refreshSelectedPetInfo();
                     setState(() {});
-                    if (!_controller.isCompleted){
-                      _controller.forward();
-                    }
-                  },
-                  axisDirection: Axis.horizontal,
-                  loop: false,
-                  itemBuilder: (context, itemIndex, realIndex) {
-                    final currentOffset = petItemExtent * realIndex;
-                    final itemsLength = petPods.length;
-                    return AnimatedBuilder(
-                      animation: scrollController,
-                      builder: (context, child) {
-                        final diff = (scrollController.offset - currentOffset);
-                        final maxPadding = 3.w;
-                        final carouselRatio = petItemExtent / maxPadding;
-                        return Container(
-                          margin: EdgeInsets.symmetric(
-                            horizontal: (diff / carouselRatio).abs(),
-                            vertical: (diff / carouselRatio).abs(),
-                          ),
-                          child: GestureDetector(
-                              onTap: (){
-                                if(itemIndex == scrollController.selectedItem){
-                                  if (petPods[itemIndex].isSelected){
-                                    petPods[itemIndex].isSelected = false;
-                                    selectedPet = null;
-                                    petIndex.value = -1;
-                                    setState(() {});
-                                    _controller.reverse();
-                                  }else{
-                                    petPods[itemIndex].isSelected = true;
-                                    selectedPet = petPods[itemIndex];
-                                    petIndex.value = itemIndex;
-                                    refreshSelectedPetInfo();
-                                    setState(() {});
-                                    _controller.forward();
-                                  }
-                                }else{
-                                  scrollController.animateToItem(itemIndex);
-                                }
-
-
-                              },
-                              child: CustomPet(pod: petPods[itemIndex])),
-                        );
-                      },
-                    );
-                  },
+                    // if (!_controller.isCompleted){
+                    //   _controller.forward();
+                    // }
+                  }
                 ),
+                itemBuilder: (BuildContext context, int itemIndex, int pageViewIndex){
+                  final tag = '${petPods[itemIndex].pet.photoUrl}${Random().nextInt(40)}';
+                  return GestureDetector(
+                      onTap: (){
+                        int selected = petPods.indexWhere((element) => element.isSelected);
+                        if(itemIndex == selected){
+                          homeNav_key.currentState?.pushNamed('/petProfile',
+                              arguments: [petPods[selected],null, null, tag]);
+                        }else{
+                          scrollController.animateToPage(itemIndex);
+                          // selected = petPods.indexWhere((element) => element.isSelected);
+                          // if (selected != -1){
+                          //   petPods[itemIndex].isSelected = true;
+                          //   selectedPet = petPods[itemIndex];
+                          //   petIndex.value = itemIndex;
+                          //   refreshSelectedPetInfo();
+                          //   setState(() {});
+                          //   _controller.forward();
+                          // }
+                        }
+
+
+                      },
+                      child: CustomPet(pod: petPods[itemIndex], tag: tag,));
+                },
               ),
               SizedBox(height: 1.h),
               isLoading ?
@@ -728,334 +634,145 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                     ),
                   ],
                 ),
-              ) : Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      isLoading? Container() : Container(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: AnimatedSize(
-                          duration: const Duration(milliseconds: 300),
-                          child: FadeTransition(
-                            opacity: _animation,
-                            child: Container(
-                              height: petIndex.value == -1 ? 0 : 30.h,
-                              child: selectedPet == null ? null : Column(
-                                children: [
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 3.w),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text('Pet Details',
-                                            style: TextStyle(
-                                              fontFamily: 'Roboto',
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w800,
-                                            )),
-                                        Spacer(),
-                                        ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.blueGrey.shade900,
-                                              shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(30.0))),
-                                          icon: Icon(Icons.edit, size: width*0.03, color: Colors.white),
-                                          onPressed: () {
-                                            _popEditPage();
-                                          },
-                                          label: Text('Edit',
-                                              style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600)),
-                                        ),
-                                      ],
-                                    ),
+              ) : Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: 6.h),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10.w),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        InkWell(
+                          onTap: tapped ? null : () async {
+                            setState(() {
+                              tapped = true;
+                            });
+                            if (petIndex.value != -1) {
+                              if (!loading.mounted) {
+                                OverlayState? overlay = Overlay.of(context);
+                                overlay.insert(loading);
+                              }
+                              final pets = await cacheBox.fetchPetQuery(pet: selectedPet!.pet, reset: true);
+                              loading.remove();
+                              homeNav_key.currentState?.pushNamed(
+                                  '/petMatch',
+                                  arguments: [selectedPet, pets, receivedRequests, sentRequests]).then((value) {
+                                if ( value != null && value == true){
+                                  homeNav_key.currentState?.pushNamed('/search_manual', arguments: [petPods, receivedRequests, sentRequests]);
+                                }
+                              });
+                            }else{
+                              showSnackbar(context, 'Select a pet first');
+                            }
+                            setState(() {
+                              tapped = false;
+                            });
+                          },
+                          child:Container(
+                            height: 7.h,
+                            padding: EdgeInsets.all(3.w),
+                            decoration: BoxDecoration(
+                              color: Colors.blueGrey.shade900,
+                              borderRadius: BorderRadius.circular(6.w),
+                            ),
+                            child: Stack(
+                              alignment: AlignmentDirectional.center,
+                              children: [
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: CircleAvatar(
+                                    backgroundColor:
+                                    Colors.redAccent,
+                                    radius: 5.w,
+                                    child:Image.asset('assets/mateIcon.png', color: Colors.white, width: 7.w,),
                                   ),
-                                  ColumnSuper(
-                                    innerDistance: -2.5.h,
-                                    children: [
-                                      Container(
-                                          height: 80,
-                                          width: width*0.8,
-                                          padding: EdgeInsets.all(width*0.04),
-                                          decoration: BoxDecoration(
-                                              gradient: LinearGradient(colors: [Colors.blueGrey.shade900, Colors.blueGrey.shade700]),
-                                              borderRadius:
-                                              BorderRadius.circular(
-                                                  20)),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                child: Row(
-                                                  children: [
-                                                    Icon(CupertinoIcons.calendar_circle_fill, color: Colors.white,),
-                                                    SizedBox(width: width*0.009,),
-                                                    Text(petAge, style: TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        color: Colors.white
-                                                    ),)
-                                                  ],
-                                                ),
-                                              ),
-                                              Spacer(),
-                                              Container(
-                                                child: Icon(selectedPet!.pet.isMale ? Icons.male_rounded : Icons.female_rounded,
-                                                  color: selectedPet!.pet.isMale ? Colors.blue : Colors.pinkAccent,),
-                                              )
-                                            ],
-                                          )
-                                      ),
-                                      Container(
-                                        height: 80,
-                                        width: width*0.7,
-                                        decoration: BoxDecoration(
-                                            gradient: LinearGradient(colors: [Colors.blueGrey.shade700, Colors.blueGrey.shade900]),
-                                            borderRadius:
-                                            BorderRadius.circular(
-                                                20)),
-                                        child: Row(
-                                          children: [
-                                            Flexible(
-                                              child: ListTile(
-                                                  leading: CircleAvatar(
-                                                      backgroundColor: Colors.transparent,
-                                                      child: Icon(
-                                                        Icons
-                                                            .vaccines,
-                                                        color: Colors
-                                                            .white,)),
-                                                  title: Padding(
-                                                    padding: const EdgeInsets.symmetric(vertical: 10.0),
-                                                    child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        Text(
-                                                          'Vaccinations',
-                                                          style: TextStyle(
-                                                              color: Colors.white,
-                                                              fontFamily:
-                                                              'Roboto',
-                                                              fontWeight:
-                                                              FontWeight
-                                                                  .w500),
-                                                        ),
-                                                        SizedBox(height: 10),
-                                                        LinearPercentIndicator(
-                                                          lineHeight: 5.0,
-                                                          percent: (selectedPet!
-                                                              .pet
-                                                              .vaccines
-                                                              .length /
-                                                              8),
-                                                          barRadius:
-                                                          Radius.circular(
-                                                              20),
-                                                          backgroundColor:
-                                                          Colors.blueGrey.shade900,
-                                                          progressColor:
-                                                          Colors.white,
-                                                          trailing: Text(
-                                                            '${(selectedPet!.pet.vaccines.length / 8 * 100).toInt()}%',
-                                                            style: TextStyle(
-                                                                fontWeight:
-                                                                FontWeight
-                                                                    .w600,
-                                                                color: Colors.white),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  )
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  AnimatedContainer(
-                                    height: height*0.06,
-                                    width: width*0.6,
-                                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-                                    duration: Duration(
-                                        milliseconds: 1000),
-                                    decoration: BoxDecoration(
-                                        borderRadius:
-                                        BorderRadius.circular(
-                                            20)),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        Container(
-                                          width: width*0.06,
-                                          child: Image(image: AssetImage("assets/verifiedDocuments.png",),
-                                            color: selectedPet!.pet.passport == "" ? Colors.redAccent.withOpacity(0.9):
-                                            Colors.green.withOpacity(0.8), fit: BoxFit.contain,),
-                                        ),
-                                        selectedPet!.pet.passport == ""  ? ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.blueGrey.shade800,
-                                              shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(30.0))),
-                                          icon: Icon(Icons.add, size: width*0.03, color: Colors.white),
-                                          onPressed: () {
-                                            homeNav_key.currentState?.pushNamed('/petDocument', arguments: [selectedPet!]);
-                                          },
-                                          label: Text('Add passport',
-                                              style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w400)),
-                                        ) : Row(
-                                          children: [
-                                            Text(
-                                              petRating,
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontFamily: 'Roboto',
-                                                  fontWeight: FontWeight.w800,
-                                                  color: Colors.blueGrey.shade500),
-                                              overflow: TextOverflow.visible,
-                                              textAlign: TextAlign.center,
-                                            ),
-                                            FittedBox(child: Icon(Icons.star_rate_rounded, color: CupertinoColors.activeOrange)),
-                                          ],
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                                const Text(
+                                  'Find Mate',
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontFamily: 'Roboto',
+                                      fontWeight: FontWeight.w800),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Icon(Icons.chevron_right, color: Colors.white),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ),
-                      SizedBox(height: 1.h),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          InkWell(
-                            onTap: tapped ? null : () async {
-                              setState(() {
-                                tapped = true;
-                              });
-                              if (petIndex.value != -1) {
-                                if (!loading.mounted) {
-                                  OverlayState? overlay = Overlay.of(context);
-                                  overlay.insert(loading);
-                                }
-                                final pets = await cacheBox.fetchPetQuery(pet: selectedPet!.pet, reset: true);
-                                loading.remove();
-                                homeNav_key.currentState?.pushNamed(
-                                    '/petMatch',
-                                    arguments: [selectedPet, pets, receivedRequests, sentRequests]).then((value) {
-                                  if ( value as bool == true){
-                                    homeNav_key.currentState?.pushNamed('/search_manual', arguments: [petPods, receivedRequests, sentRequests]);
-                                  }
-                                });
-                              }else{
-                                showSnackbar(context, 'Select a pet first');
-                              }
-                              setState(() {
-                                tapped = false;
-                              });
-                            },
-                            child: Container(
-                              padding: EdgeInsets.all(15),
-                              decoration: BoxDecoration(
-                                color: Colors.blueGrey.shade900,
-                                borderRadius: BorderRadius.circular(24.sp),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  CircleAvatar(
-                                      backgroundColor:
-                                      Colors.redAccent,
-                                      radius: 15,
-                                      child: ImageIcon(
-                                          AssetImage(
-                                              'assets/mateIcon.png'),
-                                          color: Colors.white, size: 20)),
-                                  SizedBox(width: 5.w),
-                                  Text(
-                                    'Find Mate',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontFamily: 'Roboto',
-                                        fontWeight:
-                                        FontWeight.w800),
-                                  ),
-                                ],
-                              ),
+                        SizedBox(height: 2.h),
+                        GestureDetector(
+                          onTap: ()async {
+                            cacheBox.showCachePets();
+                            showNotification(context, "Coming soon.");
+                          },
+                          child: Container(
+                            height: 7.h,
+                            padding: EdgeInsets.all(3.w),
+                            decoration: BoxDecoration(
+                              color: Colors.blueGrey.shade900,
+                              borderRadius: BorderRadius.circular(6.w),
                             ),
-                          ),
-                          SizedBox(width: 2.w),
-                          GestureDetector(
-                            onTap: ()async {
-                              cacheBox.showCachePets();
-                              showNotification(context, "Coming soon.");
-                            },
-                            child: Container(
-                              padding: EdgeInsets.all(15),
-                              decoration: BoxDecoration(
-                                color: Colors.blueGrey.shade900,
-                                borderRadius: BorderRadius.circular(24.sp),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  CircleAvatar(
+                            child: Stack(
+                              alignment: AlignmentDirectional.center,
+                              children: [
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: CircleAvatar(
                                     backgroundColor:
                                     Colors.redAccent,
-                                    radius: 15,
+                                    radius: 5.w,
                                     child: Icon(Icons.circle_outlined, color: Colors.white),
                                   ),
-                                  SizedBox(width: 5.w),
-                                  Text(
-                                    'Pet Circle',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontFamily: 'Roboto',
-                                        fontWeight: FontWeight.w800),
-                                  ),
-                                ],
-                              ),
+                                ),
+                                const Text(
+                                  'Pet Circle',
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontFamily: 'Roboto',
+                                      fontWeight: FontWeight.w800),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Icon(Icons.chevron_right, color: Colors.white),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+
+                ],
               ),
             ],
           ),
         ),
-        floatingActionButton: FadeTransition(
-          opacity: _controller2,
-          child: FittedBox(
-            child: Stack(
-              alignment: Alignment(1.4, -1.5),
-              children: [
-                FloatingActionButton(  // Your actual Fab
-                  onPressed: requestsLoading ? null : () async{
-                    homeNav_key.currentState?.pushNamed('/notif', arguments: [petRequests, petPods]).then((value){
-                      updateProvider();
-                    });
-                  },
-                  child: Icon(Icons.local_fire_department_rounded, color: Colors.orange,),
-                  backgroundColor: Colors.blueGrey.shade800,
-                ),
-                petRequests.isEmpty ? Container() : Container(             // This is your Badge
-                  padding: EdgeInsets.all(3),
-                  constraints: BoxConstraints(minHeight: 32, minWidth: 32),
+        floatingActionButton: FittedBox(
+          child: Stack(
+            alignment: Alignment(1.4, -1.5),
+            children: [
+              FloatingActionButton(  // Your actual Fab
+                onPressed: requestsLoading ? null : () async{
+                  homeNav_key.currentState?.pushNamed('/notif').then((value){
+
+                  });
+                },
+                child: Icon(Icons.local_fire_department_rounded, color: Colors.orange,),
+                backgroundColor: Colors.blueGrey.shade800,
+              ),
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: receivedPending.isEmpty ? 0 : 1,
+                child: Container(             // This is your Badge
+                  padding: const EdgeInsets.all(3),
+                  constraints: const BoxConstraints(minHeight: 32, minWidth: 32),
                   decoration: BoxDecoration( // This controls the shadow
                     boxShadow: [
                       BoxShadow(
@@ -1068,11 +785,11 @@ class _HomeBreedPageState extends State<HomeBreedPage>
                   ),             // This is your Badge
                   child: Center(
                     // Here you can put whatever content you want inside your Badge
-                    child: Text('${petRequests.length}', style: TextStyle(color: Colors.white)),
+                    child: Text('${receivedPending.length}', style: TextStyle(color: Colors.white)),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         )
       //

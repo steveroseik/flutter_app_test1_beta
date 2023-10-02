@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:custom_info_window/custom_info_window.dart';
 import 'package:flutter/cupertino.dart';
@@ -144,6 +145,7 @@ class SelectPets_MeetsState extends State<SelectPets_Meets> {
                     shrinkWrap: true,
                     itemCount: petPods.length,
                     itemBuilder: (context, index) {
+                      final tag = '${petPods[index].pet.photoUrl}${Random().nextInt(40)}';
                       return InkWell(
                         onTap: () {
                           setState(() {
@@ -155,7 +157,7 @@ class SelectPets_MeetsState extends State<SelectPets_Meets> {
                           });
                         },
                         child: CustomPet(
-                            pod: petPods[index]),
+                            pod: petPods[index], tag: tag),
                       );
                     })
             ),

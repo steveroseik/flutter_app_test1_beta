@@ -2,18 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app_test1/FETCH_wdgts.dart';
 import 'package:flutter_app_test1/routesGenerator.dart';
-import 'dart:ui';
-import 'package:flutter/services.dart';
-import 'package:flutter_switch/flutter_switch.dart';
 import 'package:line_awesome_flutter/line_awesome_flutter.dart';
-import '../APILibraries.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_app_test1/routesGenerator.dart';
 
-import '../FETCH_wdgts.dart';
 
 class editSettings extends StatefulWidget {
   const editSettings({Key? key}) : super(key: key);

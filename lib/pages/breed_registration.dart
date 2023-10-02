@@ -493,10 +493,11 @@ class _petRegPageState extends State<petRegPage> {
                                 photoUrl = await uploadPhoto(widget.recFile);
                                 if (photoUrl != '-100'){
                                   print(photoUrl);
+                                  final vaccines = List<String>.from(_controller.getSelectedItems());
                                   homeNav_key.currentState?.pushNamed('/petDocument', arguments: [nameField.text.capitalize(),
                                                 dogBreed, isMale!,
                                                 petBirthDate,
-                                                photoUrl, FirebaseAuth.instance.currentUser!.uid, _controller.getSelectedItems()]);
+                                                photoUrl, FirebaseAuth.instance.currentUser!.uid, vaccines]);
 
                                 }else{
                                   showSnackbar(context, 'Photo upload issue! Try again.');

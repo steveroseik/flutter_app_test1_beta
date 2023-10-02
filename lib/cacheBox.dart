@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_test1/APILibraries.dart';
 import 'package:flutter_app_test1/JsonObj.dart';
@@ -14,7 +15,7 @@ import 'FETCH_wdgts.dart';
 
 
 
-const int petLimit = 6;
+const int petLimit = 2;
 const double decayConst = 0.00000386;
 const double baseTtl = 1.5 * 86400;
 
@@ -78,6 +79,7 @@ class UserBox{
 class NotifCache{
   late List<MateRequest> _sentRequests;
   late List<MateRequest> _receivedRequests;
+  late List<MateRequest> requests;
   late DateTime _lastSent;
   late DateTime _lastReceived;
   String cacheRef = 'notifications';
@@ -85,8 +87,8 @@ class NotifCache{
   get lastReceived => _lastReceived;
   get lastSent => _lastSent;
 
-  get sentRequests => _sentRequests;
-  get receivedRequests => _receivedRequests;
+  List<MateRequest> get sentRequests => _sentRequests;
+  List<MateRequest> get receivedRequests => _receivedRequests;
 
   NotifCache(LazyBox box){
     if (box.isNotEmpty && box.keys.contains(cacheRef)){
@@ -118,6 +120,69 @@ class NotifCache{
     removeDuplicates();
     final encrypted = encryptString(mateRequestToJson([..._sentRequests, ..._receivedRequests]));
     box.put(cacheRef, encrypted);
+  }
+
+  updateCachedRequest(String id, requestState state){
+    int i = _sentRequests.indexWhere((e) => e.id == id);
+    if (i == -1) {
+      i = _receivedRequests.indexWhere((e) => e.id == id);
+      if (i != -1){
+        _receivedRequests[i].status = state;
+      }
+    }else{
+      _sentRequests[i].status = state;
+    }
+
+  }
+
+  updateRequest( String sender, String receiver, requestState state) async{
+    int index = -1;
+    index = _sentRequests.indexWhere((e) => e.senderPetId == sender && e.receiverPetId == receiver);
+    if (index != -1 ) {
+      _sentRequests[index].status = state;
+      final resp = await updateMateRequest(_sentRequests[index], state.index);
+      if (resp == 200){
+        // TODO: Removed to keep lastFetched time correct relevantly, i hope
+        // _sentRequests[index].lastModified = DateTime.now();
+        return true;
+      }
+
+    }
+    index = _receivedRequests.indexWhere((e) => e.senderPetId == sender && e.receiverPetId == receiver);
+    if (index != -1){
+      _receivedRequests[index].status = state;
+      final resp = await updateMateRequest(_receivedRequests[index], state.index);
+      if (resp == 200){
+        //TODO: same ^ _receivedRequests[index].lastModified = DateTime.now();
+        return true;
+      }
+    }
+    return false;
+  }
+
+
+
+  Future<List<String>> refreshRequests(List<PetBox> cache, List<PetBox> ownerCache) async{
+    sortAll();
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final requests = await refreshMateRequests(lastSent, lastReceived);
+    List<MateRequest> tempReqs = List.from(requests);
+    List<String> reqIds = <String>[];
+    for (var req in tempReqs){
+      if (req.senderId == uid){
+        if (req.status == requestState.denied) {
+          requests.remove(req);
+          reqIds.add(req.id);
+        }
+      }else{
+        if (req.status == requestState.undefined){
+          requests.remove(req);
+          reqIds.add(req.id);
+        }
+      }
+    }
+    if (reqIds.isNotEmpty ) deleteRequestsFromServer(reqIds);
+    return addNewRequests(requests, cache, ownerCache);
   }
 
   removeDuplicates(){
@@ -174,16 +239,86 @@ class NotifCache{
     return -1;
   }
 
-  remove({required String id, bool? sent}){
-    (sent?? false) ? _receivedRequests.removeWhere((e) => e.id == id) : _sentRequests.removeWhere((e) => e.id == id);
+  updateRequests(List<PetProfile> pets, String uid){
+    for (var e in [..._receivedRequests, ..._sentRequests]){
+     if (e.senderId == uid){
+       int i = pets.indexWhere((pet) => pet.id == e.receiverPetId);
+       if ( i != -1) e.receiverPet = pets[i];
+     }else{
+       int i = pets.indexWhere((pet) => pet.id == e.senderPetId);
+       if ( i != -1) e.senderPet = pets[i];
+     }
+    }
   }
 
-  findRequestUponId(String id){
-    int i = _receivedRequests.indexWhere((e) => (e.receiverPet == id || e.senderPet == id));
-    if (i != -1) return receivedRequests[i];
-    i = _sentRequests.indexWhere((e) => (e.receiverPet == id || e.senderPet == id));
-    if (i != -1) return sentRequests[i];
+  List<String> addNewRequests(List<MateRequest> items, List<PetBox> cache, List<PetBox> ownerCache){
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final missingPetIds = <String>[];
+    for (var e in items){
+      if (e.senderId == uid){
+        //find Foreign pet and add to item
+        int i = cache.indexWhere((box) => box.pet.id == e.receiverPetId);
+        if ( i != -1) {
+          e.receiverPet = cache[i].pet;
+        }else{
+          // fetch foreign pet from database
+          missingPetIds.add(e.receiverPetId);
+        }
+        // then add owner pet data to itgem
+        i = ownerCache.indexWhere((box) => box.pet.id == e.senderPetId);
+        if (i != -1){
+          e.senderPet = ownerCache[i].pet;
+          _sentRequests.add(e);
+        }
 
+
+      }else{
+        //do the same for received requests
+        int i = cache.indexWhere((box) => box.pet.id == e.senderPetId);
+        if ( i != -1){
+          e.senderPet = cache[i].pet;
+        }else{
+          missingPetIds.add(e.senderPetId);
+        }
+        i = ownerCache.indexWhere((box) => box.pet.id == e.receiverPetId);
+        if (i != -1){
+          e.receiverPet = ownerCache[i].pet;
+          _receivedRequests.add(e);
+        }
+      }
+    }
+    return missingPetIds;
+  }
+
+  Future remove(String id) async{
+    await deleteRequestsFromServer([id]);
+    int index = _sentRequests.indexWhere((e) => e.id == id);
+    if (index != -1){
+      _sentRequests.removeAt(index);
+    }
+    index = _receivedRequests.indexWhere((e) => e.id == id);
+    if (index != -1){
+      _receivedRequests.removeAt(index);
+    }
+  }
+
+  MateRequest? findRequestUponId(String id, String? ownerPet){
+    int i = _receivedRequests.indexWhere((e) => (e.senderPetId == id));
+    if (i != -1) {
+      if (ownerPet == null){
+        return receivedRequests[i];
+      }else{
+        if (_receivedRequests[i].receiverPetId == ownerPet) return _receivedRequests[i];
+      }
+    }
+    i = _sentRequests.indexWhere((e) => (e.receiverPetId == id));
+    if (i != -1) {
+      if (ownerPet == null){
+        return sentRequests[i];
+      }else{
+        if (_sentRequests[i].senderPetId == ownerPet) return sentRequests[i];
+      }
+    }
     return null;
   }
 
@@ -200,6 +335,7 @@ class PetCache{
   bool cacheToDate = true;
 
   PetCache(LazyBox box, String ref){
+    print('2nd access');
     _cacheRef = ref;
     if (box.isNotEmpty) {
       if (box.keys.contains(ref)){
@@ -209,6 +345,9 @@ class PetCache{
         _petList = <PetBox>[];
         _lastFetched = DateTime(1990, 1, 1);
       }
+    }else{
+      _petList = <PetBox>[];
+      _lastFetched = DateTime(1990, 1, 1);
     }
 
   }
@@ -217,9 +356,8 @@ class PetCache{
     int i = _petList.indexWhere((e) => e.pet.id == id);
     final now = DateTime.now();
     if (i == -1){
-      final newDoc = await getSinglePetWithId(id);
-      if (newDoc != null){
-        final newPet = singlePetProfileFromShot(newDoc.data()!, id);
+      final newPet = await getSinglePetWithId(id);
+      if (newPet != null){
         _petList.add(PetBox(pet: newPet, expDate: getTTL(newPet.lastModified)));
         sortPets();
         cacheToDate = false;
@@ -358,28 +496,44 @@ class PetCache{
 
   // ==== general pet cache flow
 
- Future<List<PetProfile>> generatePetMatches({required PetProfile pet, bool? reset}) async{
+ Future<List<PetProfile>> generatePetMatches({required PetProfile pet, bool? reset, required NotifCache oldNotif}) async{
 
-    final petList = fetchMatchesFromCache(pet, reset?? false);
+    final petList = fetchMatchesFromCache(pet, reset?? false, oldNotif.sentRequests);
+    List<int> petsToRemove = <int>[];
+    for (int i = 0; i < petList.length ; i++){
+      if (oldNotif._sentRequests.indexWhere((e) => (e.receiverPetId == petList[i].id && e.status == requestState.pending)) != -1){
+        petsToRemove.add(i);
+      }
+    }
+    for (int i in petsToRemove) {
+      petList.removeAt(i);
+    }
     int remainingPets = petLimit - petList.length;
 
-    print('Remaining From cache: $remainingPets');
+    if (kDebugMode) print('Remaining From cache: $remainingPets');
     while (remainingPets > 0){
-      print('accessed Db');
+      if (kDebugMode) print('accessed Db');
       final response = await fetchMatchesFromDb(pet, remainingPets);
       petList.addAll(response[0]);
       if (!response[1]){
         break;
       }
+      List<int> petsToRemove = <int>[];
+      for (int i = 0; i < petList.length ; i++){
+        if (oldNotif._sentRequests.indexWhere((e) => (e.receiverPetId == petList[i].id && e.status == requestState.pending)) != -1){
+          petsToRemove.add(i);
+        }
+      }
+      for (int i in petsToRemove) {
+        petList.removeAt(i);
+      }
       remainingPets = petLimit - petList.length;
     }
-
-
     return petList;
 
   }
 
-  List<PetProfile> fetchMatchesFromCache(PetProfile pet, bool reset){
+  List<PetProfile> fetchMatchesFromCache(PetProfile pet, bool reset, List<MateRequest> sentRequests){
     DateTime now  = DateTime.now();
     List<PetProfile> matches = <PetProfile>[];
     int index = -1;
@@ -407,7 +561,7 @@ class PetCache{
     }
 
     if (matches.isNotEmpty){
-      // matches.sort((a, b) => a.lastModified.compareTo(b.lastModified));
+      matches.sort((a, b) => a.lastModified.compareTo(b.lastModified));
       _lastQueryAt = matches.last.lastModified;
     }
     return matches;
@@ -427,7 +581,7 @@ class PetCache{
 
   // add new pets fetched into cache
   updatePetCache(List<PetProfile> pets){
-   List<int> oldIndices = <int>[];
+   List<PetProfile> oldIndices = <PetProfile>[];
 
     for (var pet in pets){
       // find last lastModified date, making use of already create for loop
@@ -437,13 +591,15 @@ class PetCache{
       if (ind != -1){
         _petList[ind].pet = pet;
         _petList[ind].expDate = getTTL(pet.lastModified);
-        oldIndices.add(pets.indexOf(pet));
+        oldIndices.add(pet);
       }else{
         _petList.add(PetBox(pet: pet, expDate: getTTL(pet.lastModified)));
       }
     }
-    for( int index in oldIndices){
-      pets.removeAt(index);
+   print(oldIndices);
+    for( PetProfile p in oldIndices){
+      pets.remove(p);
+      print('removed ${p.name}');
     }
 
     sortPets();
@@ -452,12 +608,13 @@ class PetCache{
 
 
 
-  getListOfPets(List<String> petIDs) async{
+  Future<List<PetProfile>> getListOfPets(List<String> petIDs) async{
     List<PetProfile> filteredList = <PetProfile>[];
     List<String> nonCached = <String>[];
     int index = -1;
+    final now = DateTime.now();
     for (var e in petIDs){
-      index = _petList.indexWhere((box) => box.pet.id == e);
+      index = _petList.indexWhere((box) => (box.pet.id == e && box.expDate.isAfter(now)));
       (index == -1) ? nonCached.add(e) : filteredList.add(_petList[index].pet);
     }
     final pets = await getPetsWithIDs(nonCached);
@@ -467,8 +624,16 @@ class PetCache{
   }
 
   addToCache(List<PetProfile> newPets){
+    int i = -1;
     for ( var e in newPets){
-      _petList.add(PetBox(pet: e, expDate: getTTL(e.lastModified)));
+      i = _petList.indexWhere((x) => x.pet.id == e.id);
+      if (i == -1){
+        _petList.add(PetBox(pet: e, expDate: getTTL(e.lastModified)));
+      }else{
+        _petList[i].pet = e;
+        _petList[i].expDate = getTTL(e.lastModified);
+      }
+
     }
   }
 
@@ -514,7 +679,7 @@ class friendsCache{
 // ==== ===== ==== === === === === = == = =
 // CACHE BOX MAIN
 
-class CacheBox{
+class CacheBox extends ChangeNotifier{
 
   late NotifCache _notifCache;
   late PetCache _petCache;
@@ -545,14 +710,14 @@ class CacheBox{
     initCacheBoxes();
   }
 
-  initOwnerCache() async{
-
-    if (_lazyBox.keys.contains('ownerInfo')){
-      String ownerText = await _lazyBox.get('ownerInfo');
-      ownerText = decryptString(ownerText);
-      _userInfo = userPodFromJson(ownerText);
-    }
-  }
+  // initOwnerCache() async{
+  //
+  //   if (_lazyBox.keys.contains('ownerInfo')){
+  //     String ownerText = await _lazyBox.get('ownerInfo');
+  //     ownerText = decryptString(ownerText);
+  //     _userInfo = userPodFromJson(ownerText);
+  //   }
+  // }
 
   initCacheBoxes() async{
     _lazyBox = await Hive.openLazyBox('cache');
@@ -565,10 +730,15 @@ class CacheBox{
       petFriends = friendsCacheFromJson(data);
     }
     // initOwnerCache();
+    notifyListeners();
   }
 
+  List<MateRequest> get allRequests => [..._notifCache._sentRequests, ..._notifCache._receivedRequests];
   get lastSentNotif => _notifCache.lastSent;
   get lastReceivedNotif => _notifCache.lastReceived;
+  get sentRequests => _notifCache.sentRequests;
+  get receivedRequests => _notifCache.receivedRequests;
+  List<PetProfile> get ownerPets => List<PetProfile>.generate(_ownerPetCache._petList.length, (index) => _ownerPetCache._petList[index].pet);
 
 
   bool getUserSession(String uid, String email){
@@ -583,10 +753,16 @@ class CacheBox{
     return _userInfo!.copyWith();
   }
 
-  storeUser(UserPod user){
+  storeUser(UserPod user, {List<PetProfile>? pets}){
     _userInfo = user.copyWith();
     _cacheToDate = false;
     refreshPetCache();
+    if (pets != null && pets.isNotEmpty ) storeOwnerPets(pets);
+    notifyListeners();
+  }
+
+  storeOwnerPets(List<PetProfile> pets){
+    _ownerPetCache.addToCache(pets);
   }
   
   storeFriends(){
@@ -623,13 +799,6 @@ class CacheBox{
     return false;
   }
 
-  bool ownerHasPets(){
-    if (_userInfo != null && _userInfo!.petCount > 0){
-      return true;
-    }
-    return false;
-  }
-
   Future<List<PetPod>> getUserPets() async{
 
     final pets = await _ownerPetCache.getOwnerUpdatedPets();
@@ -638,59 +807,168 @@ class CacheBox{
   }
 
   incrementUserPets(PetProfile newPet) async{
-    final count = _userInfo!.petCount++;
     _ownerPetCache.addNewPet(newPet);
     _cacheToDate = false;
-
+    notifyListeners();
+    //TODO:: FIX!!!!
     // fix lastModified field not updated
-    int resp;
-    resp = await incrementUserPetCount(_userInfo!.id, count);
+    // int resp;
+    // resp = await incrementUserPetCount(_userInfo!.id, count);
     // another trial out of failure
-    if (resp != 200){
-      resp = await incrementUserPetCount(_userInfo!.id, count);
-    }
-    return resp;
+    // if (resp != 200){
+    //   // resp = await incrementUserPetCount(_userInfo!.id, count);
+    // }
+    // return resp;
   }
 
 
   showCachePets(){
-    print('count: ${_petCache._petList.length}');
     for ( var pet in _petCache._petList){
 
       print('${pet.pet.name}, exp: ${pet.expDate}, isMale: ${pet.pet.isMale}');
     }
   }
 
-  List<PetProfile> testPet(PetProfile pet, bool reset){
-    return _petCache.fetchMatchesFromCache(pet, reset);
-  }
 
   Future fetchPetQuery({PetProfile? pet, bool? reset}) async{
 
     if (pet != null){
-     final pets = await _petCache.generatePetMatches(pet: pet, reset: reset);
-     return convertToPods(pets, true);
+      List<int> petsToRemove = <int>[];
+      final pets = await _petCache.generatePetMatches(pet: pet, reset: reset, oldNotif: _notifCache);
+      for (int i = 0; i < pets.length ; i++){
+        if (_notifCache._sentRequests.indexWhere((e) => (e.receiverPetId == pets[i].id && e.status == requestState.pending)) != -1){
+          petsToRemove.add(i);
+        }
+      }
+      for (int i in petsToRemove) {
+        pets.removeAt(i);
+      }
+      return convertToPods(pets, true);
     }
+
     return <PetPod>[];
   }
 
   addNewNotifications({required List<MateRequest> items}){
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    for (var e in items){
-      if (e.senderId == uid){
-        _notifCache.addNewSent([e]);
-      }else{
-        _notifCache.addNewReceived([e]);
-      }
-    }
+    _notifCache.addNewRequests(items, _petCache._petList, _ownerPetCache._petList);
+    notifyListeners();
   }
 
-  getPetList(List<String> ids) async{
+  Future<bool> addOwnerPet(String name, String dogBreed, bool isMale,
+      DateTime petBirthDate, String photoUrl, String uid, List<String> vaccines, String pdfUrl) async{
+
+    final data = await addPet(name, dogBreed, isMale, petBirthDate, photoUrl, uid, vaccines, pdfUrl);
+    if (data[0] == 200){
+      _ownerPetCache.addNewPet(data[1]);
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<List<PetProfile>> getPetList(List<String> ids) async{
     return await _petCache.getListOfPets(ids);
   }
 
-  removeNotification({required String id, bool? sent}){
-    _notifCache.remove(id: id, sent: sent);
+  removeNotification({required String id, bool? fromServer}) async{
+    await _notifCache.remove(id);
+    //TODO: remove notification from server as well
+    if (fromServer?? false) await deleteRequestsFromServer([id]) ? null : print('failed');
+    notifyListeners();
+  }
+
+
+  MateRequest? getSinglePetRelation(String petId, {String? ownerPet}){
+    return _notifCache.findRequestUponId(petId, ownerPet);
+    //TODO: MAY FIX TO GET from online database
+  }
+
+  List<MateRequest> getPetRelations(String petId){
+    List<MateRequest> rel = _notifCache.sentRequests.where((e) => e.receiverPetId == petId).toList();
+    rel.addAll(_notifCache.receivedRequests.where((e) => e.senderPetId == petId));
+    return rel;
+  }
+
+  Future<List<dynamic>> getPetState({required ownerPetId, required petId}) async{
+
+    int sentFind = _notifCache.sentRequests.indexWhere((e) => (e.receiverPetId == petId && e.senderPetId == ownerPetId));
+    int receivedFind = _notifCache.receivedRequests.indexWhere((e) => (e.senderPetId == petId && e.receiverPetId == ownerPetId));
+
+    String? reqId;
+
+
+    if (sentFind != -1){
+      reqId = _notifCache._sentRequests[sentFind].id;
+     switch(_notifCache._sentRequests[sentFind].status){
+       case requestState.pending:
+         return [profileState.requested, reqId];
+       case requestState.denied:
+         return [profileState.undefined, reqId];
+       case requestState.accepted:
+         return [profileState.friend, reqId];
+       case requestState.undefined:
+         return [profileState.undefined, reqId];
+     }
+    }
+
+    if (receivedFind != -1){
+      reqId = _notifCache._receivedRequests[receivedFind].id;
+      switch(_notifCache._sentRequests[sentFind].status){
+        case requestState.pending:
+          return [profileState.pendingApproval, reqId];
+        case requestState.denied:
+          return [profileState.noFriendship, reqId];
+        case requestState.accepted:
+          return [profileState.friend, reqId];
+        case requestState.undefined:
+          return [profileState.undefined, reqId];
+      }
+    }
+    final newReq = await fetchPetsRelation(ownerPetId, petId);
+    if (newReq != null && newReq.isNotEmpty){
+      addNewNotifications(items: newReq);
+      notifyListeners();
+      for (var req in newReq){
+        if (req.senderPetId == ownerPetId && req.receiverPetId == petId){
+          switch(req.status){
+            case requestState.pending:
+              return [profileState.requested, req.id];
+            case requestState.denied:
+              return [profileState.undefined, req.id];
+            case requestState.accepted:
+              return [profileState.friend, req.id];
+            case requestState.undefined:
+              return [profileState.undefined, req.id];
+          }
+        }
+        if (req.receiverPetId == ownerPetId && req.senderPetId == petId){
+         switch(req.status){
+           case requestState.pending:
+             return [profileState.pendingApproval,req.id];
+           case requestState.denied:
+             return [profileState.undefined, req.id];
+           case requestState.accepted:
+             return [profileState.friend, req.id];
+           case requestState.undefined:
+             return [profileState.undefined, req.id];
+         }
+        }
+      }
+    }
+
+    return [profileState.noFriendship, null];
+
+  }
+
+  Future<bool> updateMateRequest({required String sender, required String receiver, required requestState state}) async{
+    final ret = await _notifCache.updateRequest(sender, receiver, state);
+    notifyListeners();
+    return ret;
+  }
+
+  updateCachedRequest({required String reqId, required requestState state}){
+    _notifCache.updateCachedRequest(reqId, state);
+    notifyListeners();
   }
 
   void addPetFriendList(String petId, String newId) {
@@ -700,11 +978,36 @@ class CacheBox{
     } else if (!petFriends[petId]!.friends.contains(newId)) {
       petFriends[petId]!.friends.add(newId);
     }
+    notifyListeners();
   }
+
+  Future<bool> updateMateRequests() async{
+    try{
+      List<String> ids = await _notifCache.refreshRequests(_petCache._petList, _ownerPetCache._petList);
+      if (ids.isNotEmpty){
+        final newPets = await getPetsWithIDs(ids.toSet().toList());
+        _petCache.addToCache(newPets);
+        _notifCache.updateRequests(newPets, _userInfo!.id);
+      }
+      notifyListeners();
+      return true;
+    }catch (e){
+      if (kDebugMode) print('updateMateRequests Error: $e');
+      return false;
+    }
+
+  }
+
+  Future<UserPod?> getPetOwnerInfo(String oId) async{
+    //TODO: cache users info for limited time
+    return await getPetOwner(oId);
+  }
+
 
   Future<List<PetProfile>> cachedFriends(List<PetPod> pods) async{
     List<String> keys = List<String>.generate(pods.length, (index) => pods[index].pet.id);
     List<String> ids = await fetchLatestList(keys);
+    notifyListeners();
     return (ids.isNotEmpty) ? await _petCache.getListOfPets(ids) : <PetProfile>[];
   }
 
@@ -729,16 +1032,16 @@ class CacheBox{
       petFriends[entry.key] = friendsCache(now.add(const Duration(days: 1)), entry.value);
       friendsList.addAll(entry.value);
     }
+    notifyListeners();
     return friendsList;
 
   }
 
   Future<PetProfile?> getPetWithId(String id) async{
-    return await _petCache.petWithId(id);
+    PetProfile? pet = await _petCache.petWithId(id);
+    notifyListeners();
+    return pet;
   }
-
-  get cachedSentNotif => _notifCache.sentRequests;
-  get cachedReceivedNotif => _notifCache.receivedRequests;
 
   signOut(){
     _userInfo = null;
@@ -747,14 +1050,6 @@ class CacheBox{
 
   clearAll(){
     _lazyBox.clear();
-  }
-
-
-  // change in user info
-  updateUserInfo({
-    int? petCount
-}){
-    _userInfo!.petCount = petCount?? _userInfo!.petCount;
   }
 
 }

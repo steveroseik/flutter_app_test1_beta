@@ -45,14 +45,6 @@ class _mainAppState extends State<mainApp> {
 
   @override
   void initState() {
-    if (widget.pod != null){
-      setUserPets();
-
-    }else{
-      // initUser();
-      print('null pod in main');
-      // then setUserPets();
-    }
     super.initState();
   }
 
@@ -75,9 +67,10 @@ class _mainAppState extends State<mainApp> {
     });
   }
 
+  //TODO:: OUTDATED EFKESSSS
   void setUserPets() async{
     final prefs = await SharedPreferences.getInstance();
-    if (widget.pod!.petCount > 0){
+    if (false){
       prefs.setBool('hasPets', true);
     }else{
       prefs.setBool('hasPets', false);

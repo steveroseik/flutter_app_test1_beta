@@ -52,7 +52,7 @@ class _MapsPageState extends State<MapsPage> {
     const time = const Duration(seconds: 1);
     _timer = Timer.periodic(
       time, (Timer timer) async{
-
+        if (!mounted) timer.cancel();
         final prefs = await SharedPreferences.getInstance();
         if (prefs.getDouble('lat') != null){
           final lat = prefs.getDouble('lat');
@@ -312,7 +312,7 @@ class _MapsPageState extends State<MapsPage> {
     if(host_id==uid) return -1;
     if(attending_pets==null) return 0;
     for (int i = 0;i< petPods.length;i++) {
-      var temp = petPods[i].pod.id;
+      var temp = petPods[i].item.id;
       for(int j = 0; j < attending_pets.length;j++) {
         if (temp == attending_pets[j]) {
           joined_meet = 1;

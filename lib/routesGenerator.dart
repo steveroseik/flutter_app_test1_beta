@@ -19,6 +19,7 @@ import 'package:flutter_app_test1/pages/homeBreedPage.dart';
 import 'package:flutter_app_test1/pages/notificationsPage.dart';
 import 'package:flutter_app_test1/pages/petDocumentUpload.dart';
 import 'package:flutter_app_test1/pages/petMatchPage.dart';
+import 'package:flutter_app_test1/pages/petPassportPage.dart';
 import 'package:flutter_app_test1/pages/petProfilePage.dart';
 import 'package:flutter_app_test1/pages/reAuth.dart';
 import 'package:flutter_app_test1/pages/selectmeetlocation.dart';
@@ -60,7 +61,6 @@ class RouteGenerator {
         return MaterialPageRoute(
           builder: (_) => LoginPage(),
         );
-        return _errorRoute();
       case '/signup_complete':
         if (args is CacheBox){
           return MaterialPageRoute(
@@ -114,7 +114,7 @@ class RouteGenerator {
 
       case '/petMatch':
         if (args is List){
-          return MaterialPageRoute(builder: (_) => PetMatchPage(senderPet: args[0],pets: args[1], petRequests: args[2], sentRequests: args[3],));
+          return MaterialPageRoute(builder: (_) => PetMatchPage(senderPet: args[0],pets: args[1]));
         }else{
           return _errorRoute();
         }
@@ -152,17 +152,18 @@ class RouteGenerator {
               builder: (_) => PetDocumentUpload(arguments: args,));
         }
         return _errorRoute();
+      case '/petPassport':
+        if (args is PetProfile) return MaterialPageRoute(builder: (context) => PetPassportPage(pet: args));
+        return _errorRoute();
       case '/petProfile':
         if (args is List){
           return MaterialPageRoute(
-              builder: (_) => PetProfilePage(pod: args[0], ownerPets: args[1]));
+              builder: (_) => PetProfilePage(pod: args[0], request: args[1], receiverPet: args[2], tag: args[3]));
         }
         return _errorRoute();
       case '/notif':
-        if (args is List){
-          return CupertinoPageRoute(builder: (_) => NotificationsPage(requests: args[0], ownerPets: args[1]));
-        }
-        return _errorRoute();
+        return CupertinoPageRoute(builder: (_) => NotificationsPage());
+        // return _errorRoute();
       default:
         // if an unmatched route is called, return error route
         return _errorRoute();
