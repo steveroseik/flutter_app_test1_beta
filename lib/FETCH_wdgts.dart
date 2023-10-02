@@ -1375,7 +1375,7 @@ class _PetRequestCardState extends State<PetRequestCard> {
 
 AppBar init_appBar(GlobalKey<NavigatorState> navKey) {
   return AppBar(
-          backgroundColor: Colors.grey[50],
+          backgroundColor: Color(0xFFF6F4F3),
           iconTheme: IconThemeData(
               color: Colors.black
           ),

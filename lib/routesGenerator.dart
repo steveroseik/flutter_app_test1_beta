@@ -157,7 +157,7 @@ class RouteGenerator {
         return _errorRoute();
       case '/petProfile':
         if (args is List){
-          return MaterialPageRoute(
+          return CupertinoPageRoute(
               builder: (_) => PetProfilePage(pod: args[0], request: args[1], receiverPet: args[2], tag: args[3]));
         }
         return _errorRoute();

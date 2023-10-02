@@ -170,70 +170,6 @@ extension UniquePets on Iterable<MateRequest>{
   }
 }
 
-// class RequestsProvider with ChangeNotifier{
-//   List<MateItem> reqItems = <MateItem>[];
-//
-//   get requests => reqItems;
-//
-//   get pendingRequests => reqItems.where((item) => item.stat == requestState.pending).toList();
-//
-//   get friends => reqItems.where((item) => item.stat == requestState.accepted).toList();
-//
-//   set requestItems(List<MateItem> items){
-//     reqItems = items;
-//     notifyListeners();
-//   }
-//
-//   addItems(List<MateItem> items){
-//     reqItems.addAll(items);
-//     notifyListeners();
-//   }
-//
-//   addItem (MateItem item){
-//     reqItems.add(item);
-//     print('item added: ${item.item.pet.name}');
-//     notifyListeners();
-//   }
-//
-//   removeAt(int i){
-//     reqItems.removeAt(i);
-//     notifyListeners();
-//   }
-//
-//   removeWithId(String id){
-//     reqItems.removeWhere((e) => e.request!.id == id);
-//     notifyListeners();
-//   }
-//
-//   findRelation(String petId1, String petId2){
-//     int i = reqItems.indexWhere((e){
-//       return (e.request!.senderPetId == petId1 &&
-//               e.request!.receiverPetId == petId2) ||
-//           (e.request!.senderPetId == petId2 &&
-//               e.request!.receiverPetId == petId1);
-//     });
-//
-//     if (i == -1){
-//       return petRelation.none;
-//     }else{
-//       if (reqItems[i].item.pet.id == petId1){
-//         return petRelation.sender;
-//       }
-//       return petRelation.receiver;
-//     }
-//   }
-//
-//   updateRequest(MateRequest request, requestState s){
-//     int i = reqItems.indexWhere((e) => e.request!.id == request.id);
-//
-//     if (i == -1 ) return false;
-//
-//     reqItems[i].request!.status = s;
-//     notifyListeners();
-//     return true;
-//   }
-// }
-
 Future<File> _getImageFromNetwork(String url, String fileName) async {
   final directory = await getApplicationDocumentsDirectory();
   final imagePath = '${directory.path}/$fileName';
@@ -361,5 +297,14 @@ Future<int> clearCachedPDFs() async {
     return -1; // Return -1 to indicate an error.
   }
 }
+bool isDark = true;
+Color mainColor = isDark ? const Color(0xFF000000) :
+const Color(0xFFF6F4F3);
+Color backgroundColor = isDark ? const Color(0xFF141B41) :
+const Color(0xFFF6F4F3);
+
+Color highlightColor = isDark ?  const Color(0xFFE4B7E5):
+const Color(0xFF6F9CEB);
+
 
 

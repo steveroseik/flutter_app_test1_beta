@@ -14,9 +14,7 @@ import 'package:flutter_cached_pdfview/flutter_cached_pdfview.dart';
 import 'package:flutter_multi_select_items/flutter_multi_select_items.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:glassmorphism_ui/glassmorphism_ui.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:line_awesome_flutter/line_awesome_flutter.dart';
-import 'package:multi_select_flutter/multi_select_flutter.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:pdf/pdf.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
@@ -243,9 +241,7 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
 
     ownerVerified = widget.pod.pet.type == 1;
     initPDF();
-    setState(() {
-
-    });
+    setState(() {});
   }
   initPDF() async{
     if (widget.pod.pet.passport != ""){
@@ -283,20 +279,20 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
               controller: controller,
               child: Stack(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.only(topRight: Radius.circular(15.sp), topLeft: Radius.circular(15.sp)),
-                    child: SizedBox(
-                      height: 35.h,
-                      width: double.infinity,
-                      child: ShaderMask(
-                        blendMode: BlendMode.multiply,
-                        shaderCallback: (Rect bounds) => LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.black.withOpacity(0.5),Colors.transparent, Colors.transparent, Colors.black.withOpacity(0.5)],
-                        ).createShader(bounds),
-                        child: Hero(
-                          tag: widget.tag?? '',
+                  Hero(
+                    tag: widget.tag?? '',
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.only(topRight: Radius.circular(15.sp), topLeft: Radius.circular(15.sp)),
+                      child: SizedBox(
+                        height: 35.h,
+                        width: double.infinity,
+                        child: ShaderMask(
+                          blendMode: BlendMode.multiply,
+                          shaderCallback: (Rect bounds) => LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.black.withOpacity(0.5),Colors.transparent, Colors.transparent, Colors.black.withOpacity(0.5)],
+                          ).createShader(bounds),
                           child: ClipRRect(
                             child: Image.network(widget.pod.pet.photoUrl, fit: BoxFit.cover),
                           ),
@@ -343,7 +339,7 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                         ),
                       ],
                     ),
-                  ),
+                  ).animate().slide(begin: const Offset(0,1), end: const Offset(0,0), delay: const Duration(milliseconds: 200), duration: const Duration(milliseconds: 500)),
                   Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -927,7 +923,7 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                             ),
                           ],
                         ),
-                      ),
+                      ).animate().slide(begin: const Offset(0,0.5), end: const Offset(0,0), delay: const Duration(milliseconds: 100), duration: const Duration(milliseconds: 300)),
                     ],
                   ),
                 ],
@@ -974,7 +970,8 @@ class _PetProfilePageState extends State<PetProfilePage> with TickerProviderStat
                 ],
               ),
             ),
-          ),
+          )
+              .animate().slide(begin: const Offset(0,-1), end: const Offset(0,0), delay: const Duration(milliseconds: 200), duration: const Duration(milliseconds: 500)),
         ),
       ),
     );

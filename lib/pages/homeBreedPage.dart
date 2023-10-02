@@ -411,6 +411,7 @@ class _HomeBreedPageState extends State<HomeBreedPage>
     cacheLoaded.value = true;
     return Scaffold(
         appBar: init_appBar(homeNav_key),
+        backgroundColor: Color(0xFFF6F4F3),
         body: SingleChildScrollView(
           child: Column(
             children: [
